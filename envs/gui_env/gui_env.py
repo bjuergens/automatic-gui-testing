@@ -74,7 +74,8 @@ class GUIEnv(gym.Env):
 
     def _on_timeout(self):
         # Initial observation trigger
-        self.main_window.take_screenshot()
+        screenshot = self.main_window.take_screenshot()
+        self.main_window.screenshot_signal.emit(screenshot)
 
     def _start_application(self, click_connection_child: Connection, terminate_connection_child: Connection):
         app = QApplication()
@@ -85,7 +86,8 @@ class GUIEnv(gym.Env):
         self.register_click_thread = RegisterClickThread(click_connection_child, terminate_connection_child)
         self.register_click_thread.position_signal.connect(self.main_window.simulate_click)
         self.register_click_thread.random_widget_signal.connect(self.main_window.simulate_click_on_random_widget)
-        self.main_window.current_screenshot.connect(self._get_observation)
+        self.main_window.screenshot_signal.connect(self._get_observation)
+        self.main_window.screenshot_and_coordinates_signal.connect(self._get_observation_random_widget)
         self.register_click_thread.start()
 
         # Send initial observation, but this has to happen after startup, i.e. after app.exec() runs
@@ -98,9 +100,17 @@ class GUIEnv(gym.Env):
         print("Got observation")
         self.click_connection_child.send(observation)
 
+    @Slot(np.ndarray, int, int)
+    def _get_observation_random_widget(self, observation: np.ndarray, pos_x: int, pos_y: int):
+        print("Got observation random widget")
+        self.click_connection_child.send((observation, pos_x, pos_y))
+
     def step(self, action: Union[Tuple[int, int], bool]) -> np.ndarray:
         self.click_connection_parent.send(action)
-        observation: np.ndarray = self.click_connection_parent.recv()
+        observation = self.click_connection_parent.recv()
+
+        if isinstance(action, bool):
+            observation, pos_x, pos_y = observation
 
         return observation
 
