@@ -1,3 +1,5 @@
+import logging
+import random
 import sys
 
 import PySide6.QtGui
@@ -41,8 +43,10 @@ class MainWindow(QMainWindow):
         self.menu_bar.addAction(self.settings_action)
         self.setMenuBar(self.menu_bar)
 
+        # TODO populate this, and implement changing this when appropriate widgets are clicked
+        self.currently_shown_widgets = []
+
     def take_screenshot(self) -> np.ndarray:
-        print("Taking Screenshot!")
         screen = QApplication.primaryScreen()
         window = self.window()
         screenshot = screen.grabWindow(window.winId(), 0, 0).toImage()
@@ -65,38 +69,45 @@ class MainWindow(QMainWindow):
 
     @Slot(int, int)
     def simulate_click(self, pos_x: int, pos_y: int):
-        print(f"Received emitted signal with pos '{pos_x, pos_y}!")
-
         pos = QPoint(pos_x, pos_y)
         recv_widget = self.childAt(pos)
         local_pos = recv_widget.mapFrom(self.main_widget, pos)
 
         QTest.mouseClick(recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
 
-        # mouse_event_press = QMouseEvent(QEvent.MouseButtonPress, local_pos, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        # mouse_event_release = QMouseEvent(QEvent.MouseButtonRelease, local_pos, Qt.LeftButton, Qt.LeftButton,
-        #                                   Qt.NoModifier)
-
-        # QApplication.sendEvent(recv_widget, mouse_event_press)
-        # QApplication.sendEvent(recv_widget, mouse_event_release)
-        #
-        # print(f"Clicked widget '{recv_widget}' at given pos '{pos}' with calculated local pos '{local_pos}'")
-        print(
-            f"Received pos {pos_x, pos_y}, clicked widget '{recv_widget}' at local pos '{local_pos}'"
-        )
+        logging.debug(f"Received pos {pos_x, pos_y}, clicked widget '{recv_widget}' at local pos '{local_pos}'")
 
         screenshot = self.take_screenshot()
         self.screenshot_signal.emit(screenshot)
 
     @Slot()
     def simulate_click_on_random_widget(self):
-        print("Received random widget signal")
+        randomly_selected_widget = random.choice(self.currently_shown_widgets)
+
+        height = randomly_selected_widget.height()
+        width = randomly_selected_widget.width()
+
+        x = random.randint(0, width)
+        y = random.randint(0, height)
+
+        click_point = QPoint(x, y)
+
+        QTest.mouseClick(randomly_selected_widget, Qt.LeftButton, Qt.NoModifier, click_point)
+
+        # TODO this will probably fail in the settings dialog as this prints out a coordinate system in the dialog's
+        #  coordinate system but we want the coordinate of the window
+        # Convert coordinates in the widget's coordinate system to the coordinate system of the parent
+        global_position: QPoint = randomly_selected_widget.mapToParent(click_point)
+
+        logging.debug(
+            f"Randomly selected '{randomly_selected_widget.text()}', local pos '{click_point}', and global pos " +
+            f"'{global_position}'!")
+
         screenshot = self.take_screenshot()
-        self.screenshot_and_coordinates_signal.emit(screenshot, 99, 123)
+        self.screenshot_and_coordinates_signal.emit(screenshot, global_position.x(), global_position.y())
 
     def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         self.points.append(event.position())
-        print("Added point")
         self.update()
 
         super().mouseReleaseEvent(event)
@@ -110,8 +121,8 @@ class MainWindow(QMainWindow):
         qp.setBrush(brush)
 
         if self.points is not None:
-            print("Drawing current point!")
             qp.drawPoints(self.points)
+
         qp.end()
         super().paintEvent(event)
 
