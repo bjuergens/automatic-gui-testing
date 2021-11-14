@@ -23,7 +23,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="text_printer_tab">
       <attribute name="title">
@@ -54,7 +54,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QFontComboBox" name="font_chooser"/>
+          <widget class="QFontComboBox" name="font_combobox"/>
          </item>
         </layout>
        </item>
@@ -68,7 +68,7 @@
               <string>Red</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup</string>
+              <string notr="true">text_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -78,7 +78,7 @@
               <string>Green</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup</string>
+              <string notr="true">text_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -92,7 +92,7 @@
               <string>Blue</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup</string>
+              <string notr="true">text_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -102,7 +102,7 @@
               <string>Black</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup</string>
+              <string notr="true">text_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -254,7 +254,7 @@
               <string>Green</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup_2</string>
+              <string notr="true">tree_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -264,7 +264,7 @@
               <string>Blue</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup_2</string>
+              <string notr="true">tree_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -278,7 +278,7 @@
               <string>Black</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup_2</string>
+              <string notr="true">tree_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -288,7 +288,7 @@
               <string>Brown</string>
              </property>
              <attribute name="buttonGroup">
-              <string notr="true">buttonGroup_2</string>
+              <string notr="true">tree_color_button_group</string>
              </attribute>
             </widget>
            </item>
@@ -300,12 +300,19 @@
      </widget>
     </widget>
    </item>
+   <item>
+    <widget class="QPushButton" name="close_settings_dialog">
+     <property name="text">
+      <string>Close and Apply</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_2"/>
-  <buttongroup name="buttonGroup"/>
+  <buttongroup name="tree_color_button_group"/>
+  <buttongroup name="text_color_button_group"/>
  </buttongroups>
 </ui>

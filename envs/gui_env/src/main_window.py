@@ -1,50 +1,85 @@
 import logging
 import random
 import sys
+from functools import partial
 
 import PySide6.QtGui
 import numpy as np
-from PySide6.QtCore import QFile, Qt, QPoint, Slot, Signal
+from PySide6.QtCore import Qt, QPoint, Slot, Signal, QFile
 from PySide6.QtGui import QAction
 from PySide6.QtGui import QPainter, QPen, QBrush, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QDialog, QWidget, QPushButton
 
-
-def convert_qimage_to_ndarray(image: QImage):
-    width = image.width()
-    height = image.height()
-
-    data = image.constBits()
-    array = np.array(data).reshape((height, width, 4))
-    return array
+from envs.gui_env.src.backend.text_printer import TextPrinter
+from envs.gui_env.src.settings_dialog import SettingsDialog
+from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
 
 
 class MainWindow(QMainWindow):
     screenshot_signal = Signal(np.ndarray)
     screenshot_and_coordinates_signal = Signal(np.ndarray, int, int)
 
-    def __init__(self):
-        super(MainWindow, self).__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.setWindowTitle("test-gui-worldmodels")
         self.setFixedSize(600, 600)
 
-        self.main_widget = self.load_ui()
-        self.setCentralWidget(self.main_widget)
+        self.main_window = load_ui("envs/gui_env/src/main_window.ui")
 
-        self.main_widget.pushButton_3.setVisible(False)
-
-        self.points = []
-
+        # Initialize menu bar
         self.menu_bar = QMenuBar()
         self.settings_action = QAction("Settings")
         self.menu_bar.addAction(self.settings_action)
         self.setMenuBar(self.menu_bar)
 
+        # Christmas Tree is hidden at first, must be activated in the settings
+        self.main_window.christmas_tree_button.setVisible(False)
+
+
         # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets = []
+        self.points = []
+
+        self._connect_buttons()
+
+        self.text_printer = TextPrinter(self.main_window.text_printer_output)
+        self.settings_dialog = SettingsDialog(text_printer=self.text_printer, parent=self)
+        self.settings_action.triggered.connect(self.settings_dialog.exec)
+
+        self.setCentralWidget(self.main_window)
+
+    def _connect_buttons(self):
+        # Text Printer
+        self.main_window.text_printer_button.clicked.connect(
+            partial(self.main_window.main_stacked_widget.setCurrentIndex, 0)
+        )
+        self.main_window.start_text_printer_button.clicked.connect(self.start_text_printing)
+
+        # Calculator
+        self.main_window.calculator_button.clicked.connect(
+            partial(self.main_window.main_stacked_widget.setCurrentIndex, 1)
+        )
+        self.main_window.start_calculation_button.clicked.connect(self.start_calculation)
+
+        # Christmas Tree
+        self.main_window.christmas_tree_button.clicked.connect(
+            partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
+        )
+        self.main_window.start_drawing_christmas_tree_button.clicked.connect(self.start_drawing_christmas_tree)
+
+    def start_text_printing(self):
+        self.text_printer.apply_settings()
+        self.text_printer.generate_text()
+
+    def start_calculation(self):
+        # TODO
+        pass
+
+    def start_drawing_christmas_tree(self):
+        pass
 
     def take_screenshot(self) -> np.ndarray:
         screen = QApplication.primaryScreen()
@@ -53,25 +88,11 @@ class MainWindow(QMainWindow):
 
         return convert_qimage_to_ndarray(screenshot)
 
-        # screen.grabWindow(window.winId(), 0, 0).save("screenshot_by_screen.png")
-        # window.grab().save("screenshot_by_window.png")
-
-        # self.grab().save("screenshot_test.png")
-
-    def load_ui(self):
-        loader = QUiLoader()
-        ui_file = QFile("envs/gui_env/src/main_window.ui")
-        ui_file.open(QFile.ReadOnly)
-        widget = loader.load(ui_file)
-        ui_file.close()
-
-        return widget
-
     @Slot(int, int)
     def simulate_click(self, pos_x: int, pos_y: int):
         pos = QPoint(pos_x, pos_y)
         recv_widget = self.childAt(pos)
-        local_pos = recv_widget.mapFrom(self.main_widget, pos)
+        local_pos = recv_widget.mapFrom(self.main_window, pos)
 
         QTest.mouseClick(recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
 
@@ -127,8 +148,12 @@ class MainWindow(QMainWindow):
         super().paintEvent(event)
 
 
-if __name__ == "__main__":
+def main():
     app = QApplication([])
     widget = MainWindow()
     widget.show()
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
