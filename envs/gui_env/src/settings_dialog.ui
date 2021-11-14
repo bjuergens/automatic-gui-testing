@@ -23,24 +23,38 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
-     <widget class="QWidget" name="tab">
+     <widget class="QWidget" name="text_printer_tab">
       <attribute name="title">
-       <string>Tab 1</string>
+       <string>Text Printer</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Number of Words:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="number_of_words_combobox"/>
+         </item>
+        </layout>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
-          <widget class="QComboBox" name="comboBox">
+          <widget class="QComboBox" name="font_size_combobox">
            <property name="toolTip">
             <string/>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QFontComboBox" name="fontComboBox"/>
+          <widget class="QFontComboBox" name="font_chooser"/>
          </item>
         </layout>
        </item>
@@ -49,7 +63,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
-            <widget class="QRadioButton" name="radioButton">
+            <widget class="QRadioButton" name="red_text_color_button">
              <property name="text">
               <string>Red</string>
              </property>
@@ -59,7 +73,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_2">
+            <widget class="QRadioButton" name="green_text_color_button">
              <property name="text">
               <string>Green</string>
              </property>
@@ -73,7 +87,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <widget class="QRadioButton" name="radioButton_3">
+            <widget class="QRadioButton" name="blue_text_color_button">
              <property name="text">
               <string>Blue</string>
              </property>
@@ -83,7 +97,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_4">
+            <widget class="QRadioButton" name="black_text_color_button">
              <property name="text">
               <string>Black</string>
              </property>
@@ -99,21 +113,21 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_5">
          <item>
-          <widget class="QCheckBox" name="checkBox">
+          <widget class="QCheckBox" name="bold_font_checkbox">
            <property name="text">
             <string>Bold</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="checkBox_2">
+          <widget class="QCheckBox" name="italic_font_checkbox">
            <property name="text">
             <string>Italic</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="checkBox_3">
+          <widget class="QCheckBox" name="underline_font_checkbox">
            <property name="text">
             <string>Underline</string>
            </property>
@@ -123,9 +137,9 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_2">
+     <widget class="QWidget" name="calculator_tab">
       <attribute name="title">
-       <string>Tab 2</string>
+       <string>Calculator</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_6">
        <item>
@@ -133,7 +147,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_7">
            <item>
-            <widget class="QCheckBox" name="checkBox_5">
+            <widget class="QCheckBox" name="addition_checkbox">
              <property name="text">
               <string>Addition</string>
              </property>
@@ -143,7 +157,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_4">
+            <widget class="QCheckBox" name="multiplication_checkbox">
              <property name="text">
               <string>Multiplication</string>
              </property>
@@ -154,7 +168,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_8">
            <item>
-            <widget class="QCheckBox" name="checkBox_6">
+            <widget class="QCheckBox" name="subtraction_checkbox">
              <property name="text">
               <string>Subtraction</string>
              </property>
@@ -164,7 +178,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_7">
+            <widget class="QCheckBox" name="division_checkbox">
              <property name="text">
               <string>Division</string>
              </property>
@@ -184,21 +198,21 @@
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="comboBox_2"/>
+          <widget class="QComboBox" name="numeral_system_combobox"/>
          </item>
         </layout>
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_3">
+     <widget class="QWidget" name="christmas_tree_tab">
       <attribute name="title">
-       <string>Tab 3</string>
+       <string>Christmas Tree</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_9">
        <item>
-        <widget class="QCheckBox" name="checkBox_8">
+        <widget class="QCheckBox" name="activate_christams_tree_checkbox">
          <property name="text">
-          <string>Activate Tab 3</string>
+          <string>Activate Christmas Tree</string>
          </property>
         </widget>
        </item>
@@ -212,7 +226,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="comboBox_3"/>
+          <widget class="QComboBox" name="drawing_symbol_combobox"/>
          </item>
         </layout>
        </item>
@@ -226,7 +240,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="comboBox_4"/>
+          <widget class="QComboBox" name="tree_height_combobox"/>
          </item>
         </layout>
        </item>
@@ -235,7 +249,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_11">
            <item>
-            <widget class="QRadioButton" name="radioButton_5">
+            <widget class="QRadioButton" name="green_tree_color_button">
              <property name="text">
               <string>Green</string>
              </property>
@@ -245,7 +259,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_6">
+            <widget class="QRadioButton" name="blue_tree_color_button">
              <property name="text">
               <string>Blue</string>
              </property>
@@ -259,7 +273,7 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_12">
            <item>
-            <widget class="QRadioButton" name="radioButton_7">
+            <widget class="QRadioButton" name="black_tree_color_button">
              <property name="text">
               <string>Black</string>
              </property>
@@ -269,7 +283,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_8">
+            <widget class="QRadioButton" name="brown_tree_color_button">
              <property name="text">
               <string>Brown</string>
              </property>
@@ -291,7 +305,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
