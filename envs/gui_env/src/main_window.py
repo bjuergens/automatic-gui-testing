@@ -12,6 +12,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QDialog, QWidget, QPushButton
 
+from envs.gui_env.src.backend.calculator import Calculator
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
@@ -38,7 +39,6 @@ class MainWindow(QMainWindow):
         # Christmas Tree is hidden at first, must be activated in the settings
         self.main_window.christmas_tree_button.setVisible(False)
 
-
         # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets = []
         self.points = []
@@ -46,7 +46,9 @@ class MainWindow(QMainWindow):
         self._connect_buttons()
 
         self.text_printer = TextPrinter(self.main_window.text_printer_output)
-        self.settings_dialog = SettingsDialog(text_printer=self.text_printer, parent=self)
+        self.calculator = Calculator(self.main_window.calculator_output, self.main_window.first_operand_combobox,
+                                     self.main_window.second_operand_combobox, self.main_window.math_operator_combobox)
+        self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator, parent=self)
         self.settings_action.triggered.connect(self.settings_dialog.exec)
 
         self.setCentralWidget(self.main_window)
@@ -75,8 +77,7 @@ class MainWindow(QMainWindow):
         self.text_printer.generate_text()
 
     def start_calculation(self):
-        # TODO
-        pass
+        self.calculator.calculate()
 
     def start_drawing_christmas_tree(self):
         pass
