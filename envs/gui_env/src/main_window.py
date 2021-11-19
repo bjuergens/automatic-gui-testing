@@ -5,7 +5,7 @@ from functools import partial
 
 import numpy as np
 from PySide6.QtCore import Qt, QPoint, Slot, Signal
-from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor
+from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor, QFont, QFontDatabase
 from PySide6.QtGui import QPainter, QPen, QBrush, QColorConstants
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar
@@ -37,6 +37,11 @@ class MainWindow(QMainWindow):
 
         # Christmas Tree is hidden at first, must be activated in the settings
         self.main_window.figure_printer_button.setVisible(False)
+
+        # Need a monospace font to display the ASCII art correctly
+        document = self.main_window.figure_printer_output.document()
+        font = QFontDatabase.font("Bitstream Vera Sans Mono", "Normal", 10)
+        document.setDefaultFont(font)
 
         # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets = []
