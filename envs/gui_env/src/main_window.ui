@@ -38,12 +38,12 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="christmas_tree_button">
+       <widget class="QPushButton" name="figure_printer_button">
         <property name="enabled">
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Christmas Tree</string>
+         <string>Figure Printer</string>
         </property>
         <property name="checkable">
          <bool>false</bool>
@@ -122,14 +122,25 @@
       <widget class="QWidget" name="page_3">
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QPlainTextEdit" name="christmas_tree_output"/>
-        </item>
-        <item>
-         <widget class="QPushButton" name="start_drawing_christmas_tree_button">
-          <property name="text">
-           <string>Draw Christmas Tree</string>
+         <widget class="QPlainTextEdit" name="figure_printer_output">
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2">
+          <item>
+           <widget class="QComboBox" name="figure_combobox"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="start_drawing_figure_button">
+            <property name="text">
+             <string>Draw Figure</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

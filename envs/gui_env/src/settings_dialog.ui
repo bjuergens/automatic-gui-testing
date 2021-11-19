@@ -204,43 +204,70 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="christmas_tree_tab">
+     <widget class="QWidget" name="figure_printer_tab">
       <attribute name="title">
-       <string>Christmas Tree</string>
+       <string>Figure Printer</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_9">
        <item>
-        <widget class="QCheckBox" name="activate_christams_tree_checkbox">
+        <widget class="QCheckBox" name="activate_figure_printer_checkbox">
          <property name="text">
-          <string>Activate Christmas Tree</string>
+          <string>Activate Figure Printer</string>
          </property>
         </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Drawing Symbol</string>
-           </property>
-          </widget>
+          <layout class="QVBoxLayout" name="verticalLayout_13">
+           <item>
+            <widget class="QCheckBox" name="christmas_tree_checkbox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Christmas Tree</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="guitar_checkbox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Guitar</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
-          <widget class="QComboBox" name="drawing_symbol_combobox"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Tree Height</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="tree_height_combobox"/>
+          <layout class="QVBoxLayout" name="verticalLayout_10">
+           <item>
+            <widget class="QCheckBox" name="space_ship_checkbox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>Space Ship</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="house_checkbox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>House</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
@@ -249,7 +276,10 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_11">
            <item>
-            <widget class="QRadioButton" name="green_tree_color_button">
+            <widget class="QRadioButton" name="green_figure_color_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Green</string>
              </property>
@@ -259,7 +289,10 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="blue_tree_color_button">
+            <widget class="QRadioButton" name="blue_figure_color_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Blue</string>
              </property>
@@ -273,9 +306,15 @@
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_12">
            <item>
-            <widget class="QRadioButton" name="black_tree_color_button">
+            <widget class="QRadioButton" name="black_figure_color_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Black</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
              </property>
              <attribute name="buttonGroup">
               <string notr="true">tree_color_button_group</string>
@@ -283,7 +322,10 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="brown_tree_color_button">
+            <widget class="QRadioButton" name="brown_figure_color_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Brown</string>
              </property>
@@ -312,7 +354,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="tree_color_button_group"/>
   <buttongroup name="text_color_button_group"/>
+  <buttongroup name="tree_color_button_group"/>
  </buttongroups>
 </ui>

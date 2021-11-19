@@ -3,16 +3,15 @@ import random
 import sys
 from functools import partial
 
-import PySide6.QtGui
 import numpy as np
-from PySide6.QtCore import Qt, QPoint, Slot, Signal, QFile
-from PySide6.QtGui import QAction
-from PySide6.QtGui import QPainter, QPen, QBrush, QImage
+from PySide6.QtCore import Qt, QPoint, Slot, Signal
+from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor
+from PySide6.QtGui import QPainter, QPen, QBrush, QColorConstants
 from PySide6.QtTest import QTest
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QDialog, QWidget, QPushButton
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar
 
 from envs.gui_env.src.backend.calculator import Calculator
+from envs.gui_env.src.backend.figure_printer import FigurePrinter
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
@@ -37,7 +36,7 @@ class MainWindow(QMainWindow):
         self.setMenuBar(self.menu_bar)
 
         # Christmas Tree is hidden at first, must be activated in the settings
-        self.main_window.christmas_tree_button.setVisible(False)
+        self.main_window.figure_printer_button.setVisible(False)
 
         # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets = []
@@ -48,8 +47,13 @@ class MainWindow(QMainWindow):
         self.text_printer = TextPrinter(self.main_window.text_printer_output)
         self.calculator = Calculator(self.main_window.calculator_output, self.main_window.first_operand_combobox,
                                      self.main_window.second_operand_combobox, self.main_window.math_operator_combobox)
-        self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator, parent=self)
+        self.figure_printer = FigurePrinter(self.main_window.figure_combobox)
+
+        self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
+                                              figure_printer=self.figure_printer, parent=self)
         self.settings_action.triggered.connect(self.settings_dialog.exec)
+
+        self.settings_dialog.figure_printer_activated.connect(self._toogle_figure_printing)
 
         self.setCentralWidget(self.main_window)
 
@@ -67,10 +71,24 @@ class MainWindow(QMainWindow):
         self.main_window.start_calculation_button.clicked.connect(self.start_calculation)
 
         # Christmas Tree
-        self.main_window.christmas_tree_button.clicked.connect(
+        self.main_window.figure_printer_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
         )
-        self.main_window.start_drawing_christmas_tree_button.clicked.connect(self.start_drawing_christmas_tree)
+        self.main_window.start_drawing_figure_button.clicked.connect(self.start_drawing_figure)
+
+    @Slot(bool)
+    def _toogle_figure_printing(self, checked: bool):
+        if checked:
+            self.main_window.figure_printer_button.setVisible(True)
+            self.main_window.figure_printer_button.setEnabled(True)
+        else:
+            self.main_window.figure_printer_button.setVisible(False)
+            self.main_window.figure_printer_button.setEnabled(False)
+
+            # Could be that the stacked widget is still on the figure printer but we deactivate it, therefore simply
+            # switch back to the first index
+            if self.main_window.main_stacked_widget.currentIndex() == 2:
+                self.main_window.main_stacked_widget.setCurrentIndex(0)
 
     def start_text_printing(self):
         self.text_printer.apply_settings()
@@ -79,8 +97,26 @@ class MainWindow(QMainWindow):
     def start_calculation(self):
         self.calculator.calculate()
 
-    def start_drawing_christmas_tree(self):
-        pass
+    def start_drawing_figure(self):
+        if self.figure_printer.current_color == "green":
+            color = QColorConstants.Green
+        elif self.figure_printer.current_color == "black":
+            color = QColorConstants.Black
+        elif self.figure_printer.current_color == "blue":
+            color = QColorConstants.Blue
+        elif self.figure_printer.current_color == "brown":
+            color = QColor("#8b4513")
+        else:
+            raise RuntimeError("Invalid color for the figure printer specified!")
+
+        palette: QPalette = self.main_window.figure_printer_output.palette()
+        palette.setColor(QPalette.Text, color)
+        self.main_window.figure_printer_output.setPalette(palette)
+
+        chosen_figure = self.main_window.figure_combobox.currentText()
+        figure = self.figure_printer.get_figure_by_name(chosen_figure)
+
+        self.main_window.figure_printer_output.setPlainText(figure)
 
     def take_screenshot(self) -> np.ndarray:
         screen = QApplication.primaryScreen()
@@ -128,13 +164,13 @@ class MainWindow(QMainWindow):
         screenshot = self.take_screenshot()
         self.screenshot_and_coordinates_signal.emit(screenshot, global_position.x(), global_position.y())
 
-    def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         self.points.append(event.position())
         self.update()
 
         super().mouseReleaseEvent(event)
 
-    def paintEvent(self, event: PySide6.QtGui.QPaintEvent) -> None:
+    def paintEvent(self, event: QPaintEvent) -> None:
         # Draws a red point for each click in the MainWindow (not on widgets!)
         qp = QPainter(self)
         pen = QPen(Qt.red, 5)
