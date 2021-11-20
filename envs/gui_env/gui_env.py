@@ -1,3 +1,4 @@
+import logging
 import multiprocessing as mp
 from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
@@ -41,7 +42,6 @@ class RegisterClickThread(QThread):
                     return
                 finally:
                     if isinstance(received_data, Tuple):
-                        print("Emitting position!")
                         self.position_signal.emit(received_data[0], received_data[1])
                     elif isinstance(received_data, bool):
                         print("Choosing random widget!")
@@ -75,7 +75,7 @@ class GUIEnv(gym.Env):
     def _on_timeout(self):
         # Initial observation trigger
         screenshot = self.main_window.take_screenshot()
-        self.main_window.screenshot_signal.emit(screenshot)
+        self.main_window.screenshot_signal.emit(screenshot, 0)
 
     def _start_application(self, click_connection_child: Connection, terminate_connection_child: Connection):
         app = QApplication()
@@ -95,10 +95,9 @@ class GUIEnv(gym.Env):
 
         app.exec()
 
-    @Slot(np.ndarray)
-    def _get_observation(self, observation: np.ndarray):
-        print("Got observation")
-        self.click_connection_child.send(observation)
+    @Slot(np.ndarray, float)
+    def _get_observation(self, observation: np.ndarray, reward: float):
+        self.click_connection_child.send((observation, reward))
 
     @Slot(np.ndarray, int, int)
     def _get_observation_random_widget(self, observation: np.ndarray, pos_x: int, pos_y: int):
@@ -106,13 +105,17 @@ class GUIEnv(gym.Env):
         self.click_connection_child.send((observation, pos_x, pos_y))
 
     def step(self, action: Union[Tuple[int, int], bool]) -> np.ndarray:
+        logging.debug("Sending Action")
         self.click_connection_parent.send(action)
         observation = self.click_connection_parent.recv()
+        logging.debug("Received observation")
 
         if isinstance(action, bool):
             observation, pos_x, pos_y = observation
+        else:
+            observation, reward = observation
 
-        return observation
+        return reward, observation
 
     def reset(self):
         # TODO Cleanup needed to restart an env that previously ran; similar to the code in close(), but calling close

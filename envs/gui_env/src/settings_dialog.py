@@ -1,4 +1,5 @@
-from PySide6.QtCore import Slot, Signal
+import PySide6.QtGui
+from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton, QComboBox, QCheckBox
 
 from envs.gui_env.src.backend.calculator import NUMERAL_SYSTEMS, Calculator
@@ -127,6 +128,9 @@ class SettingsDialog(QDialog):
             self.text_printer.change_font_color("blue")
         elif clicked_button == self.settings_dialog.black_text_color_button:
             self.text_printer.change_font_color("black")
+
+    def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
+        super().mousePressEvent(event)
 
 
 def main():
