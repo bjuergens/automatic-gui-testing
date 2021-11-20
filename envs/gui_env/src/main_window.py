@@ -1,16 +1,16 @@
 import logging
 import os
-import random
 import sys
+import time
 from functools import partial
 
 import coverage.exceptions
 import numpy as np
 from PySide6.QtCore import Qt, QPoint, Slot, Signal
-from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor, QFont, QFontDatabase
+from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor, QFontDatabase
 from PySide6.QtGui import QPainter, QPen, QBrush, QColorConstants
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
 from coverage import Coverage
 
 from envs.gui_env.src.backend.calculator import Calculator
@@ -19,15 +19,14 @@ from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
 
-
 WINDOW_SIZE = (448, 448)
 
 
 class MainWindow(QMainWindow):
-    screenshot_signal = Signal(np.ndarray, float)
-    screenshot_and_coordinates_signal = Signal(np.ndarray, int, int)
+    observation_signal = Signal(float, np.ndarray)
+    observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)
 
-    def __init__(self, **kwargs):
+    def __init__(self, random_click_probability: float = None, random_seed: int = None, **kwargs):
         super().__init__(**kwargs)
 
         self.setWindowTitle("test-gui-worldmodels")
@@ -74,6 +73,9 @@ class MainWindow(QMainWindow):
 
         self.current_coverage = Coverage()
         self.old_coverage_percentage = self.get_current_coverage_percentage()
+
+        self.random_click_probability = random_click_probability
+        self.random_state = np.random.RandomState(random_seed)
 
     def _connect_buttons(self):
         # Text Printer
@@ -163,6 +165,10 @@ class MainWindow(QMainWindow):
         QTest.mouseClick(recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
         self.current_coverage.stop()
 
+        if isinstance(recv_widget, QComboBox):
+            logging.debug("Sleeping after click because of combo box")
+            time.sleep(0.5)
+
         reward = self.calculate_coverage_increase()
 
         return reward
@@ -181,33 +187,29 @@ class MainWindow(QMainWindow):
         reward = self.execute_mouse_click(recv_widget, local_pos)
 
         screenshot = self.take_screenshot()
-        self.screenshot_signal.emit(screenshot, reward)
+        self.observation_signal.emit(reward, screenshot)
 
     @Slot()
     def simulate_click_on_random_widget(self):
-        randomly_selected_widget = random.choice(self.currently_shown_widgets)
+        randomly_selected_widget = self.random_state.choice(self.currently_shown_widgets)
 
         height = randomly_selected_widget.height()
         width = randomly_selected_widget.width()
 
-        x = random.randint(0, width)
-        y = random.randint(0, height)
+        x = self.random_state.randint(0, width)
+        y = self.random_state.randint(0, height)
 
-        click_point = QPoint(x, y)
+        local_pos = QPoint(x, y)
+        reward = self.execute_mouse_click(randomly_selected_widget, local_pos)
 
-        reward = self.execute_mouse_click(randomly_selected_widget, click_point)
+        global_pos = randomly_selected_widget.mapToGlobal(local_pos)
+        main_window_pos = self.mapFromGlobal(global_pos)
 
-        # TODO this will probably fail in the settings dialog as this prints out a coordinate system in the dialog's
-        #  coordinate system but we want the coordinate of the window
-        # Convert coordinates in the widget's coordinate system to the coordinate system of the parent
-        global_position: QPoint = randomly_selected_widget.mapToParent(click_point)
-
-        logging.debug(
-            f"Randomly selected '{randomly_selected_widget.text()}', local pos '{click_point}', and global pos " +
-            f"'{global_position}'!")
+        logging.debug(f"Randomly selected widget '{randomly_selected_widget}' with local position '{local_pos}', " +
+                      f"global position '{global_pos}' and main window position '{main_window_pos}'")
 
         screenshot = self.take_screenshot()
-        self.screenshot_and_coordinates_signal.emit(screenshot, global_position.x(), global_position.y())
+        self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         self.points.append(event.position())
