@@ -20,5 +20,7 @@ def convert_qimage_to_ndarray(image: QImage):
     height = image.height()
 
     data = image.constBits()
-    array = np.array(data).reshape((height, width, 4))
+
+    # Discard Alpha channel at the end
+    array = np.array(data).reshape((height, width, 4))[:, :, :3]
     return array
