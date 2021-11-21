@@ -107,12 +107,12 @@ class MainWindow(QMainWindow):
             self.main_window.figure_printer_button.setVisible(True)
             self.main_window.figure_printer_button.setEnabled(True)
             if not self.main_window.figure_printer_button in self.currently_shown_widgets_main_window:
-                self.currently_show_widgets_main_window.append(self.main_window.figure_printer_button)
+                self.currently_shown_widgets_main_window.append(self.main_window.figure_printer_button)
         else:
             self.main_window.figure_printer_button.setVisible(False)
             self.main_window.figure_printer_button.setEnabled(False)
             try:
-                self.currently_show_widgets_main_window.remove(self.main_window.figure_printer_button)
+                self.currently_shown_widgets_main_window.remove(self.main_window.figure_printer_button)
             except ValueError:
                 pass
 
