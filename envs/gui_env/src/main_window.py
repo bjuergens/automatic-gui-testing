@@ -71,7 +71,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.main_window)
 
-        self.current_coverage = Coverage()
+        self.current_coverage = Coverage(config_file="envs/gui_env/.coveragerc")
         self.old_coverage_percentage = self.get_current_coverage_percentage()
 
         self.random_click_probability = random_click_probability

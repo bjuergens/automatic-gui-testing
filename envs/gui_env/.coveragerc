@@ -1,0 +1,7 @@
+[run]
+# Do not measure python code that was installed with the python interpreter
+cover_pylib = False
+branch = False
+
+source =
+    envs/gui_env/src/

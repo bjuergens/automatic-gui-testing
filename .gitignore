@@ -13,3 +13,6 @@ dock_config.json
 
 # QtCreator Project User File (is automatically generated)
 *.pyproject.user
+
+# coverage.py
+.coverage
