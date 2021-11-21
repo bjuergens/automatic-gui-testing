@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, QPoint, Slot, Signal
 from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor, QFontDatabase
 from PySide6.QtGui import QPainter, QPen, QBrush, QColorConstants
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox, QPushButton
 from coverage import Coverage
 
 from envs.gui_env.src.backend.calculator import Calculator
@@ -49,7 +49,10 @@ class MainWindow(QMainWindow):
         document.setDefaultFont(font)
 
         # TODO populate this, and implement changing this when appropriate widgets are clicked
-        self.currently_shown_widgets = []
+        self.currently_shown_widgets_main_window = []
+        # Initially we start with these widgets
+        self._set_currently_shown_widgets_text_printer()
+
         self.points = []
 
         self._connect_buttons()
@@ -66,7 +69,6 @@ class MainWindow(QMainWindow):
         self.settings_dialog.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
 
         self.settings_action.triggered.connect(self.settings_dialog.open)
-
         self.settings_dialog.figure_printer_activated.connect(self._toogle_figure_printing)
 
         self.setCentralWidget(self.main_window)
@@ -82,18 +84,21 @@ class MainWindow(QMainWindow):
         self.main_window.text_printer_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 0)
         )
+        self.main_window.text_printer_button.clicked.connect(self._set_currently_shown_widgets_text_printer)
         self.main_window.start_text_printer_button.clicked.connect(self.start_text_printing)
 
         # Calculator
         self.main_window.calculator_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 1)
         )
+        self.main_window.calculator_button.clicked.connect(self._set_currently_shown_widgets_calculator)
         self.main_window.start_calculation_button.clicked.connect(self.start_calculation)
 
         # Christmas Tree
         self.main_window.figure_printer_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
         )
+        self.main_window.figure_printer_button.clicked.connect(self._set_currently_shown_widgets_figure_printer)
         self.main_window.start_drawing_figure_button.clicked.connect(self.start_drawing_figure)
 
     @Slot(bool)
@@ -101,14 +106,58 @@ class MainWindow(QMainWindow):
         if checked:
             self.main_window.figure_printer_button.setVisible(True)
             self.main_window.figure_printer_button.setEnabled(True)
+            if not self.main_window.figure_printer_button in self.currently_shown_widgets_main_window:
+                self.currently_show_widgets_main_window.append(self.main_window.figure_printer_button)
         else:
             self.main_window.figure_printer_button.setVisible(False)
             self.main_window.figure_printer_button.setEnabled(False)
+            try:
+                self.currently_show_widgets_main_window.remove(self.main_window.figure_printer_button)
+            except ValueError:
+                pass
 
             # Could be that the stacked widget is still on the figure printer but we deactivate it, therefore simply
             # switch back to the first index
             if self.main_window.main_stacked_widget.currentIndex() == 2:
                 self.main_window.main_stacked_widget.setCurrentIndex(0)
+
+    def _get_main_widgets_main_window(self):
+        # TODO settings qaction
+        currently_shown_widgets_main_window = [
+            self.main_window.text_printer_button,
+            self.main_window.calculator_button
+        ]
+
+        if self.main_window.figure_printer_button.isVisible():
+            currently_shown_widgets_main_window.append(self.main_window.figure_printer_button)
+
+        return currently_shown_widgets_main_window
+
+    def _set_currently_shown_widgets_text_printer(self):
+        currently_show_widgets_main_window = self._get_main_widgets_main_window()
+        currently_show_widgets_main_window.append(self.main_window.start_text_printer_button)
+
+        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
+
+    def _set_currently_shown_widgets_calculator(self):
+        currently_show_widgets_main_window = self._get_main_widgets_main_window()
+        currently_show_widgets_main_window.extend([
+            self.main_window.first_operand_combobox,
+            self.main_window.math_operator_combobox,
+            self.main_window.second_operand_combobox,
+            self.main_window.start_calculation_button
+        ])
+
+        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
+
+    def _set_currently_shown_widgets_figure_printer(self):
+        currently_show_widgets_main_window = self._get_main_widgets_main_window()
+        currently_show_widgets_main_window.extend([
+            self.main_window.figure_combobox,
+            self.main_window.start_drawing_figure_button
+        ])
+
+        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
 
     def start_text_printing(self):
         self.text_printer.apply_settings()
@@ -191,7 +240,12 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def simulate_click_on_random_widget(self):
-        randomly_selected_widget = self.random_state.choice(self.currently_shown_widgets)
+        if self.settings_dialog.isVisible():
+            random_widget_list = self.settings_dialog.currently_shown_widgets
+        else:
+            random_widget_list = self.currently_shown_widgets_main_window
+
+        randomly_selected_widget = self.random_state.choice(random_widget_list)
 
         height = randomly_selected_widget.height()
         width = randomly_selected_widget.width()
@@ -240,4 +294,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main()

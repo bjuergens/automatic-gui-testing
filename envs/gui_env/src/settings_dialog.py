@@ -1,6 +1,9 @@
+import logging
+
 import PySide6.QtGui
 from PySide6.QtCore import Slot, Signal, Qt
-from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton, QComboBox, QCheckBox
+from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton, QComboBox, QCheckBox, \
+    QTabWidget
 
 from envs.gui_env.src.backend.calculator import NUMERAL_SYSTEMS, Calculator
 from envs.gui_env.src.backend.figure_printer import FigurePrinter
@@ -23,6 +26,9 @@ class SettingsDialog(QDialog):
         self.calculator = calculator
         self.figure_printer = figure_printer
 
+        self.currently_shown_widgets = []
+        self._set_clickable_widgets_text_printer_settings()
+
         self._initialize()
         self._connect()
 
@@ -37,38 +43,14 @@ class SettingsDialog(QDialog):
         # Calculator
         self.settings_dialog.numeral_system_combobox.addItems(numeral_system for numeral_system in NUMERAL_SYSTEMS)
 
-    @Slot(bool)
-    def _toggle_figure_printer_settings(self, checked: bool):
-        # Activate or deactivate the settings and the main button in the MainWindow
-        if checked:
-            self.settings_dialog.christmas_tree_checkbox.setEnabled(True)
-            self.settings_dialog.guitar_checkbox.setEnabled(True)
-            self.settings_dialog.space_ship_checkbox.setEnabled(True)
-            self.settings_dialog.house_checkbox.setEnabled(True)
-
-            self.settings_dialog.blue_figure_color_button.setEnabled(True)
-            self.settings_dialog.green_figure_color_button.setEnabled(True)
-            self.settings_dialog.black_figure_color_button.setEnabled(True)
-            self.settings_dialog.brown_figure_color_button.setEnabled(True)
-        else:
-            self.settings_dialog.christmas_tree_checkbox.setEnabled(False)
-            self.settings_dialog.guitar_checkbox.setEnabled(False)
-            self.settings_dialog.space_ship_checkbox.setEnabled(False)
-            self.settings_dialog.house_checkbox.setEnabled(False)
-
-            self.settings_dialog.blue_figure_color_button.setEnabled(False)
-            self.settings_dialog.green_figure_color_button.setEnabled(False)
-            self.settings_dialog.black_figure_color_button.setEnabled(False)
-            self.settings_dialog.brown_figure_color_button.setEnabled(False)
-
-        self.figure_printer_activated.emit(checked)
-
     def _connect(self):
         self.settings_dialog.close_settings_dialog.clicked.connect(self.close)
 
         self._connect_text_printer()
         self._connect_calculator()
         self._connect_figure_printer()
+
+        self.settings_dialog.settings_tab.currentChanged.connect(self._tab_changed)
 
     def _connect_text_printer(self):
         # Text Printer
@@ -117,6 +99,100 @@ class SettingsDialog(QDialog):
         self.settings_dialog.brown_figure_color_button.clicked.connect(
             self.figure_printer.change_current_color_to_brown
         )
+
+    @Slot(int)
+    def _tab_changed(self, tab: int):
+        logging.debug(f"Settings tab changed to '{tab}'")
+        if tab == 0:
+            self._set_clickable_widgets_text_printer_settings()
+        elif tab == 1:
+            self._set_clickable_widgets_calculator_settings()
+        elif tab == 2:
+            self._set_clickable_widgets_figure_printer_settings()
+
+    def _get_main_widgets_settings_dialog(self):
+        currently_shown_widgets = [
+            self.settings_dialog.close_settings_dialog,
+            self.settings_dialog.settings_tab.tabBar()  # TODO does this work?
+        ]
+        return currently_shown_widgets
+
+    def _set_clickable_widgets_text_printer_settings(self):
+        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+
+        currently_shown_widgets.extend([
+            self.settings_dialog.number_of_words_combobox,
+            self.settings_dialog.font_size_combobox,
+            self.settings_dialog.font_combobox,
+            self.settings_dialog.red_text_color_button,
+            self.settings_dialog.green_text_color_button,
+            self.settings_dialog.blue_text_color_button,
+            self.settings_dialog.black_text_color_button,
+            self.settings_dialog.bold_font_checkbox,
+            self.settings_dialog.italic_font_checkbox,
+            self.settings_dialog.underline_font_checkbox
+        ])
+
+        self.currently_shown_widgets = currently_shown_widgets
+
+    def _set_clickable_widgets_calculator_settings(self):
+        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+
+        currently_shown_widgets.extend([
+            self.settings_dialog.addition_checkbox,
+            self.settings_dialog.multiplication_checkbox,
+            self.settings_dialog.subtraction_checkbox,
+            self.settings_dialog.division_checkbox,
+            self.settings_dialog.numeral_system_combobox
+        ])
+
+        self.currently_shown_widgets = currently_shown_widgets
+
+    def _set_clickable_widgets_figure_printer_settings(self):
+        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+
+        currently_shown_widgets.append(self.settings_dialog.activate_figure_printer_checkbox)
+
+        if self.settings_dialog.activate_figure_printer_checkbox.isChecked():
+            currently_shown_widgets.extend([
+                self.settings_dialog.christmas_tree_checkbox,
+                self.settings_dialog.guitar_checkbox,
+                self.settings_dialog.space_ship_checkbox,
+                self.settings_dialog.house_checkbox,
+                self.settings_dialog.green_figure_color_button,
+                self.settings_dialog.blue_figure_color_button,
+                self.settings_dialog.black_figure_color_button,
+                self.settings_dialog.brown_figure_color_button
+            ])
+
+        self.currently_shown_widgets = currently_shown_widgets
+
+    @Slot(bool)
+    def _toggle_figure_printer_settings(self, checked: bool):
+        # Activate or deactivate the settings and the main button in the MainWindow
+        if checked:
+            self.settings_dialog.christmas_tree_checkbox.setEnabled(True)
+            self.settings_dialog.guitar_checkbox.setEnabled(True)
+            self.settings_dialog.space_ship_checkbox.setEnabled(True)
+            self.settings_dialog.house_checkbox.setEnabled(True)
+
+            self.settings_dialog.blue_figure_color_button.setEnabled(True)
+            self.settings_dialog.green_figure_color_button.setEnabled(True)
+            self.settings_dialog.black_figure_color_button.setEnabled(True)
+            self.settings_dialog.brown_figure_color_button.setEnabled(True)
+        else:
+            self.settings_dialog.christmas_tree_checkbox.setEnabled(False)
+            self.settings_dialog.guitar_checkbox.setEnabled(False)
+            self.settings_dialog.space_ship_checkbox.setEnabled(False)
+            self.settings_dialog.house_checkbox.setEnabled(False)
+
+            self.settings_dialog.blue_figure_color_button.setEnabled(False)
+            self.settings_dialog.green_figure_color_button.setEnabled(False)
+            self.settings_dialog.black_figure_color_button.setEnabled(False)
+            self.settings_dialog.brown_figure_color_button.setEnabled(False)
+
+        self._set_clickable_widgets_figure_printer_settings()
+        self.figure_printer_activated.emit(checked)
 
     @Slot(QAbstractButton)
     def change_font_color(self, clicked_button: QAbstractButton):
