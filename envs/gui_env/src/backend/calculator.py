@@ -113,7 +113,7 @@ class Calculator:
         elif operator == "/":
             output = a / b
         else:
-            logging.warning("Calculator received unknown operator, displaying a 0")
+            logging.warning(f"Calculator received unknown operator '{operator}', displaying a 0")
             output = 0
 
         self.calculator_output.display(self._convert(output, True))
