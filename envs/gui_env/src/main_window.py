@@ -53,8 +53,6 @@ class MainWindow(QMainWindow):
         # Initially we start with these widgets
         self._set_currently_shown_widgets_text_printer()
 
-        self.points = []
-
         self._connect_buttons()
 
         self.text_printer = TextPrinter(self.main_window.text_printer_output)
@@ -264,26 +262,6 @@ class MainWindow(QMainWindow):
 
         screenshot = self.take_screenshot()
         self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        self.points.append(event.position())
-        self.update()
-
-        super().mouseReleaseEvent(event)
-
-    def paintEvent(self, event: QPaintEvent) -> None:
-        # Draws a red point for each click in the MainWindow (not on widgets!)
-        qp = QPainter(self)
-        pen = QPen(Qt.red, 5)
-        brush = QBrush(Qt.red)
-        qp.setPen(pen)
-        qp.setBrush(brush)
-
-        if self.points is not None:
-            qp.drawPoints(self.points)
-
-        qp.end()
-        super().paintEvent(event)
 
 
 def main():
