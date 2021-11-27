@@ -1,16 +1,13 @@
-from PySide6.QtCore import Slot, Signal, QObject
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QLCDNumber, QComboBox
+
+from envs.gui_env.src.utils.utils import SignalHandler
 
 POSSIBLE_OPERANDS_BASE_10 = [i for i in range(5)]
 POSSIBLE_OPERANDS_BASE_2 = [bin(i) for i in range(5)]
 POSSIBLE_OPERANDS_BASE_16 = [hex(i) for i in range(5)]
 
 NUMERAL_SYSTEMS = ["Base 10", "Base 2", "Base 16"]
-
-
-class SignalHandler(QObject):
-    division_by_zero_occured = Signal()
-    all_operators_deselected = Signal()
 
 
 class Calculator:

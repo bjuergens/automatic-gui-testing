@@ -7,8 +7,7 @@ from functools import partial
 import coverage.exceptions
 import numpy as np
 from PySide6.QtCore import Qt, QPoint, Slot, Signal
-from PySide6.QtGui import QAction, QPalette, QColor, QFontDatabase
-from PySide6.QtGui import QColorConstants
+from PySide6.QtGui import QAction, QFontDatabase
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
 from coverage import Coverage
@@ -58,7 +57,7 @@ class MainWindow(QMainWindow):
         self.text_printer = TextPrinter(self.main_window.text_printer_output)
         self.calculator = Calculator(self.main_window.calculator_output, self.main_window.first_operand_combobox,
                                      self.main_window.second_operand_combobox, self.main_window.math_operator_combobox)
-        self.figure_printer = FigurePrinter(self.main_window.figure_combobox)
+        self.figure_printer = FigurePrinter(self.main_window.figure_printer_output, self.main_window.figure_combobox)
 
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
                                               figure_printer=self.figure_printer, parent=self)
@@ -161,25 +160,7 @@ class MainWindow(QMainWindow):
         self.calculator.calculate()
 
     def start_drawing_figure(self):
-        if self.figure_printer.current_color == "green":
-            color = QColorConstants.Green
-        elif self.figure_printer.current_color == "black":
-            color = QColorConstants.Black
-        elif self.figure_printer.current_color == "blue":
-            color = QColorConstants.Blue
-        elif self.figure_printer.current_color == "brown":
-            color = QColor("#8b4513")
-        else:
-            raise RuntimeError("Invalid color for the figure printer specified!")
-
-        palette: QPalette = self.main_window.figure_printer_output.palette()
-        palette.setColor(QPalette.Text, color)
-        self.main_window.figure_printer_output.setPalette(palette)
-
-        chosen_figure = self.main_window.figure_combobox.currentText()
-        figure = self.figure_printer.get_figure_by_name(chosen_figure)
-
-        self.main_window.figure_printer_output.setPlainText(figure)
+        self.figure_printer.draw_figure()
 
     def take_screenshot(self) -> np.ndarray:
         screen = QApplication.primaryScreen()

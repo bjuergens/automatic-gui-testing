@@ -93,18 +93,7 @@ class SettingsDialog(QDialog):
         self.settings_dialog.space_ship_checkbox.stateChanged.connect(self.figure_printer.change_space_ship)
         self.settings_dialog.house_checkbox.stateChanged.connect(self.figure_printer.change_house)
 
-        self.settings_dialog.green_figure_color_button.clicked.connect(
-            self.figure_printer.change_current_color_to_green
-        )
-        self.settings_dialog.black_figure_color_button.clicked.connect(
-            self.figure_printer.change_current_color_to_black
-        )
-        self.settings_dialog.blue_figure_color_button.clicked.connect(
-            self.figure_printer.change_current_color_to_blue
-        )
-        self.settings_dialog.brown_figure_color_button.clicked.connect(
-            self.figure_printer.change_current_color_to_brown
-        )
+        self.settings_dialog.tree_color_button_group.buttonClicked.connect(self.figure_printer.change_color)
 
     @Slot(int)
     def _tab_changed(self, tab: int):

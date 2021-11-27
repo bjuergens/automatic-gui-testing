@@ -1,8 +1,14 @@
 import numpy as np
-from PySide6.QtCore import QFile
+from PySide6.QtCore import QFile, QObject, Signal
 from PySide6.QtGui import QImage
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QWidget
+
+
+class SignalHandler(QObject):
+    division_by_zero_occured = Signal()
+    all_operators_deselected = Signal()
+    all_figures_deselected = Signal()
 
 
 def load_ui(ui_file: str, parent_widget: QWidget = None) -> QWidget:
