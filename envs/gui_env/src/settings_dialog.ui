@@ -366,7 +366,7 @@
    <item>
     <widget class="QPushButton" name="close_settings_dialog">
      <property name="text">
-      <string>Close and Apply</string>
+      <string>Close</string>
      </property>
     </widget>
    </item>

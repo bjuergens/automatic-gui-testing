@@ -62,11 +62,8 @@ class MainWindow(QMainWindow):
 
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
                                               figure_printer=self.figure_printer, parent=self)
-        # Disables possible clicks outside the dialog, and keeps the dialog always on top until it is closed
-        # self.setWindowModality(Qt.ApplicationModal)
-        self.settings_dialog.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
 
-        self.settings_action.triggered.connect(self.settings_dialog.open)
+        self.settings_action.triggered.connect(self.settings_dialog.show)
         self.settings_dialog.figure_printer_activated.connect(self._toogle_figure_printing)
 
         self.setCentralWidget(self.main_window)

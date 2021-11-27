@@ -21,6 +21,9 @@ class SettingsDialog(QDialog):
         self.layout.addWidget(self.settings_dialog, 1, 1)
         self.setLayout(self.layout)
 
+        # Disables possible clicks outside the dialog, and keeps the dialog always on top until it is closed
+        self.setModal(True)
+
         self.text_printer = text_printer
         self.calculator = calculator
         self.figure_printer = figure_printer
