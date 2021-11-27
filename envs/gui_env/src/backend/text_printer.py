@@ -144,15 +144,24 @@ class TextPrinter:
 
     @Slot(bool)
     def change_font_italic(self, checked: bool):
-        self.italic_font = checked
+        if checked:
+            self.italic_font = True
+        else:
+            self.italic_font = False
 
     @Slot(bool)
     def change_font_bold(self, checked: bool):
-        self.bold_font = checked
+        if checked:
+            self.bold_font = True
+        else:
+            self.bold_font = False
 
     @Slot(bool)
     def change_font_underline(self, checked: bool):
-        self.underline_font = checked
+        if checked:
+            self.underline_font = True
+        else:
+            self.underline_font = False
 
     def generate_text(self):
         text = None
