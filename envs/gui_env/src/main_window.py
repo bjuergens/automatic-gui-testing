@@ -7,10 +7,10 @@ from functools import partial
 import coverage.exceptions
 import numpy as np
 from PySide6.QtCore import Qt, QPoint, Slot, Signal
-from PySide6.QtGui import QAction, QPalette, QPaintEvent, QMouseEvent, QColor, QFontDatabase
-from PySide6.QtGui import QPainter, QPen, QBrush, QColorConstants
+from PySide6.QtGui import QAction, QPalette, QColor, QFontDatabase
+from PySide6.QtGui import QColorConstants
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox, QPushButton
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
 from coverage import Coverage
 
 from envs.gui_env.src.backend.calculator import Calculator
@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
                                               figure_printer=self.figure_printer, parent=self)
         # Disables possible clicks outside the dialog, and keeps the dialog always on top until it is closed
-        self.setWindowModality(Qt.ApplicationModal)
+        # self.setWindowModality(Qt.ApplicationModal)
         self.settings_dialog.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
 
         self.settings_action.triggered.connect(self.settings_dialog.open)
@@ -158,7 +158,6 @@ class MainWindow(QMainWindow):
         self.currently_shown_widgets_main_window = currently_show_widgets_main_window
 
     def start_text_printing(self):
-        self.text_printer.apply_settings()
         self.text_printer.generate_text()
 
     def start_calculation(self):

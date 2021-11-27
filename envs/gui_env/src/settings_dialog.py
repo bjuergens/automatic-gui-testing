@@ -1,13 +1,12 @@
 import logging
 
 import PySide6.QtGui
-from PySide6.QtCore import Slot, Signal, Qt
-from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton, QComboBox, QCheckBox, \
-    QTabWidget
+from PySide6.QtCore import Slot, Signal
+from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton
 
 from envs.gui_env.src.backend.calculator import NUMERAL_SYSTEMS, Calculator
 from envs.gui_env.src.backend.figure_printer import FigurePrinter
-from envs.gui_env.src.backend.text_printer import TextPrinter, FONT_SIZES, WORD_COUNT_MAP
+from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS
 from envs.gui_env.src.utils.utils import load_ui
 
 
@@ -34,10 +33,13 @@ class SettingsDialog(QDialog):
 
     def _initialize(self):
         # Text Printer
+        self.settings_dialog.number_of_words_combobox.clear()
+        self.settings_dialog.number_of_words_combobox.addItems(str(wc) for wc in WORD_COUNTS)
         self.settings_dialog.font_size_combobox.clear()
         self.settings_dialog.font_size_combobox.addItems(str(fs) for fs in FONT_SIZES)
-        self.settings_dialog.number_of_words_combobox.clear()
-        self.settings_dialog.number_of_words_combobox.addItems(str(wc) for wc in list(WORD_COUNT_MAP.keys()))
+        self.settings_dialog.font_combobox.clear()
+        self.settings_dialog.font_combobox.addItems(f for f in FONTS)
+
         self.settings_dialog.black_text_color_button.toggle()
 
         # Calculator
@@ -53,18 +55,19 @@ class SettingsDialog(QDialog):
         self.settings_dialog.settings_tab.currentChanged.connect(self._tab_changed)
 
     def _connect_text_printer(self):
-        # Text Printer
-        self.settings_dialog.bold_font_checkbox.stateChanged.connect(self.text_printer.change_font_bold)
-        self.settings_dialog.italic_font_checkbox.stateChanged.connect(self.text_printer.change_font_italic)
-        self.settings_dialog.underline_font_checkbox.stateChanged.connect(self.text_printer.change_font_underline)
+        # Number of Words
+        self.settings_dialog.number_of_words_combobox.currentTextChanged.connect(self.text_printer.change_word_count)
 
+        # Font
+        self.settings_dialog.font_size_combobox.currentTextChanged.connect(self.text_printer.change_font_size)
+        self.settings_dialog.font_combobox.currentTextChanged.connect(self.text_printer.change_font)
         # If any of the buttons in the text color button group is clicked, this button is sent to the connected function
         self.settings_dialog.text_color_button_group.buttonClicked.connect(self.change_font_color)
 
-        self.settings_dialog.font_combobox.currentFontChanged.connect(self.text_printer.change_font)
-        self.settings_dialog.font_size_combobox.currentTextChanged.connect(self.text_printer.change_font_size)
-
-        self.settings_dialog.number_of_words_combobox.currentTextChanged.connect(self.text_printer.change_word_count)
+        # Font formats
+        self.settings_dialog.italic_font_checkbox.stateChanged.connect(self.text_printer.change_font_italic)
+        self.settings_dialog.bold_font_checkbox.stateChanged.connect(self.text_printer.change_font_bold)
+        self.settings_dialog.underline_font_checkbox.stateChanged.connect(self.text_printer.change_font_underline)
 
     def _connect_calculator(self):
         self.settings_dialog.addition_checkbox.stateChanged.connect(self.calculator.change_addition_operator)
