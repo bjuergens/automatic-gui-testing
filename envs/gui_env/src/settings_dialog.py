@@ -65,7 +65,7 @@ class SettingsDialog(QDialog):
         self.settings_dialog.font_size_combobox.currentTextChanged.connect(self.text_printer.change_font_size)
         self.settings_dialog.font_combobox.currentTextChanged.connect(self.text_printer.change_font)
         # If any of the buttons in the text color button group is clicked, this button is sent to the connected function
-        self.settings_dialog.text_color_button_group.buttonClicked.connect(self.change_font_color)
+        self.settings_dialog.text_color_button_group.buttonClicked.connect(self.text_printer.change_font_color)
 
         # Font formats
         self.settings_dialog.italic_font_checkbox.stateChanged.connect(self.text_printer.change_font_italic)
@@ -199,17 +199,6 @@ class SettingsDialog(QDialog):
 
         self._set_clickable_widgets_figure_printer_settings()
         self.figure_printer_activated.emit(checked)
-
-    @Slot(QAbstractButton)
-    def change_font_color(self, clicked_button: QAbstractButton):
-        if clicked_button == self.settings_dialog.red_text_color_button:
-            self.text_printer.change_font_color("red")
-        elif clicked_button == self.settings_dialog.green_text_color_button:
-            self.text_printer.change_font_color("green")
-        elif clicked_button == self.settings_dialog.blue_text_color_button:
-            self.text_printer.change_font_color("blue")
-        elif clicked_button == self.settings_dialog.black_text_color_button:
-            self.text_printer.change_font_color("black")
 
     def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         super().mousePressEvent(event)
