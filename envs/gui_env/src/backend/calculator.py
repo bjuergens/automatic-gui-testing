@@ -4,11 +4,11 @@ from PySide6.QtWidgets import QLCDNumber, QComboBox
 from envs.gui_env.src.utils.alert_dialogs import WarningDialog, MissingContentDialog
 from envs.gui_env.src.utils.utils import SignalHandler
 
-POSSIBLE_OPERANDS_BASE_10 = [i for i in range(5)]
-POSSIBLE_OPERANDS_BASE_2 = [bin(i) for i in range(5)]
-POSSIBLE_OPERANDS_BASE_16 = [hex(i) for i in range(5)]
+POSSIBLE_OPERANDS_BASE_10 = [i for i in range(5)]  # pragma: no cover
+POSSIBLE_OPERANDS_BASE_2 = [bin(i) for i in range(5)]  # pragma: no cover
+POSSIBLE_OPERANDS_BASE_16 = [hex(i) for i in range(5)]  # pragma: no cover
 
-NUMERAL_SYSTEMS = ["Base 10", "Base 2", "Base 16"]
+NUMERAL_SYSTEMS = ["Base 10", "Base 2", "Base 16"]  # pragma: no cover
 
 
 class Calculator:
@@ -64,7 +64,6 @@ class Calculator:
             operators.append("/")
 
         if not operators:
-            # TODO implement asking dialog for one operator that shall be activated
             self.signal_handler.all_operators_deselected.emit()
 
         self.math_operator_combobox.addItems(operators)
@@ -120,27 +119,72 @@ class Calculator:
 
         first_operand, second_operand = None, None
 
-        if first_operand_txt == "0":
-            first_operand = "0"
-        elif first_operand_txt == "1":
-            first_operand = "1"
-        elif first_operand_txt == "2":
-            first_operand = "2"
-        elif first_operand_txt == "3":
-            first_operand = "3"
-        elif first_operand_txt == "4":
-            first_operand = "4"
+        if self.numeral_system == "Base 10":
+            if first_operand_txt == "0":
+                first_operand = "0"
+            elif first_operand_txt == "1":
+                first_operand = "1"
+            elif first_operand_txt == "2":
+                first_operand = "2"
+            elif first_operand_txt == "3":
+                first_operand = "3"
+            elif first_operand_txt == "4":
+                first_operand = "4"
 
-        if second_operand_txt == "0":
-            second_operand = "0"
-        elif second_operand_txt == "1":
-            second_operand = "1"
-        elif second_operand_txt == "2":
-            second_operand = "2"
-        elif second_operand_txt == "3":
-            second_operand = "3"
-        elif second_operand_txt == "4":
-            second_operand = "4"
+            if second_operand_txt == "0":
+                second_operand = "0"
+            elif second_operand_txt == "1":
+                second_operand = "1"
+            elif second_operand_txt == "2":
+                second_operand = "2"
+            elif second_operand_txt == "3":
+                second_operand = "3"
+            elif second_operand_txt == "4":
+                second_operand = "4"
+        elif self.numeral_system == "Base 2":
+            if first_operand_txt == "0b0":
+                first_operand = "0b0"
+            elif first_operand_txt == "0b1":
+                first_operand = "0b1"
+            elif first_operand_txt == "0b10":
+                first_operand = "0b10"
+            elif first_operand_txt == "0b11":
+                first_operand = "0b11"
+            elif first_operand_txt == "0b100":
+                first_operand = "0b100"
+
+            if second_operand_txt == "0b0":
+                second_operand = "0b0"
+            elif second_operand_txt == "0b1":
+                second_operand = "0b1"
+            elif second_operand_txt == "0b10":
+                second_operand = "0b10"
+            elif second_operand_txt == "0b11":
+                second_operand = "0b11"
+            elif second_operand_txt == "0b100":
+                second_operand = "0b100"
+        elif self.numeral_system == "Base 16":
+            if first_operand_txt == "0x0":
+                first_operand = "0x0"
+            elif first_operand_txt == "0x1":
+                first_operand = "0x1"
+            elif first_operand_txt == "0x2":
+                first_operand = "0x2"
+            elif first_operand_txt == "0x3":
+                first_operand = "0x3"
+            elif first_operand_txt == "0x4":
+                first_operand = "0x4"
+
+            if second_operand_txt == "0x0":
+                second_operand = "0x0"
+            elif second_operand_txt == "0x1":
+                second_operand = "0x1"
+            elif second_operand_txt == "0x2":
+                second_operand = "0x2"
+            elif second_operand_txt == "0x3":
+                second_operand = "0x3"
+            elif second_operand_txt == "0x4":
+                second_operand = "0x4"
 
         assert first_operand is not None
         assert second_operand is not None
