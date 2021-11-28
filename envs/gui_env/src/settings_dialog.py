@@ -2,11 +2,12 @@ import logging
 
 import PySide6.QtGui
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QAbstractButton
+from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QPushButton
 
 from envs.gui_env.src.backend.calculator import NUMERAL_SYSTEMS, Calculator
 from envs.gui_env.src.backend.figure_printer import FigurePrinter
 from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS
+from envs.gui_env.src.utils.alert_dialogs import WarningDialog, MissingContentDialog, ConfirmationDialog
 from envs.gui_env.src.utils.utils import load_ui
 
 
@@ -82,6 +83,9 @@ class SettingsDialog(QDialog):
 
         self.settings_dialog.numeral_system_combobox.currentTextChanged.connect(self.calculator.change_numeral_system)
 
+        self.calculator.signal_handler.division_by_zero_occured.connect(self._show_division_by_zero_error)
+        self.calculator.signal_handler.all_operators_deselected.connect(self._show_missing_operators_error)
+
     def _connect_figure_printer(self):
         # Activate or deactivate the settings and the main buttons
         self.settings_dialog.activate_figure_printer_checkbox.stateChanged.connect(
@@ -94,6 +98,8 @@ class SettingsDialog(QDialog):
         self.settings_dialog.house_checkbox.stateChanged.connect(self.figure_printer.change_house)
 
         self.settings_dialog.tree_color_button_group.buttonClicked.connect(self.figure_printer.change_color)
+
+        self.figure_printer.signal_handler.all_figures_deselected.connect(self._show_missing_figures_error)
 
     @Slot(int)
     def _tab_changed(self, tab: int):
@@ -188,6 +194,83 @@ class SettingsDialog(QDialog):
 
         self._set_clickable_widgets_figure_printer_settings()
         self.figure_printer_activated.emit(checked)
+
+    @Slot()
+    def _show_division_by_zero_error(self):
+        warning_dialog = WarningDialog(warning_text="Warning, division by zero detected!", parent=self)
+        warning_dialog.show()
+
+    @Slot()
+    def _show_missing_operators_error(self):
+        missing_operators_dialog = MissingContentDialog(
+            warning_text="You need at least one operator, please select one:",
+            content=["Addition", "Subtraction", "Multiplication", "Division"],
+            parent=self
+        )
+
+        @Slot()
+        def set_operator():
+            chosen_operator = missing_operators_dialog.dialog.content_combobox.currentText()
+            checkbox = None
+            if chosen_operator == "Addition":
+                checkbox = self.settings_dialog.addition_checkbox
+            elif chosen_operator == "Subtraction":
+                checkbox = self.settings_dialog.subtraction_checkbox
+            elif chosen_operator == "Multiplication":
+                checkbox = self.settings_dialog.multiplication_checkbox
+            elif chosen_operator == "Division":
+                checkbox = self.settings_dialog.division_checkbox
+            assert checkbox is not None
+
+            checkbox.setChecked(True)
+
+        missing_operators_dialog.dialog.close_button.clicked.connect(set_operator)
+        missing_operators_dialog.show()
+
+    @Slot()
+    def _show_missing_figures_error(self):
+        missing_figures_dialog = MissingContentDialog(
+            warning_text="All Figures have been deselected, please choose at least one:",
+            content=["Christmas Tree", "Guitar", "Space Ship", "House"],
+            parent=self
+        )
+
+        @Slot()
+        def set_figure():
+            chosen_figure = missing_figures_dialog.dialog.content_combobox.currentText()
+            checkbox = None
+            if chosen_figure == "Christmas Tree":
+                checkbox = self.settings_dialog.christmas_tree_checkbox
+            elif chosen_figure == "Guitar":
+                checkbox = self.settings_dialog.guitar_checkbox
+            elif chosen_figure == "Space Ship":
+                checkbox = self.settings_dialog.space_ship_checkbox
+            elif chosen_figure == "House":
+                checkbox = self.settings_dialog.house_checkbox
+            assert checkbox is not None
+
+            checkbox.setChecked(True)
+
+        missing_figures_dialog.dialog.close_button.clicked.connect(set_figure)
+        missing_figures_dialog.show()
+
+    @Slot()
+    def _ask_green_text_confirmation(self):
+        confirmation_dialog = ConfirmationDialog("Do you really want to set the text color to green?", parent=self)
+
+        confirmation_dialog.dialog.accept_button: QPushButton
+        confirmation_dialog.dialog.decline_button: QPushButton
+
+        def accept():
+            self.settings_dialog.green_text_color_button.setChecked(True)
+
+        def decline():
+            self.settings_dialog.green_text_color_button.setChecked(False)
+
+        confirmation_dialog.dialog.accept_button.clicked.connect(accept)
+        confirmation_dialog.dialog.decline_button.clicked.connect(decline)
+
+        confirmation_dialog.show()
 
     def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         super().mousePressEvent(event)

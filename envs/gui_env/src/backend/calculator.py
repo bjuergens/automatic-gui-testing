@@ -170,7 +170,6 @@ class Calculator:
             try:
                 output = a / b
             except ZeroDivisionError:
-                # TODO implement warning dialog
                 self.signal_handler.division_by_zero_occured.emit()
                 return
         assert output is not None

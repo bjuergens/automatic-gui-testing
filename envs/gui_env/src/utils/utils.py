@@ -9,6 +9,7 @@ class SignalHandler(QObject):
     division_by_zero_occured = Signal()
     all_operators_deselected = Signal()
     all_figures_deselected = Signal()
+    green_color_text_printer_selected = Signal()
 
 
 def load_ui(ui_file: str, parent_widget: QWidget = None) -> QWidget:
