@@ -86,7 +86,6 @@ class FigurePrinter:
             available_figures.append("House")
 
         if not available_figures:
-            # TODO implement this dialog
             self.signal_handler.all_figures_deselected.emit()
 
         self.figure_combobox.addItems(available_figures)

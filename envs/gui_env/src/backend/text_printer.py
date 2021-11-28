@@ -8,7 +8,7 @@ TEXT_50_WORDS = """
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore 
 magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd 
 gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
-"""
+"""  # pragma: no cover
 
 TEXT_100_WORDS = """
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore 
@@ -16,7 +16,7 @@ magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolo
 gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing 
 elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos 
 et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor 
-sit amet."""
+sit amet."""  # pragma: no cover
 
 
 TEXT_200_WORDS = """
@@ -31,7 +31,7 @@ gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
 Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat 
 nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis 
-dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet,"""
+dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet,"""  # pragma: no cover
 
 
 TEXT_400_WORDS = """
@@ -63,14 +63,14 @@ Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie co
 nulla facilisis.   
 
 At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem 
-ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur"""
+ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur"""  # pragma: no cover
 
 
-WORD_COUNTS = [50, 100, 200, 400]
+WORD_COUNTS = [50, 100, 200, 400]  # pragma: no cover
 
-FONT_SIZES = [12, 14, 16, 18, 20]
+FONT_SIZES = [12, 14, 16, 18, 20]  # pragma: no cover
 
-FONTS = ["DejaVu Sans", "Liberation Mono", "Noto Sans", "Terminus"]
+FONTS = ["DejaVu Sans", "Liberation Mono", "Noto Sans", "Terminus"]  # pragma: no cover
 
 
 class TextPrinter:
@@ -256,7 +256,7 @@ class GreenColorEventFilter(QObject):
             # Dialog is modal so an accept or decline needs to happen before the program can continue
             confirmation_dialog.show()
 
-            # Returnin True indicates that the event has been handled and shall not be passed on
+            # Returning True indicates that the event has been handled and shall not be passed on
             return True
 
         # Ignore all other events
