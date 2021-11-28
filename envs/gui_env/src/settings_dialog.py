@@ -1,16 +1,13 @@
 import logging
 from functools import partial
 
-import PySide6.QtGui
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit, QPushButton
+from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit
 
 from envs.gui_env.src.backend.calculator import (NUMERAL_SYSTEMS, Calculator, show_missing_operators_error,
                                                  show_division_by_zero_error)
 from envs.gui_env.src.backend.figure_printer import FigurePrinter, show_missing_figures_error
-from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS
-from envs.gui_env.src.utils.alert_dialogs import ConfirmationDialog
-from envs.gui_env.src.utils.event_filters import EventFilter
+from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS, GreenColorEventFilter
 from envs.gui_env.src.utils.utils import load_ui
 
 
@@ -75,6 +72,9 @@ class SettingsDialog(QDialog):
         self.settings_dialog.italic_font_checkbox.stateChanged.connect(self.text_printer.change_font_italic)
         self.settings_dialog.bold_font_checkbox.stateChanged.connect(self.text_printer.change_font_bold)
         self.settings_dialog.underline_font_checkbox.stateChanged.connect(self.text_printer.change_font_underline)
+
+        green_click_filter = GreenColorEventFilter(self.settings_dialog.green_text_color_button, parent=self)
+        self.settings_dialog.green_text_color_button.installEventFilter(green_click_filter)
 
     def _connect_calculator(self):
         self.settings_dialog.addition_checkbox.stateChanged.connect(self.calculator.change_addition_operator)
@@ -197,27 +197,6 @@ class SettingsDialog(QDialog):
 
         self._set_clickable_widgets_figure_printer_settings()
         self.figure_printer_activated.emit(checked)
-
-    @Slot()
-    def _ask_green_text_confirmation(self):
-        confirmation_dialog = ConfirmationDialog("Do you really want to set the text color to green?", parent=self)
-
-        confirmation_dialog.dialog.accept_button: QPushButton
-        confirmation_dialog.dialog.decline_button: QPushButton
-
-        def accept():
-            self.settings_dialog.green_text_color_button.setChecked(True)
-
-        def decline():
-            self.settings_dialog.green_text_color_button.setChecked(False)
-
-        confirmation_dialog.dialog.accept_button.clicked.connect(accept)
-        confirmation_dialog.dialog.decline_button.clicked.connect(decline)
-
-        confirmation_dialog.show()
-
-    def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
-        super().mousePressEvent(event)
 
 
 def main():

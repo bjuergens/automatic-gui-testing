@@ -1,6 +1,8 @@
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Slot, QObject, QEvent
 from PySide6.QtGui import QTextDocument, QPalette, QColorConstants, QFontDatabase
-from PySide6.QtWidgets import QPlainTextEdit, QAbstractButton
+from PySide6.QtWidgets import QPlainTextEdit, QAbstractButton, QRadioButton
+
+from envs.gui_env.src.utils.alert_dialogs import ConfirmationDialog
 
 TEXT_50_WORDS = """
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore 
@@ -227,3 +229,35 @@ class TextPrinter:
             font.setUnderline(True)
 
         self.output_document.setDefaultFont(font)
+
+
+class GreenColorEventFilter(QObject):
+
+    def __init__(self, green_button: QRadioButton, **kwargs):
+        super().__init__(**kwargs)
+        self.green_button = green_button
+
+    def eventFilter(self, obj: QObject, event: QEvent):
+        if event.type() == QEvent.MouseButtonPress and not self.green_button.isChecked():
+            confirmation_dialog = ConfirmationDialog(
+                "Do you really want to set the text color to green?",
+                parent=self.parent()
+            )
+
+            def accept():
+                self.green_button.click()
+
+            def decline():
+                assert True  # Technically nothing has to be done, but we want to increase code coverage
+
+            confirmation_dialog.dialog.accept_button.clicked.connect(accept)
+            confirmation_dialog.dialog.decline_button.clicked.connect(decline)
+
+            # Dialog is modal so an accept or decline needs to happen before the program can continue
+            confirmation_dialog.show()
+
+            # Returnin True indicates that the event has been handled and shall not be passed on
+            return True
+
+        # Ignore all other events
+        return False
