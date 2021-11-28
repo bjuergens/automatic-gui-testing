@@ -15,4 +15,3 @@ exclude_lines =
     pragma: no cover
     import
     from
-    @Slot(
