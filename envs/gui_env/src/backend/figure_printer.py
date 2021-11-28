@@ -3,6 +3,7 @@ from PySide6.QtGui import QColorConstants, QColor, QPalette
 from PySide6.QtWidgets import QComboBox, QAbstractButton, QPlainTextEdit
 
 from envs.gui_env.src.backend.ascii_art import CHRISTMAS_TREE, GUITAR, SPACE_SHIP, HOUSE
+from envs.gui_env.src.utils.alert_dialogs import MissingContentDialog
 from envs.gui_env.src.utils.utils import SignalHandler
 
 
@@ -119,3 +120,31 @@ class FigurePrinter:
         assert figure is not None
 
         self.figure_output_field.setPlainText(figure)
+
+
+@Slot()
+def show_missing_figures_error(settings_dialog):
+    missing_figures_dialog = MissingContentDialog(
+        warning_text="All Figures have been deselected, please choose at least one:",
+        content=["Christmas Tree", "Guitar", "Space Ship", "House"],
+        parent=settings_dialog
+    )
+
+    @Slot()
+    def set_figure():
+        chosen_figure = missing_figures_dialog.dialog.content_combobox.currentText()
+        checkbox = None
+        if chosen_figure == "Christmas Tree":
+            checkbox = settings_dialog.settings_dialog.christmas_tree_checkbox
+        elif chosen_figure == "Guitar":
+            checkbox = settings_dialog.settings_dialog.guitar_checkbox
+        elif chosen_figure == "Space Ship":
+            checkbox = settings_dialog.settings_dialog.space_ship_checkbox
+        elif chosen_figure == "House":
+            checkbox = settings_dialog.settings_dialog.house_checkbox
+        assert checkbox is not None
+
+        checkbox.setChecked(True)
+
+    missing_figures_dialog.dialog.close_button.clicked.connect(set_figure)
+    missing_figures_dialog.show()

@@ -1,6 +1,7 @@
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QLCDNumber, QComboBox
 
+from envs.gui_env.src.utils.alert_dialogs import WarningDialog, MissingContentDialog
 from envs.gui_env.src.utils.utils import SignalHandler
 
 POSSIBLE_OPERANDS_BASE_10 = [i for i in range(5)]
@@ -184,3 +185,37 @@ class Calculator:
         assert converted_output is not None
 
         self.calculator_output.display(converted_output)
+
+
+@Slot()
+def show_division_by_zero_error(settings_dialog):
+    warning_dialog = WarningDialog(warning_text="Warning, division by zero detected!", parent=settings_dialog)
+    warning_dialog.show()
+
+
+@Slot()
+def show_missing_operators_error(settings_dialog):
+    missing_operators_dialog = MissingContentDialog(
+        warning_text="You need at least one operator, please select one:",
+        content=["Addition", "Subtraction", "Multiplication", "Division"],
+        parent=settings_dialog
+    )
+
+    @Slot()
+    def set_operator():
+        chosen_operator = missing_operators_dialog.dialog.content_combobox.currentText()
+        checkbox = None
+        if chosen_operator == "Addition":
+            checkbox = settings_dialog.settings_dialog.addition_checkbox
+        elif chosen_operator == "Subtraction":
+            checkbox = settings_dialog.settings_dialog.subtraction_checkbox
+        elif chosen_operator == "Multiplication":
+            checkbox = settings_dialog.settings_dialog.multiplication_checkbox
+        elif chosen_operator == "Division":
+            checkbox = settings_dialog.settings_dialog.division_checkbox
+        assert checkbox is not None
+
+        checkbox.setChecked(True)
+
+    missing_operators_dialog.dialog.close_button.clicked.connect(set_operator)
+    missing_operators_dialog.show()
