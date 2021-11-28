@@ -113,7 +113,7 @@ class SettingsDialog(QDialog):
         elif tab == 1:
             self._set_clickable_widgets_calculator_settings()
         elif tab == 2:
-            self._set_clickable_widgets_figure_printer_settings()
+            self.set_clickable_widgets_figure_printer_settings()
 
     def _get_main_widgets_settings_dialog(self):
         currently_shown_widgets = [
