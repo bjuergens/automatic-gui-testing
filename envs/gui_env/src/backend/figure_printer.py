@@ -8,7 +8,7 @@ from envs.gui_env.src.utils.utils import SignalHandler
 
 
 class FigurePrinter:
-    def __init__(self, figure_output_field: QPlainTextEdit, figure_combobox: QComboBox):
+    def __init__(self, figure_output_field: QPlainTextEdit, figure_combobox: QComboBox):  # pragma: no cover
         self.figure_output_field = figure_output_field
         self.figure_combobox = figure_combobox
 

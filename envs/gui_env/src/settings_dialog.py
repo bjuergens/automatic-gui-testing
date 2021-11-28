@@ -14,9 +14,10 @@ from envs.gui_env.src.utils.utils import load_ui
 
 class SettingsDialog(QDialog):
 
-    figure_printer_activated = Signal(bool)
+    figure_printer_activated = Signal(bool)  # pragma: no cover
 
-    def __init__(self, text_printer: TextPrinter, calculator: Calculator, figure_printer: FigurePrinter, **kwargs):
+    def __init__(self, text_printer: TextPrinter, calculator: Calculator, figure_printer: FigurePrinter,
+                 **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
         self.settings_dialog = load_ui("envs/gui_env/src/settings_dialog.ui")
         self.layout = QGridLayout()
@@ -173,7 +174,7 @@ class SettingsDialog(QDialog):
         self.currently_shown_widgets = currently_shown_widgets
 
 
-def main():
+def main():  # pragma: no cover
     app = QApplication()
     text_printer = TextPrinter(QPlainTextEdit())
     dialog = SettingsDialog(text_printer=text_printer)
@@ -181,5 +182,5 @@ def main():
     app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()

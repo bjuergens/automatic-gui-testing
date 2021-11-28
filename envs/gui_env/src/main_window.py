@@ -18,14 +18,14 @@ from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
 
-WINDOW_SIZE = (448, 448)
+WINDOW_SIZE = (448, 448)  # pragma: no cover
 
 
 class MainWindow(QMainWindow):
-    observation_signal = Signal(float, np.ndarray)
-    observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)
+    observation_signal = Signal(float, np.ndarray)  # pragma: no cover
+    observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)  # pragma: no cover
 
-    def __init__(self, random_click_probability: float = None, random_seed: int = None, **kwargs):
+    def __init__(self, random_click_probability: float = None, random_seed: int = None, **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
 
         self.setWindowTitle("test-gui-worldmodels")
@@ -241,13 +241,13 @@ class MainWindow(QMainWindow):
         self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
 
 
-def main():
+def main():  # pragma: no cover
     app = QApplication([])
     widget = MainWindow()
     widget.show()
     sys.exit(app.exec())
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.DEBUG)
     main()

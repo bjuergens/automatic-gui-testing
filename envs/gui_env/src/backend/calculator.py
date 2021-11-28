@@ -14,7 +14,7 @@ NUMERAL_SYSTEMS = ["Base 10", "Base 2", "Base 16"]  # pragma: no cover
 class Calculator:
 
     def __init__(self, calculator_output: QLCDNumber, first_operand_combobox: QComboBox,
-                 second_operand_combobox: QComboBox, math_operator_combobox: QComboBox):
+                 second_operand_combobox: QComboBox, math_operator_combobox: QComboBox):  # pragma: no cover
         self.calculator_output = calculator_output
         self.first_operand_combobox = first_operand_combobox
         self.second_operand_combobox = second_operand_combobox
@@ -30,7 +30,7 @@ class Calculator:
 
         self.signal_handler = SignalHandler()
 
-    def _initialize(self):
+    def _initialize(self):  # pragma: no cover
         self._initialize_operands()
         self._initialize_operators()
 

@@ -75,7 +75,7 @@ FONTS = ["DejaVu Sans", "Liberation Mono", "Noto Sans", "Terminus"]  # pragma: n
 
 class TextPrinter:
 
-    def __init__(self, output_text_field: QPlainTextEdit):
+    def __init__(self, output_text_field: QPlainTextEdit):  # pragma: no cover
         self.output_text_field = output_text_field
         self.output_document: QTextDocument = self.output_text_field.document()
         self.output_palette: QPalette = self.output_text_field.palette()
