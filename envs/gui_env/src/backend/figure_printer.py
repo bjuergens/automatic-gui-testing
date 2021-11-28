@@ -123,7 +123,7 @@ class FigurePrinter:
 
 
 @Slot(bool)
-def toggle_figure_printer_settings(settings_dialog, checked: bool, *args):
+def toggle_figure_printer_settings(settings_dialog, checked: bool):
     # Activate or deactivate the settings and the main button in the MainWindow
     if checked:
         settings_dialog.settings_dialog.christmas_tree_checkbox.setEnabled(True)
