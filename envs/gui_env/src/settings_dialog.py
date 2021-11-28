@@ -6,7 +6,8 @@ from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit
 
 from envs.gui_env.src.backend.calculator import (NUMERAL_SYSTEMS, Calculator, show_missing_operators_error,
                                                  show_division_by_zero_error)
-from envs.gui_env.src.backend.figure_printer import FigurePrinter, show_missing_figures_error
+from envs.gui_env.src.backend.figure_printer import (FigurePrinter, show_missing_figures_error,
+                                                     toggle_figure_printer_settings)
 from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS, GreenColorEventFilter
 from envs.gui_env.src.utils.utils import load_ui
 
@@ -92,7 +93,7 @@ class SettingsDialog(QDialog):
     def _connect_figure_printer(self):
         # Activate or deactivate the settings and the main buttons
         self.settings_dialog.activate_figure_printer_checkbox.stateChanged.connect(
-            self._toggle_figure_printer_settings
+            partial(toggle_figure_printer_settings, self)
         )
 
         self.settings_dialog.christmas_tree_checkbox.stateChanged.connect(self.figure_printer.change_christmas_tree)
@@ -152,7 +153,7 @@ class SettingsDialog(QDialog):
 
         self.currently_shown_widgets = currently_shown_widgets
 
-    def _set_clickable_widgets_figure_printer_settings(self):
+    def set_clickable_widgets_figure_printer_settings(self):
         currently_shown_widgets = self._get_main_widgets_settings_dialog()
 
         currently_shown_widgets.append(self.settings_dialog.activate_figure_printer_checkbox)
@@ -170,33 +171,6 @@ class SettingsDialog(QDialog):
             ])
 
         self.currently_shown_widgets = currently_shown_widgets
-
-    @Slot(bool)
-    def _toggle_figure_printer_settings(self, checked: bool):
-        # Activate or deactivate the settings and the main button in the MainWindow
-        if checked:
-            self.settings_dialog.christmas_tree_checkbox.setEnabled(True)
-            self.settings_dialog.guitar_checkbox.setEnabled(True)
-            self.settings_dialog.space_ship_checkbox.setEnabled(True)
-            self.settings_dialog.house_checkbox.setEnabled(True)
-
-            self.settings_dialog.blue_figure_color_button.setEnabled(True)
-            self.settings_dialog.green_figure_color_button.setEnabled(True)
-            self.settings_dialog.black_figure_color_button.setEnabled(True)
-            self.settings_dialog.brown_figure_color_button.setEnabled(True)
-        else:
-            self.settings_dialog.christmas_tree_checkbox.setEnabled(False)
-            self.settings_dialog.guitar_checkbox.setEnabled(False)
-            self.settings_dialog.space_ship_checkbox.setEnabled(False)
-            self.settings_dialog.house_checkbox.setEnabled(False)
-
-            self.settings_dialog.blue_figure_color_button.setEnabled(False)
-            self.settings_dialog.green_figure_color_button.setEnabled(False)
-            self.settings_dialog.black_figure_color_button.setEnabled(False)
-            self.settings_dialog.brown_figure_color_button.setEnabled(False)
-
-        self._set_clickable_widgets_figure_printer_settings()
-        self.figure_printer_activated.emit(checked)
 
 
 def main():

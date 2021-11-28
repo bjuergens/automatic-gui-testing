@@ -122,6 +122,34 @@ class FigurePrinter:
         self.figure_output_field.setPlainText(figure)
 
 
+@Slot(bool)
+def toggle_figure_printer_settings(settings_dialog, checked: bool, *args):
+    # Activate or deactivate the settings and the main button in the MainWindow
+    if checked:
+        settings_dialog.settings_dialog.christmas_tree_checkbox.setEnabled(True)
+        settings_dialog.settings_dialog.guitar_checkbox.setEnabled(True)
+        settings_dialog.settings_dialog.space_ship_checkbox.setEnabled(True)
+        settings_dialog.settings_dialog.house_checkbox.setEnabled(True)
+
+        settings_dialog.settings_dialog.blue_figure_color_button.setEnabled(True)
+        settings_dialog.settings_dialog.green_figure_color_button.setEnabled(True)
+        settings_dialog.settings_dialog.black_figure_color_button.setEnabled(True)
+        settings_dialog.settings_dialog.brown_figure_color_button.setEnabled(True)
+    else:
+        settings_dialog.settings_dialog.christmas_tree_checkbox.setEnabled(False)
+        settings_dialog.settings_dialog.guitar_checkbox.setEnabled(False)
+        settings_dialog.settings_dialog.space_ship_checkbox.setEnabled(False)
+        settings_dialog.settings_dialog.house_checkbox.setEnabled(False)
+
+        settings_dialog.settings_dialog.blue_figure_color_button.setEnabled(False)
+        settings_dialog.settings_dialog.green_figure_color_button.setEnabled(False)
+        settings_dialog.settings_dialog.black_figure_color_button.setEnabled(False)
+        settings_dialog.settings_dialog.brown_figure_color_button.setEnabled(False)
+
+    settings_dialog.set_clickable_widgets_figure_printer_settings()
+    settings_dialog.figure_printer_activated.emit(checked)
+
+
 @Slot()
 def show_missing_figures_error(settings_dialog):
     missing_figures_dialog = MissingContentDialog(
