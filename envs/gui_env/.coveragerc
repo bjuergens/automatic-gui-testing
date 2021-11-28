@@ -5,3 +5,12 @@ branch = False
 
 source =
     envs/gui_env/src/
+
+omit =
+    envs/gui_env/src/*__init__*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    import
+    from
