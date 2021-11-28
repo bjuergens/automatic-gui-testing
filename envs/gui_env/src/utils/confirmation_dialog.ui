@@ -6,23 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>146</width>
+    <width>186</width>
     <height>93</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string/>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="70,30">
    <item>
     <widget class="QLabel" name="text_label">
      <property name="text">
       <string/>
      </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="60,0">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="50,50">
      <item>
       <widget class="QPushButton" name="accept_button">
        <property name="text">
