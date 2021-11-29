@@ -240,6 +240,9 @@ class MainWindow(QMainWindow):
         screenshot = self.take_screenshot()
         self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
 
+    def generate_html_report(self, directory: str):
+        self.current_coverage.html_report(directory=directory)
+
 
 def main():  # pragma: no cover
     app = QApplication([])
