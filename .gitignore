@@ -16,3 +16,4 @@ dock_config.json
 
 # coverage.py
 .coverage
+coverage-reports/

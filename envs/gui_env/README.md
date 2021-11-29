@@ -4,10 +4,11 @@
 - numpy
 - PySide6
 - Coverage.py
+- Install with `pip install coverage pyside6 numpy gym`
 
 # Start the application (without OpenAI Gym)
 
-- In the root folder run `python envs/gui_env/src/main_window.py`
+- In the root folder run `PYTHONPATH=$(pwd) python envs/gui_env/src/main_window.py`
 
 # Start as an OpenAI Gym environment
 
