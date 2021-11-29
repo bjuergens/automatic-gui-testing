@@ -12,6 +12,7 @@
 # Start as an OpenAI Gym environment
 
 - You need to import the environment and then use it like a normal gym environment
+- To enable generating a html report of the coverage, use `generate_html_report=True` as a parameter in the constructor
 - There are three environments:
     * `GUIEnv` requires x and y coordinates as the action
     * `GUIEnvRandomWidget` does not require an action, it selects either a random widget for a click or a random click
@@ -23,7 +24,7 @@ import time
 
 from envs.gui_env.gui_env import GUIEnvRandomClick
 
-env = GUIEnvRandomClick()
+env = GUIEnvRandomClick(generate_html_report=True)
 ob = env.reset()
 
 rew_sum = 0
