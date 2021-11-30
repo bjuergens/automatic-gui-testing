@@ -229,7 +229,7 @@ class TextPrinter:
 
 class GreenColorEventFilter(QObject):
 
-    def __init__(self, green_button: QRadioButton, **kwargs):
+    def __init__(self, green_button: QRadioButton, **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
         self.green_button = green_button
 
