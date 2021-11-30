@@ -13,6 +13,8 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QCom
 from coverage import Coverage
 
 from envs.gui_env.src.backend.calculator import Calculator
+from envs.gui_env.src.backend.car_configurator import (CarConfigurator, show_disabled_cars_error_dialog,
+                                                       show_car_configuration_dialog)
 from envs.gui_env.src.backend.figure_printer import FigurePrinter
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
@@ -41,14 +43,22 @@ class MainWindow(QMainWindow):
         # Initially we start with these widgets
         self._set_currently_shown_widgets_text_printer()
 
-        self._connect_buttons()
-
         self.text_printer = TextPrinter(self.main_window.text_printer_output)
         self.calculator = Calculator(self.main_window.calculator_output, self.main_window.first_operand_combobox,
                                      self.main_window.second_operand_combobox, self.main_window.math_operator_combobox)
         self.figure_printer = FigurePrinter(self.main_window.figure_printer_output, self.main_window.figure_combobox)
+        self.car_configurator = CarConfigurator(
+            self.main_window.car_model_selection_frame, self.main_window.car_model_selection_combobox,
+            self.main_window.tire_selection_frame, self.main_window.tire_selection_combobox,
+            self.main_window.interior_design_frame, self.main_window.interior_design_combobox,
+            self.main_window.propulsion_system_frame, self.main_window.propulsion_system_combobox,
+            self.main_window.show_configuration_button
+        )
+
+        self._connect_buttons()
 
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
+                                              car_configurator=self.car_configurator,
                                               figure_printer=self.figure_printer, parent=self)
 
         self.settings_action.triggered.connect(self.settings_dialog.show)
@@ -85,25 +95,6 @@ class MainWindow(QMainWindow):
         font.setPointSize(12)
         self.main_window.car_configurator_headline_label.setFont(font)
 
-        # Make the configurations invisible
-        default_size_policy = self.main_window.tire_selection_frame.sizePolicy()
-        # This keeps the space in the layout, even when the widget is not visible
-        default_size_policy.setRetainSizeWhenHidden(True)
-        self.main_window.tire_selection_frame.setSizePolicy(default_size_policy)
-        self.main_window.tire_selection_frame.setVisible(False)
-
-        self.main_window.interior_design_frame.setSizePolicy(default_size_policy)
-        self.main_window.interior_design_frame.setVisible(False)
-
-        self.main_window.propulsion_system_frame.setSizePolicy(default_size_policy)
-        self.main_window.propulsion_system_frame.setVisible(False)
-
-        # Use the size policy from the button because I do not know if it is different to the one from the QFrame
-        button_size_policy = self.main_window.show_configuration_button.sizePolicy()
-        button_size_policy.setRetainSizeWhenHidden(True)
-        self.main_window.show_configuration_button.setSizePolicy(button_size_policy)
-        self.main_window.show_configuration_button.setVisible(False)
-
         # Figure Printer
 
         # Figure Printer is hidden at first, must be activated in the settings
@@ -133,6 +124,9 @@ class MainWindow(QMainWindow):
         self.main_window.car_configurator_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
         )
+
+        self.car_configurator.signal_handler.disabled_cars.connect(partial(show_disabled_cars_error_dialog, self))
+        self.car_configurator.signal_handler.car_configured.connect(partial(show_car_configuration_dialog, self))
 
         # Figure Printer
         self.main_window.figure_printer_button.clicked.connect(

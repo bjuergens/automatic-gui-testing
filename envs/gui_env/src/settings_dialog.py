@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit
 
 from envs.gui_env.src.backend.calculator import (NUMERAL_SYSTEMS, Calculator, show_missing_operators_error,
                                                  show_division_by_zero_error)
+from envs.gui_env.src.backend.car_configurator import CarConfigurator
 from envs.gui_env.src.backend.figure_printer import (FigurePrinter, show_missing_figures_error,
                                                      toggle_figure_printer_settings)
 from envs.gui_env.src.backend.text_printer import TextPrinter, WORD_COUNTS, FONT_SIZES, FONTS, GreenColorEventFilter
@@ -16,7 +17,8 @@ class SettingsDialog(QDialog):
 
     figure_printer_activated = Signal(bool)  # pragma: no cover
 
-    def __init__(self, text_printer: TextPrinter, calculator: Calculator, figure_printer: FigurePrinter,
+    def __init__(self, text_printer: TextPrinter, calculator: Calculator, car_configurator: CarConfigurator,
+                 figure_printer: FigurePrinter,
                  **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
 
@@ -32,6 +34,7 @@ class SettingsDialog(QDialog):
 
         self.text_printer = text_printer
         self.calculator = calculator
+        self.car_configurator = car_configurator
         self.figure_printer = figure_printer
 
         self.currently_shown_widgets = []
@@ -68,6 +71,7 @@ class SettingsDialog(QDialog):
 
         self._connect_text_printer()
         self._connect_calculator()
+        self._connect_car_configurator()
         self._connect_figure_printer()
 
         self.settings_dialog.settings_tab.currentChanged.connect(self._tab_changed)
@@ -102,6 +106,34 @@ class SettingsDialog(QDialog):
 
         self.calculator.signal_handler.division_by_zero_occured.connect(partial(show_division_by_zero_error, self))
         self.calculator.signal_handler.all_operators_deselected.connect(partial(show_missing_operators_error, self))
+
+    def _connect_car_configurator(self):
+        self.settings_dialog.tire_18_inch_checkbox.stateChanged.connect(self.car_configurator.change_18_inch_tire)
+        self.settings_dialog.tire_19_inch_checkbox.stateChanged.connect(self.car_configurator.change_19_inch_tire)
+        self.settings_dialog.tire_20_inch_checkbox.stateChanged.connect(self.car_configurator.change_20_inch_tire)
+        self.settings_dialog.tire_22_inch_checkbox.stateChanged.connect(self.car_configurator.change_22_inch_tire)
+
+        self.settings_dialog.modern_interior_checkbox.stateChanged.connect(self.car_configurator.change_modern_interior)
+        self.settings_dialog.vintage_interior_checkbox.stateChanged.connect(
+            self.car_configurator.change_vintage_interior
+        )
+        self.settings_dialog.sport_interior_checkbox.stateChanged.connect(self.car_configurator.change_sport_interior)
+
+        self.settings_dialog.combustion_engine_a_checkbox.stateChanged.connect(
+            self.car_configurator.change_combustion_engine_a
+        )
+        self.settings_dialog.combustion_engine_b_checkbox.stateChanged.connect(
+            self.car_configurator.change_combustion_engine_b
+        )
+        self.settings_dialog.combustion_engine_c_checkbox.stateChanged.connect(
+            self.car_configurator.change_combustion_engine_c
+        )
+        self.settings_dialog.electric_motor_a_checkbox.stateChanged.connect(
+            self.car_configurator.change_electric_motor_a
+        )
+        self.settings_dialog.electric_motor_b_checkbox.stateChanged.connect(
+            self.car_configurator.change_electric_motor_b
+        )
 
     def _connect_figure_printer(self):
         # Activate or deactivate the settings and the main buttons
