@@ -54,6 +54,15 @@ class SettingsDialog(QDialog):
         # Calculator
         self.settings_dialog.numeral_system_combobox.addItems(numeral_system for numeral_system in NUMERAL_SYSTEMS)
 
+        # Car Configurator
+        # Used for layout purposes
+        size_policy = self.settings_dialog.dummy_checkbox_electric_motor.sizePolicy()
+        size_policy.setRetainSizeWhenHidden(True)
+        self.settings_dialog.dummy_checkbox_electric_motor.setSizePolicy(size_policy)
+        self.settings_dialog.dummy_checkbox_electric_motor.setVisible(False)
+        self.settings_dialog.dummy_checkbox_interior.setSizePolicy(size_policy)
+        self.settings_dialog.dummy_checkbox_interior.setVisible(False)
+
     def _connect(self):
         self.settings_dialog.close_settings_dialog.clicked.connect(self.close)
 

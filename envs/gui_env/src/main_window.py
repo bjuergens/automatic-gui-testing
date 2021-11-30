@@ -34,19 +34,7 @@ class MainWindow(QMainWindow):
 
         self.main_window = load_ui("envs/gui_env/src/main_window.ui")
 
-        # Initialize menu bar
-        self.menu_bar = QMenuBar(parent=self)
-        self.settings_action = QAction("Settings")
-        self.menu_bar.addAction(self.settings_action)
-        self.setMenuBar(self.menu_bar)
-
-        # Christmas Tree is hidden at first, must be activated in the settings
-        self.main_window.figure_printer_button.setVisible(False)
-
-        # Need a monospace font to display the ASCII art correctly
-        document = self.main_window.figure_printer_output.document()
-        font = QFontDatabase.font("Bitstream Vera Sans Mono", "Normal", 10)
-        document.setDefaultFont(font)
+        self._initialize()
 
         # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets_main_window = []
@@ -74,6 +62,58 @@ class MainWindow(QMainWindow):
         self.random_click_probability = random_click_probability
         self.random_state = np.random.RandomState(random_seed)
 
+        # self.main_window.frame_5: QWidget
+        # size_pol = self.main_window.frame_5.sizePolicy()
+        # size_pol.setRetainSizeWhenHidden(True)
+        # self.main_window.frame_5.setSizePolicy(size_pol)
+        # self.main_window.frame_5.setVisible(False)
+
+        # QTimer.singleShot(0, self._test)
+
+    def _initialize(self):
+        # Initialize menu bar
+        self.menu_bar = QMenuBar(parent=self)
+        self.settings_action = QAction("Settings")
+        self.menu_bar.addAction(self.settings_action)
+        self.setMenuBar(self.menu_bar)
+
+        # Car Configurator
+
+        # Set top label to bold, to function as a headline
+        font = self.main_window.car_configurator_headline_label.font()
+        font.setBold(True)
+        font.setPointSize(12)
+        self.main_window.car_configurator_headline_label.setFont(font)
+
+        # Make the configurations invisible
+        default_size_policy = self.main_window.tire_selection_frame.sizePolicy()
+        # This keeps the space in the layout, even when the widget is not visible
+        default_size_policy.setRetainSizeWhenHidden(True)
+        self.main_window.tire_selection_frame.setSizePolicy(default_size_policy)
+        self.main_window.tire_selection_frame.setVisible(False)
+
+        self.main_window.interior_design_frame.setSizePolicy(default_size_policy)
+        self.main_window.interior_design_frame.setVisible(False)
+
+        self.main_window.propulsion_system_frame.setSizePolicy(default_size_policy)
+        self.main_window.propulsion_system_frame.setVisible(False)
+
+        # Use the size policy from the button because I do not know if it is different to the one from the QFrame
+        button_size_policy = self.main_window.show_configuration_button.sizePolicy()
+        button_size_policy.setRetainSizeWhenHidden(True)
+        self.main_window.show_configuration_button.setSizePolicy(button_size_policy)
+        self.main_window.show_configuration_button.setVisible(False)
+
+        # Figure Printer
+
+        # Figure Printer is hidden at first, must be activated in the settings
+        self.main_window.figure_printer_button.setVisible(False)
+
+        # Need a monospace font to display the ASCII art correctly
+        document = self.main_window.figure_printer_output.document()
+        font = QFontDatabase.font("Bitstream Vera Sans Mono", "Normal", 10)
+        document.setDefaultFont(font)
+
     def _connect_buttons(self):
         # Text Printer
         self.main_window.text_printer_button.clicked.connect(
@@ -89,9 +129,14 @@ class MainWindow(QMainWindow):
         self.main_window.calculator_button.clicked.connect(self._set_currently_shown_widgets_calculator)
         self.main_window.start_calculation_button.clicked.connect(self.start_calculation)
 
-        # Christmas Tree
-        self.main_window.figure_printer_button.clicked.connect(
+        # Car Configurator
+        self.main_window.car_configurator_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
+        )
+
+        # Figure Printer
+        self.main_window.figure_printer_button.clicked.connect(
+            partial(self.main_window.main_stacked_widget.setCurrentIndex, 3)
         )
         self.main_window.figure_printer_button.clicked.connect(self._set_currently_shown_widgets_figure_printer)
         self.main_window.start_drawing_figure_button.clicked.connect(self.start_drawing_figure)
