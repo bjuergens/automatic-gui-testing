@@ -1,7 +1,7 @@
 import logging
 from functools import partial
 
-from PySide6.QtCore import Slot, Signal
+from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit
 
 from envs.gui_env.src.backend.calculator import (NUMERAL_SYSTEMS, Calculator, show_missing_operators_error,
@@ -19,6 +19,9 @@ class SettingsDialog(QDialog):
     def __init__(self, text_printer: TextPrinter, calculator: Calculator, figure_printer: FigurePrinter,
                  **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
+
+        self.setWindowFlag(Qt.FramelessWindowHint, True)
+
         self.settings_dialog = load_ui("envs/gui_env/src/settings_dialog.ui")
         self.layout = QGridLayout()
         self.layout.addWidget(self.settings_dialog, 1, 1)

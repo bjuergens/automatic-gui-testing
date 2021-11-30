@@ -30,6 +30,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("test-gui-worldmodels")
         self.setFixedSize(*WINDOW_SIZE)
+        self.setWindowFlag(Qt.FramelessWindowHint, True)
 
         self.main_window = load_ui("envs/gui_env/src/main_window.ui")
 
