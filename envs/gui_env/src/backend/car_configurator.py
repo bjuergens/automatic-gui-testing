@@ -365,10 +365,52 @@ class CarConfigurator:
 
     @Slot()
     def print_selected_configuration(self):
-        selected_configuration_message = (f"Selected {self.selected_car} with the following configuration:\n" +
-                                          f"Tires: {self.selected_tire}\n" +
-                                          f"Interior: {self.selected_interior}\n" +
-                                          f"Propulsion System: {self.selected_propulsion_system}")
+        selected_car = None
+        if self.selected_car == "Car A":
+            selected_car = "Car A"
+        elif self.selected_car == "Car B":
+            selected_car = "Car B"
+        elif self.selected_car == "Car C":
+            selected_car = "Car C"
+        assert selected_car in CAR_MODELS
+
+        selected_tire = None
+        if self.selected_tire == "18 Inch":
+            selected_tire = "18 Inch"
+        elif self.selected_tire == "19 Inch":
+            selected_tire = "19 Inch"
+        elif self.selected_tire == "20 Inch":
+            selected_tire = "20 Inch"
+        elif self.selected_tire == "22 Inch":
+            selected_tire = "22 Inch"
+        assert selected_tire in TIRE_VARIANTS
+
+        selected_interior = None
+        if self.selected_interior == "Modern":
+            selected_interior = "Modern"
+        elif self.selected_interior == "Vintage":
+            selected_interior = "Vintage"
+        elif self.selected_interior == "Sport":
+            selected_interior = "Sport"
+        assert selected_interior in INTERIOR_VARIANTS
+
+        selected_propulsion_system = None
+        if self.selected_propulsion_system == "Combustion Engine A":
+            selected_propulsion_system = "Combustion Engine A"
+        elif self.selected_propulsion_system == "Combustion Engine B":
+            selected_propulsion_system = "Combustion Engine B"
+        elif self.selected_propulsion_system == "Combustion Engine C":
+            selected_propulsion_system = "Combustion Engine C"
+        elif self.selected_propulsion_system == "Electric Motor A":
+            selected_propulsion_system = "Electric Motor A"
+        elif self.selected_propulsion_system == "Electric Motor B":
+            selected_propulsion_system = "Electric Motor B"
+        assert selected_propulsion_system in PROPULSION_SYSTEMS
+
+        selected_configuration_message = (f"Selected {selected_car} with the following configuration:\n" +
+                                          f"Tires: {selected_tire}\n" +
+                                          f"Interior: {selected_interior}\n" +
+                                          f"Propulsion System: {selected_propulsion_system}")
         self.signal_handler.car_configured.emit(selected_configuration_message)
         self._reset()
 
