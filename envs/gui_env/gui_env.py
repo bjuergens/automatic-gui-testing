@@ -81,6 +81,7 @@ class GUIEnv(gym.Env):
         self.click_connection_parent, self.click_connection_child = Pipe(duplex=True)
         self.terminate_connection_parent, self.terminate_connection_child = Pipe(duplex=True)
         if self.generate_html_report:
+            logging.info("Enabled HTML report generation")
             self.html_report_connection_parent, self.html_report_connection_child = Pipe(duplex=True)
         else:
             self.html_report_connection_parent, self.html_report_connection_child = None, None

@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
 
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
                                               car_configurator=self.car_configurator,
-                                              figure_printer=self.figure_printer, parent=self)
+                                              figure_printer=self.figure_printer, parent=self.main_window)
 
         self.settings_action.triggered.connect(self.settings_dialog.show)
         self.settings_dialog.figure_printer_activated.connect(self._toogle_figure_printing)
@@ -71,14 +71,6 @@ class MainWindow(QMainWindow):
 
         self.random_click_probability = random_click_probability
         self.random_state = np.random.RandomState(random_seed)
-
-        # self.main_window.frame_5: QWidget
-        # size_pol = self.main_window.frame_5.sizePolicy()
-        # size_pol.setRetainSizeWhenHidden(True)
-        # self.main_window.frame_5.setSizePolicy(size_pol)
-        # self.main_window.frame_5.setVisible(False)
-
-        # QTimer.singleShot(0, self._test)
 
     def _initialize(self):
         # Initialize menu bar
@@ -281,7 +273,10 @@ class MainWindow(QMainWindow):
         self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
 
     def generate_html_report(self, directory: str):
-        self.current_coverage.html_report(directory=directory)
+        try:
+            self.current_coverage.html_report(directory=directory)
+        except coverage.exceptions.CoverageException:
+            logging.debug("Did not create an HTML report because nothing was measured")
 
 
 def main():  # pragma: no cover
