@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
 
         # Need a monospace font to display the ASCII art correctly
         document = self.main_window.figure_printer_output.document()
-        font = QFontDatabase.font("Bitstream Vera Sans Mono", "Normal", 10)
+        font = QFontDatabase.font("Bitstream Vera Sans Mono", "Normal", 7)
         document.setDefaultFont(font)
 
     def _connect_buttons(self):
