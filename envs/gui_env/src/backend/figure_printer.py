@@ -122,6 +122,27 @@ class FigurePrinter:
 
 
 @Slot(bool)
+def toggle_figure_printer_widgets(main_window, checked: bool):
+    if checked:
+        main_window.main_window.figure_printer_button.setVisible(True)
+        main_window.main_window.figure_printer_button.setEnabled(True)
+        if main_window.main_window.figure_printer_button not in main_window.currently_shown_widgets_main_window:
+            main_window.currently_shown_widgets_main_window.append(main_window.main_window.figure_printer_button)
+    else:
+        main_window.main_window.figure_printer_button.setVisible(False)
+        main_window.main_window.figure_printer_button.setEnabled(False)
+        try:
+            main_window.currently_shown_widgets_main_window.remove(main_window.main_window.figure_printer_button)
+        except ValueError:
+            pass
+
+        # Could be that the stacked widget is still on the figure printer but we deactivate it, therefore simply
+        # switch back to the first index
+        if main_window.main_window.main_stacked_widget.currentIndex() == 3:
+            main_window.main_window.main_stacked_widget.setCurrentIndex(0)
+
+
+@Slot(bool)
 def toggle_figure_printer_settings(settings_dialog, checked: bool):
     # Activate or deactivate the settings and the main button in the MainWindow
     if checked:

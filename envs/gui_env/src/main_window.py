@@ -15,7 +15,7 @@ from coverage import Coverage
 from envs.gui_env.src.backend.calculator import Calculator
 from envs.gui_env.src.backend.car_configurator import (CarConfigurator, show_disabled_cars_error_dialog,
                                                        show_car_configuration_dialog)
-from envs.gui_env.src.backend.figure_printer import FigurePrinter
+from envs.gui_env.src.backend.figure_printer import FigurePrinter, toggle_figure_printer_widgets
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
                                               figure_printer=self.figure_printer, parent=self.main_window)
 
         self.settings_action.triggered.connect(self.settings_dialog.show)
-        self.settings_dialog.figure_printer_activated.connect(self._toogle_figure_printing)
+        self.settings_dialog.figure_printer_activated.connect(partial(toggle_figure_printer_widgets, self))
 
         self.setCentralWidget(self.main_window)
 
@@ -103,14 +103,14 @@ class MainWindow(QMainWindow):
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 0)
         )
         self.main_window.text_printer_button.clicked.connect(self._set_currently_shown_widgets_text_printer)
-        self.main_window.start_text_printer_button.clicked.connect(self.start_text_printing)
+        self.main_window.start_text_printer_button.clicked.connect(self.text_printer.generate_text)
 
         # Calculator
         self.main_window.calculator_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 1)
         )
         self.main_window.calculator_button.clicked.connect(self._set_currently_shown_widgets_calculator)
-        self.main_window.start_calculation_button.clicked.connect(self.start_calculation)
+        self.main_window.start_calculation_button.clicked.connect(self.calculator.calculate)
 
         # Car Configurator
         self.main_window.car_configurator_button.clicked.connect(
@@ -125,27 +125,7 @@ class MainWindow(QMainWindow):
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 3)
         )
         self.main_window.figure_printer_button.clicked.connect(self._set_currently_shown_widgets_figure_printer)
-        self.main_window.start_drawing_figure_button.clicked.connect(self.start_drawing_figure)
-
-    @Slot(bool)
-    def _toogle_figure_printing(self, checked: bool):
-        if checked:
-            self.main_window.figure_printer_button.setVisible(True)
-            self.main_window.figure_printer_button.setEnabled(True)
-            if not self.main_window.figure_printer_button in self.currently_shown_widgets_main_window:
-                self.currently_shown_widgets_main_window.append(self.main_window.figure_printer_button)
-        else:
-            self.main_window.figure_printer_button.setVisible(False)
-            self.main_window.figure_printer_button.setEnabled(False)
-            try:
-                self.currently_shown_widgets_main_window.remove(self.main_window.figure_printer_button)
-            except ValueError:
-                pass
-
-            # Could be that the stacked widget is still on the figure printer but we deactivate it, therefore simply
-            # switch back to the first index
-            if self.main_window.main_stacked_widget.currentIndex() == 2:
-                self.main_window.main_stacked_widget.setCurrentIndex(0)
+        self.main_window.start_drawing_figure_button.clicked.connect(self.figure_printer.draw_figure)
 
     def _get_main_widgets_main_window(self):
         # TODO settings qaction
@@ -184,15 +164,6 @@ class MainWindow(QMainWindow):
         ])
 
         self.currently_shown_widgets_main_window = currently_show_widgets_main_window
-
-    def start_text_printing(self):
-        self.text_printer.generate_text()
-
-    def start_calculation(self):
-        self.calculator.calculate()
-
-    def start_drawing_figure(self):
-        self.figure_printer.draw_figure()
 
     def take_screenshot(self) -> np.ndarray:
         screen = QApplication.primaryScreen()
