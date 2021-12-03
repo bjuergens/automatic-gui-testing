@@ -79,7 +79,7 @@ class CarConfigurator:
         self._initialize()
         self._connect()
 
-    def _initialize(self):
+    def _initialize(self):  # pragma: no cover
         # This keeps the space in the layout, even when the widget is not visible
         default_size_policy = self.tire_selection_frame.sizePolicy()
         default_size_policy.setRetainSizeWhenHidden(True)
@@ -93,6 +93,14 @@ class CarConfigurator:
         self.show_configuration_button.setSizePolicy(button_size_policy)
 
         self._reset()
+
+    def _connect(self):  # pragma: no cover
+        self.car_model_selection_combobox.activated.connect(self.change_selected_car)
+        self.tire_selection_combobox.activated.connect(self.change_selected_tire)
+        self.interior_design_combobox.activated.connect(self.change_selected_interior)
+        self.propulsion_system_combobox.activated.connect(self.change_selected_propulsion_system)
+
+        self.show_configuration_button.clicked.connect(self.print_selected_configuration)
 
     def _hide_all_boxes(self):
         # Make the configurations invisible
@@ -113,14 +121,6 @@ class CarConfigurator:
         self.car_model_selection_combobox.clear()
         self.car_model_selection_combobox.addItems(cars)
         self._hide_all_boxes()
-
-    def _connect(self):
-        self.car_model_selection_combobox.activated.connect(self.change_selected_car)
-        self.tire_selection_combobox.activated.connect(self.change_selected_tire)
-        self.interior_design_combobox.activated.connect(self.change_selected_interior)
-        self.propulsion_system_combobox.activated.connect(self.change_selected_propulsion_system)
-
-        self.show_configuration_button.clicked.connect(self.print_selected_configuration)
 
     def update_cars_by_tire(self):
         car_a_disabled = True
