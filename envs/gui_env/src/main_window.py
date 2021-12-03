@@ -19,15 +19,15 @@ from envs.gui_env.src.backend.figure_printer import FigurePrinter, toggle_figure
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
-
-WINDOW_SIZE = (448, 448)  # pragma: no cover
+from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
 class MainWindow(QMainWindow):
     observation_signal = Signal(float, np.ndarray)  # pragma: no cover
     observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)  # pragma: no cover
 
-    def __init__(self, random_click_probability: float = None, random_seed: int = None, **kwargs):  # pragma: no cover
+    def __init__(self, coverage_measurer: Coverage, random_click_probability: float = None, random_seed: int = None,
+                 **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
 
         self.setWindowTitle("test-gui-worldmodels")
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.main_window)
 
-        self.current_coverage = Coverage(config_file="envs/gui_env/.coveragerc")
+        self.coverage_measurer = coverage_measurer
         self.old_coverage_percentage = self.get_current_coverage_percentage()
 
         self.random_click_probability = random_click_probability
@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
     def get_current_coverage_percentage(self):
         with open(os.devnull, "w") as f:
             try:
-                coverage_percentage = self.current_coverage.report(file=f)
+                coverage_percentage = self.coverage_measurer.report(file=f)
             except coverage.exceptions.CoverageException:
                 # Is thrown when nothing was ever recorded by the coverage object
                 coverage_percentage = 0
@@ -188,9 +188,9 @@ class MainWindow(QMainWindow):
         return reward
 
     def execute_mouse_click(self, recv_widget: QWidget, local_pos: QPoint) -> float:
-        self.current_coverage.start()
+        self.coverage_measurer.start()
         QTest.mouseClick(recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
-        self.current_coverage.stop()
+        self.coverage_measurer.stop()
 
         if isinstance(recv_widget, QComboBox):
             logging.debug("Sleeping after click because of combo box")
@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
 
     def generate_html_report(self, directory: str):
         try:
-            self.current_coverage.html_report(directory=directory)
+            self.coverage_measurer.html_report(directory=directory)
         except coverage.exceptions.CoverageException:
             logging.debug("Did not create an HTML report because nothing was measured")
 

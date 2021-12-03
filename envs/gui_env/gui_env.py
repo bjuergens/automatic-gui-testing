@@ -10,8 +10,9 @@ import gym
 import numpy as np
 from PySide6.QtCore import QThread, Signal, Slot, QTimer
 from PySide6.QtWidgets import QApplication
+from coverage import Coverage
 
-from envs.gui_env.src.main_window import MainWindow, WINDOW_SIZE
+from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
 class RegisterClickThread(QThread):
@@ -71,8 +72,6 @@ class GUIEnv(gym.Env):
 
         self.application_process: Process
 
-        self.main_window: MainWindow
-
         self._initialize()
 
         self.random_state = np.random.RandomState()
@@ -98,9 +97,15 @@ class GUIEnv(gym.Env):
 
     def _start_application(self, click_connection_child: Connection, terminate_connection_child: Connection,
                            html_report_connection_child: Connection = None):
+
+        coverage_measurer = Coverage(config_file="envs/gui_env/.coveragerc")
+        coverage_measurer.start()
+        from envs.gui_env.src.main_window import MainWindow
+        coverage_measurer.stop()
+
         app = QApplication()
 
-        self.main_window = MainWindow()
+        self.main_window = MainWindow(coverage_measurer)
         self.main_window.show()
 
         self.register_click_thread = RegisterClickThread(click_connection_child, terminate_connection_child,

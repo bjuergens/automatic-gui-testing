@@ -4,7 +4,7 @@ cover_pylib = False
 branch = False
 
 source =
-    envs/gui_env/src/
+    envs/gui_env/src/backend
 
 omit =
     envs/gui_env/src/*__init__*
