@@ -72,6 +72,9 @@ class MainWindow(QMainWindow):
         self.random_click_probability = random_click_probability
         self.random_state = np.random.RandomState(random_seed)
 
+        # Keep track of an open combo box to close it when clicked somewhere else
+        self.open_combobox = None
+
     def _initialize(self):
         # Initialize menu bar
         self.menu_bar = QMenuBar(parent=self)
@@ -188,12 +191,44 @@ class MainWindow(QMainWindow):
         return reward
 
     def execute_mouse_click(self, recv_widget: QWidget, local_pos: QPoint) -> float:
+        click_function = partial(QTest.mouseClick, recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
+        closed_combobox = False
+        # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
+        # Unfortunately QTest.mouseClick() would ignore this
+        current_active_modal_widget = QApplication.activeModalWidget()
+
+        if current_active_modal_widget is not None:
+            # This checks if the recv_widget is part of the modal window, if this is the case it is allowed to be
+            # clicked
+            is_ancestor = current_active_modal_widget.isAncestorOf(recv_widget)
+
+            if not is_ancestor:
+                def none_function():
+                    pass
+
+                click_function = none_function
+
+        # If we have an open combobox and click somewhere else in the window, the combo box must be closed. Again
+        # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
+        if self.open_combobox is not None:
+            # If this would be true, a click in the combobox is planned. For some reason testing for a widget in an
+            # open combobox does not return the combobox but a QWidget with the name "qt_scrollarea_viewport".
+            # Only if this is not the case we know that we clicked outside the combobox and want to close it
+            if recv_widget.objectName() != "qt_scrollarea_viewport":
+                click_function = self.open_combobox.hidePopup
+                self.open_combobox = None
+                closed_combobox = True
+
         self.coverage_measurer.start()
-        QTest.mouseClick(recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
+        click_function()
         self.coverage_measurer.stop()
 
         if isinstance(recv_widget, QComboBox):
-            logging.debug("Sleeping after click because of combo box")
+            self.open_combobox = recv_widget
+
+        if isinstance(recv_widget, QComboBox) or closed_combobox:
+            # Opening and closing a combo box is slower than 1 frame, therefore sleep for half a second to let the
+            # combo box fully open or close
             time.sleep(0.5)
 
         reward = self.calculate_coverage_increase()
