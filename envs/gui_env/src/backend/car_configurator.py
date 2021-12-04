@@ -517,12 +517,12 @@ class CarConfigurator:
 def show_disabled_cars_error_dialog(settings_dialog, disabled_cars: str):
     disabled_cars_dialog = WarningDialog(
         warning_text=f"Disabled the following car(s): {disabled_cars}",
-        parent=settings_dialog
+        parent=settings_dialog.settings_dialog
     )
     disabled_cars_dialog.show()
 
 
 @Slot(str)
 def show_car_configuration_dialog(settings_dialog, car_configuration: str):
-    car_configuration_dialog = WarningDialog(warning_text=car_configuration, parent=settings_dialog)
+    car_configuration_dialog = WarningDialog(warning_text=car_configuration, parent=settings_dialog.settings_dialog)
     car_configuration_dialog.show()

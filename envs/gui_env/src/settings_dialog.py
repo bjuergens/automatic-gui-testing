@@ -25,7 +25,7 @@ class SettingsDialog(QDialog):
         self.setWindowFlag(Qt.FramelessWindowHint, True)
 
         self.settings_dialog = load_ui("envs/gui_env/src/settings_dialog.ui")
-        self.layout = QGridLayout()
+        self.layout = QGridLayout(self)
         self.layout.addWidget(self.settings_dialog, 1, 1)
         self.setLayout(self.layout)
 
@@ -91,7 +91,8 @@ class SettingsDialog(QDialog):
         self.settings_dialog.bold_font_checkbox.stateChanged.connect(self.text_printer.change_font_bold)
         self.settings_dialog.underline_font_checkbox.stateChanged.connect(self.text_printer.change_font_underline)
 
-        green_click_filter = GreenColorEventFilter(self.settings_dialog.green_text_color_button, parent=self)
+        green_click_filter = GreenColorEventFilter(self.settings_dialog.green_text_color_button,
+                                                   parent=self.settings_dialog)
         self.settings_dialog.green_text_color_button.installEventFilter(green_click_filter)
 
     def _connect_calculator(self):

@@ -175,7 +175,7 @@ def show_missing_figures_error(settings_dialog):
     missing_figures_dialog = MissingContentDialog(
         warning_text="All Figures have been deselected, please choose at least one:",
         content=["Christmas Tree", "Guitar", "Space Ship", "House"],
-        parent=settings_dialog
+        parent=settings_dialog.settings_dialog
     )
 
     @Slot()

@@ -233,7 +233,8 @@ class Calculator:
 
 @Slot()
 def show_division_by_zero_error(settings_dialog):
-    warning_dialog = WarningDialog(warning_text="Warning, division by zero detected!", parent=settings_dialog)
+    warning_dialog = WarningDialog(warning_text="Warning, division by zero detected!",
+                                   parent=settings_dialog.settings_dialog)
     warning_dialog.show()
 
 
@@ -242,7 +243,7 @@ def show_missing_operators_error(settings_dialog):
     missing_operators_dialog = MissingContentDialog(
         warning_text="You need at least one operator, please select one:",
         content=["Addition", "Subtraction", "Multiplication", "Division"],
-        parent=settings_dialog
+        parent=settings_dialog.settings_dialog
     )
 
     @Slot()

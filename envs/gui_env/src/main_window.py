@@ -251,8 +251,11 @@ class MainWindow(QMainWindow):
 
 
 def main():  # pragma: no cover
+    from coverage import Coverage
+
     app = QApplication([])
-    widget = MainWindow()
+    coverage_measurer = Coverage()
+    widget = MainWindow(coverage_measurer)
     widget.show()
     sys.exit(app.exec())
 
