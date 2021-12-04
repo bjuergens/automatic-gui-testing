@@ -208,12 +208,12 @@ class MainWindow(QMainWindow):
 
                 click_function = none_function
 
-        # If we have an open combobox and click somewhere else in the window, the combo box must be closed. Again
+        # If we have an open combo box and click somewhere else in the window, the combo box must be closed. Again
         # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
         if self.open_combobox is not None:
-            # If this would be true, a click in the combobox is planned. For some reason testing for a widget in an
-            # open combobox does not return the combobox but a QWidget with the name "qt_scrollarea_viewport".
-            # Only if this is not the case we know that we clicked outside the combobox and want to close it
+            # If this would be true, a click in the combo box is planned. For some reason testing for a widget in an
+            # open combo box does not return the combo box but a QWidget with the name "qt_scrollarea_viewport".
+            # Only if this is not the case we know that we clicked outside the combo box and want to close it
             if recv_widget.objectName() != "qt_scrollarea_viewport":
                 click_function = self.open_combobox.hidePopup
                 self.open_combobox = None
