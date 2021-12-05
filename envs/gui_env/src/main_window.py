@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from functools import partial
+from typing import Union
 
 import coverage.exceptions
 import numpy as np
@@ -190,9 +191,13 @@ class MainWindow(QMainWindow):
         self.old_coverage_percentage = new_coverage_percentage
         return reward
 
-    def execute_mouse_click(self, recv_widget: QWidget, local_pos: QPoint) -> float:
-        click_function = partial(QTest.mouseClick, recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
-        closed_combobox = False
+    def execute_mouse_click(self, recv_widget: Union[QWidget, QAction], local_pos: QPoint) -> float:
+        if isinstance(recv_widget, QAction):
+            # QAction do not work with QTest.mouseClick, as this function only works with QWidgets
+            click_function = recv_widget.trigger
+        else:
+            click_function = partial(QTest.mouseClick, recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
+
         # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
         # Unfortunately QTest.mouseClick() would ignore this
         current_active_modal_widget = QApplication.activeModalWidget()
@@ -208,28 +213,34 @@ class MainWindow(QMainWindow):
 
                 click_function = none_function
 
+        closed_combobox = False
+
         # If we have an open combo box and click somewhere else in the window, the combo box must be closed. Again
         # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
         if self.open_combobox is not None:
+            closed_combobox = True
             # If this would be true, a click in the combo box is planned. For some reason testing for a widget in an
             # open combo box does not return the combo box but a QWidget with the name "qt_scrollarea_viewport".
             # Only if this is not the case we know that we clicked outside the combo box and want to close it
             if recv_widget.objectName() != "qt_scrollarea_viewport":
                 click_function = self.open_combobox.hidePopup
                 self.open_combobox = None
-                closed_combobox = True
 
         self.coverage_measurer.start()
         click_function()
         self.coverage_measurer.stop()
 
         if isinstance(recv_widget, QComboBox):
+            # recv_widget is only a QComboBox when it is pressed to open, when it is pressed while it is open,
+            # recv_widget is a QWidget with the object name "qt_scrollarea_viewport" (this is also used in some lines
+            # above)
             self.open_combobox = recv_widget
 
         if isinstance(recv_widget, QComboBox) or closed_combobox:
             # Opening and closing a combo box is slower than 1 frame, therefore sleep for half a second to let the
-            # combo box fully open or close
+            # combo box fully open or close and the invoke processEvents() to trigger the animation
             time.sleep(0.5)
+            QApplication.processEvents()
 
         reward = self.calculate_coverage_increase()
 
