@@ -51,3 +51,11 @@ if __name__ == '__main__':
     main()
 
 ```
+
+# Headless setup
+
+The environments can also be started on a headless server or on your local machine with a virtual desktop. This has the
+advantage of not interfering with something else on your desktop. To do this, install `xvfb`, for example with
+`sudo apt install xvfb` and then run the following command in the root directory of this project:
+
+`PYTHONPATH=$(pwd) xvfb-run -s "-screen 0 448x448x24" python envs/gui_env/test_env.py`
