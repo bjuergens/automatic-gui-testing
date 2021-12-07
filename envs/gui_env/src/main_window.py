@@ -273,7 +273,8 @@ class MainWindow(QMainWindow):
             # Opening and closing a combo box is slower than 1 frame, therefore sleep for half a second to let the
             # combo box fully open or close and the invoke processEvents() to trigger the animation
             time.sleep(0.5)
-            QApplication.processEvents()
+
+        QApplication.processEvents()
 
         reward = self.calculate_coverage_increase()
 
