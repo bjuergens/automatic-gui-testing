@@ -251,30 +251,35 @@ class MainWindow(QMainWindow):
         # If we have an open combo box and click somewhere else in the window, the combo box must be closed. Again
         # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
         if self.open_combobox is not None:
-            closed_combobox = True
-            # If this would be true, a click in the combo box is planned. For some reason testing for a widget in an
-            # open combo box does not return the combo box but a QWidget with the name "qt_scrollarea_viewport".
-            # Only if this is not the case we know that we clicked outside the combo box and want to close it
+            # If this next condition is true, a click in the combo box is planned. For some reason testing for a widget
+            # in an open combo box does not return the combo box but a QWidget with the name "qt_scrollarea_viewport".
+            # Only if this is not the case we know that we clicked outside the combo box and therefore the combo box
+            # should be closed, which we do with the hidePopup() function
             if recv_widget.objectName() != "qt_scrollarea_viewport":
                 click_function = self.open_combobox.hidePopup
-                self.open_combobox = None
+
+            self.open_combobox = None
+            closed_combobox = True
 
         self.coverage_measurer.start()
         click_function()
         self.coverage_measurer.stop()
 
-        if isinstance(recv_widget, QComboBox):
-            # recv_widget is only a QComboBox when it is pressed to open, when it is pressed while it is open,
-            # recv_widget is a QWidget with the object name "qt_scrollarea_viewport" (this is also used in some lines
-            # above)
+        # Process events immediately, i.e. open the combo boxes, open dialogs, etc. Otherwise these events are queued
+        # until this method invocation is over. But that would also mean that we do not get the correct screenshot as
+        # we trigger the screenshot also from this method. Therefore the screenshot would be taken before the events
+        # in the queue are processed
+        QApplication.processEvents()
+
+        if isinstance(recv_widget, QComboBox) and not closed_combobox:
+            # If recv_widget is a QComboBox and we did not close a previously opened combo box, then we know that this
+            # widget has to be a combo box that has just been opened.
             self.open_combobox = recv_widget
 
         if isinstance(recv_widget, QComboBox) or closed_combobox:
             # Opening and closing a combo box is slower than 1 frame, therefore sleep for half a second to let the
             # combo box fully open or close and the invoke processEvents() to trigger the animation
             time.sleep(0.5)
-
-        QApplication.processEvents()
 
         reward = self.calculate_coverage_increase()
 
@@ -307,7 +312,15 @@ class MainWindow(QMainWindow):
 
         randomly_selected_widget = self.random_state.choice(random_widget_list)
 
+        if isinstance(randomly_selected_widget, QComboBox) and self.open_combobox is not None:
+            if randomly_selected_widget == self.open_combobox:
+                # Actual clicks on an opened QComboBox happen in its view(), specifically in a child widget that has the
+                # object name "qt_scrollarea_viewport". Therefore, replace the found widget with its child widget, so a
+                # click can happen in an opened QComboBox
+                randomly_selected_widget = self.open_combobox.findChild(QWidget, "qt_scrollarea_viewport")
+
         if isinstance(randomly_selected_widget, QAction):
+            # QAction does not have the width() and height() functions as a QWidget does, therefore use workarounds
             action_rectangle = self.menu_bar.actionGeometry(randomly_selected_widget)
             width = action_rectangle.width()
             height = action_rectangle.height()
