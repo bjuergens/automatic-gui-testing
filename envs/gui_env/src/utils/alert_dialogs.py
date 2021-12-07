@@ -26,6 +26,11 @@ class MissingContentDialog(QDialog):
 
         self.dialog.close_button.clicked.connect(self.close)
 
+        self.currently_shown_widgets = [
+            self.dialog.content_combobox,
+            self.dialog.close_button
+        ]
+
 
 class WarningDialog(QDialog):
 
@@ -43,6 +48,10 @@ class WarningDialog(QDialog):
         self.dialog.text_label.setText(warning_text)
 
         self.dialog.close_button.clicked.connect(self.close)
+
+        self.currently_shown_widgets = [
+            self.dialog.close_button
+        ]
 
 
 class ConfirmationDialog(QDialog):
@@ -62,3 +71,8 @@ class ConfirmationDialog(QDialog):
 
         self.dialog.accept_button.clicked.connect(self.close)
         self.dialog.decline_button.clicked.connect(self.close)
+
+        self.currently_shown_widgets = [
+            self.dialog.accept_button,
+            self.dialog.decline_button
+        ]

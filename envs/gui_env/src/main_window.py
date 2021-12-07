@@ -298,15 +298,22 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def simulate_click_on_random_widget(self):
-        if self.settings_dialog.isVisible():
-            random_widget_list = self.settings_dialog.currently_shown_widgets
+        current_active_modal_widget = QApplication.activeModalWidget()
+
+        if current_active_modal_widget is not None:
+            random_widget_list = current_active_modal_widget.currently_shown_widgets
         else:
             random_widget_list = self.currently_shown_widgets_main_window
 
         randomly_selected_widget = self.random_state.choice(random_widget_list)
 
-        height = randomly_selected_widget.height()
-        width = randomly_selected_widget.width()
+        if isinstance(randomly_selected_widget, QAction):
+            action_rectangle = self.menu_bar.actionGeometry(randomly_selected_widget)
+            width = action_rectangle.width()
+            height = action_rectangle.height()
+        else:
+            width = randomly_selected_widget.width()
+            height = randomly_selected_widget.height()
 
         x = self.random_state.randint(0, width)
         y = self.random_state.randint(0, height)
@@ -314,7 +321,11 @@ class MainWindow(QMainWindow):
         local_pos = QPoint(x, y)
         reward = self.execute_mouse_click(randomly_selected_widget, local_pos)
 
-        global_pos = randomly_selected_widget.mapToGlobal(local_pos)
+        if isinstance(randomly_selected_widget, QAction):
+            global_pos = self.menu_bar.mapToGlobal(local_pos)
+        else:
+            global_pos = randomly_selected_widget.mapToGlobal(local_pos)
+
         main_window_pos = self.mapFromGlobal(global_pos)
 
         logging.debug(f"Randomly selected widget '{randomly_selected_widget}' with local position '{local_pos}', " +
