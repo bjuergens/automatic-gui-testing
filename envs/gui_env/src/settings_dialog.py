@@ -2,7 +2,7 @@ import logging
 from functools import partial
 
 from PySide6.QtCore import Slot, Signal, Qt
-from PySide6.QtWidgets import QDialog, QApplication, QGridLayout, QPlainTextEdit
+from PySide6.QtWidgets import QDialog, QApplication, QGridLayout
 
 from envs.gui_env.src.backend.calculator import (NUMERAL_SYSTEMS, Calculator, show_missing_operators_error,
                                                  show_division_by_zero_error)
@@ -38,7 +38,7 @@ class SettingsDialog(QDialog):
         self.figure_printer = figure_printer
 
         self.currently_shown_widgets = []
-        self._set_clickable_widgets_text_printer_settings()
+        self._set_currently_shown_widgets_text_printer_settings()
 
         self._initialize()
         self._connect()
@@ -155,21 +155,23 @@ class SettingsDialog(QDialog):
     def _tab_changed(self, tab: int):
         logging.debug(f"Settings tab changed to '{tab}'")
         if tab == 0:
-            self._set_clickable_widgets_text_printer_settings()
+            self._set_currently_shown_widgets_text_printer_settings()
         elif tab == 1:
-            self._set_clickable_widgets_calculator_settings()
+            self._set_currently_shown_widgets_calculator_settings()
         elif tab == 2:
-            self.set_clickable_widgets_figure_printer_settings()
+            self._set_currently_shown_widgets_car_configurator_settings()
+        elif tab == 3:
+            self.set_currently_shown_widgets_figure_printer_settings()
 
-    def _get_main_widgets_settings_dialog(self):
+    def _get_always_shown_widgets(self):
         currently_shown_widgets = [
             self.settings_dialog.close_settings_dialog,
-            self.settings_dialog.settings_tab.tabBar()  # TODO does this work?
+            self.settings_dialog.settings_tab.tabBar()
         ]
         return currently_shown_widgets
 
-    def _set_clickable_widgets_text_printer_settings(self):
-        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+    def _set_currently_shown_widgets_text_printer_settings(self):
+        currently_shown_widgets = self._get_always_shown_widgets()
 
         currently_shown_widgets.extend([
             self.settings_dialog.number_of_words_combobox,
@@ -186,8 +188,8 @@ class SettingsDialog(QDialog):
 
         self.currently_shown_widgets = currently_shown_widgets
 
-    def _set_clickable_widgets_calculator_settings(self):
-        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+    def _set_currently_shown_widgets_calculator_settings(self):
+        currently_shown_widgets = self._get_always_shown_widgets()
 
         currently_shown_widgets.extend([
             self.settings_dialog.addition_checkbox,
@@ -199,8 +201,28 @@ class SettingsDialog(QDialog):
 
         self.currently_shown_widgets = currently_shown_widgets
 
-    def set_clickable_widgets_figure_printer_settings(self):
-        currently_shown_widgets = self._get_main_widgets_settings_dialog()
+    def _set_currently_shown_widgets_car_configurator_settings(self):
+        currently_shown_widgets = self._get_always_shown_widgets()
+
+        currently_shown_widgets.extend([
+            self.settings_dialog.tire_20_inch_checkbox,
+            self.settings_dialog.tire_22_inch_checkbox,
+            self.settings_dialog.tire_18_inch_checkbox,
+            self.settings_dialog.tire_19_inch_checkbox,
+            self.settings_dialog.modern_interior_checkbox,
+            self.settings_dialog.vintage_interior_checkbox,
+            self.settings_dialog.sport_interior_checkbox,
+            self.settings_dialog.combustion_engine_a_checkbox,
+            self.settings_dialog.combustion_engine_b_checkbox,
+            self.settings_dialog.combustion_engine_c_checkbox,
+            self.settings_dialog.electric_motor_a_checkbox,
+            self.settings_dialog.electric_motor_b_checkbox,
+        ])
+
+        self.currently_shown_widgets = currently_shown_widgets
+
+    def set_currently_shown_widgets_figure_printer_settings(self):
+        currently_shown_widgets = self._get_always_shown_widgets()
 
         currently_shown_widgets.append(self.settings_dialog.activate_figure_printer_checkbox)
 
@@ -220,9 +242,15 @@ class SettingsDialog(QDialog):
 
 
 def main():  # pragma: no cover
+    from PySide6.QtWidgets import QPlainTextEdit, QLCDNumber, QComboBox, QFrame, QPushButton
     app = QApplication()
     text_printer = TextPrinter(QPlainTextEdit())
-    dialog = SettingsDialog(text_printer=text_printer)
+    calculator = Calculator(QLCDNumber(), QComboBox(), QComboBox(), QComboBox())
+    car_configurator = CarConfigurator(QFrame(), QComboBox(), QFrame(), QComboBox(), QFrame(), QComboBox(), QFrame(),
+                                       QComboBox(), QPushButton())
+    figure_printer = FigurePrinter(QPlainTextEdit(), QComboBox())
+    dialog = SettingsDialog(text_printer=text_printer, calculator=calculator, car_configurator=car_configurator,
+                            figure_printer=figure_printer)
     dialog.show()
     app.exec()
 

@@ -3,7 +3,7 @@ import os
 import sys
 import time
 from functools import partial
-from typing import Union
+from typing import List, Union, Tuple
 
 import coverage.exceptions
 import numpy as np
@@ -39,7 +39,6 @@ class MainWindow(QMainWindow):
 
         self._initialize()
 
-        # TODO populate this, and implement changing this when appropriate widgets are clicked
         self.currently_shown_widgets_main_window = []
         # Initially we start with these widgets
         self._set_currently_shown_widgets_text_printer()
@@ -56,14 +55,11 @@ class MainWindow(QMainWindow):
             self.main_window.show_configuration_button
         )
 
-        self._connect_buttons()
-
         self.settings_dialog = SettingsDialog(text_printer=self.text_printer, calculator=self.calculator,
                                               car_configurator=self.car_configurator,
                                               figure_printer=self.figure_printer, parent=self.main_window)
 
-        self.settings_action.triggered.connect(self.settings_dialog.show)
-        self.settings_dialog.figure_printer_activated.connect(partial(toggle_figure_printer_widgets, self))
+        self._connect_buttons()
 
         self.setCentralWidget(self.main_window)
 
@@ -120,9 +116,13 @@ class MainWindow(QMainWindow):
         self.main_window.car_configurator_button.clicked.connect(
             partial(self.main_window.main_stacked_widget.setCurrentIndex, 2)
         )
+        self.main_window.car_configurator_button.clicked.connect(self._set_currently_shown_widgets_car_configurator)
 
         self.car_configurator.signal_handler.disabled_cars.connect(partial(show_disabled_cars_error_dialog, self))
         self.car_configurator.signal_handler.car_configured.connect(partial(show_car_configuration_dialog, self))
+        self.car_configurator.signal_handler.changed_active_car_configurator_widgets.connect(
+            self._change_currently_shown_widgets_car_configurator
+        )
 
         # Figure Printer
         self.main_window.figure_printer_button.clicked.connect(
@@ -131,11 +131,16 @@ class MainWindow(QMainWindow):
         self.main_window.figure_printer_button.clicked.connect(self._set_currently_shown_widgets_figure_printer)
         self.main_window.start_drawing_figure_button.clicked.connect(self.figure_printer.draw_figure)
 
+        # Settings action and dialog
+        self.settings_action.triggered.connect(self.settings_dialog.show)
+        self.settings_dialog.figure_printer_activated.connect(partial(toggle_figure_printer_widgets, self))
+
     def _get_main_widgets_main_window(self):
-        # TODO settings qaction
         currently_shown_widgets_main_window = [
             self.main_window.text_printer_button,
-            self.main_window.calculator_button
+            self.main_window.calculator_button,
+            self.main_window.car_configurator_button,
+            self.settings_action  # This is technically not a QWidget but a QAction, but the click function handles it
         ]
 
         if self.main_window.figure_printer_button.isVisible():
@@ -144,30 +149,58 @@ class MainWindow(QMainWindow):
         return currently_shown_widgets_main_window
 
     def _set_currently_shown_widgets_text_printer(self):
-        currently_show_widgets_main_window = self._get_main_widgets_main_window()
-        currently_show_widgets_main_window.append(self.main_window.start_text_printer_button)
+        currently_shown_widgets_main_window = self._get_main_widgets_main_window()
+        currently_shown_widgets_main_window.append(self.main_window.start_text_printer_button)
 
-        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
+        self.currently_shown_widgets_main_window = currently_shown_widgets_main_window
 
     def _set_currently_shown_widgets_calculator(self):
-        currently_show_widgets_main_window = self._get_main_widgets_main_window()
-        currently_show_widgets_main_window.extend([
+        currently_shown_widgets_main_window = self._get_main_widgets_main_window()
+        currently_shown_widgets_main_window.extend([
             self.main_window.first_operand_combobox,
             self.main_window.math_operator_combobox,
             self.main_window.second_operand_combobox,
             self.main_window.start_calculation_button
         ])
 
-        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
+        self.currently_shown_widgets_main_window = currently_shown_widgets_main_window
+
+    def _set_currently_shown_widgets_car_configurator(self):
+        currently_shown_widgets_main_window = self._get_main_widgets_main_window()
+        currently_shown_widgets_main_window.append(self.main_window.car_model_selection_combobox)
+
+        if self.main_window.tire_selection_frame.isVisible():
+            currently_shown_widgets_main_window.append(self.main_window.tire_selection_combobox)
+
+        if self.main_window.interior_design_frame.isVisible():
+            currently_shown_widgets_main_window.append(self.main_window.interior_design_combobox)
+
+        if self.main_window.propulsion_system_frame.isVisible():
+            currently_shown_widgets_main_window.append(self.main_window.propulsion_system_combobox)
+
+        if self.main_window.show_configuration_button.isVisible():
+            currently_shown_widgets_main_window.append(self.main_window.show_configuration_button)
+
+        self.currently_shown_widgets_main_window = currently_shown_widgets_main_window
+
+    @Slot(object)
+    def _change_currently_shown_widgets_car_configurator(self, widget_list: List[Tuple[bool, QWidget]]):
+        for is_visible, widget in widget_list:
+            if is_visible and widget not in self.currently_shown_widgets_main_window:
+                self.currently_shown_widgets_main_window.append(widget)
+                continue
+
+            if not is_visible and widget in self.currently_shown_widgets_main_window:
+                self.currently_shown_widgets_main_window.remove(widget)
 
     def _set_currently_shown_widgets_figure_printer(self):
-        currently_show_widgets_main_window = self._get_main_widgets_main_window()
-        currently_show_widgets_main_window.extend([
+        currently_shown_widgets_main_window = self._get_main_widgets_main_window()
+        currently_shown_widgets_main_window.extend([
             self.main_window.figure_combobox,
             self.main_window.start_drawing_figure_button
         ])
 
-        self.currently_shown_widgets_main_window = currently_show_widgets_main_window
+        self.currently_shown_widgets_main_window = currently_shown_widgets_main_window
 
     def take_screenshot(self) -> np.ndarray:
         screen = QApplication.primaryScreen()

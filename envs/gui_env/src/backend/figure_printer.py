@@ -166,7 +166,7 @@ def toggle_figure_printer_settings(settings_dialog, checked: bool):
         settings_dialog.settings_dialog.black_figure_color_button.setEnabled(False)
         settings_dialog.settings_dialog.brown_figure_color_button.setEnabled(False)
 
-    settings_dialog.set_clickable_widgets_figure_printer_settings()
+    settings_dialog.set_currently_shown_widgets_figure_printer_settings()
     settings_dialog.figure_printer_activated.emit(checked)
 
 

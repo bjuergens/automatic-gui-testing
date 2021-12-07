@@ -12,6 +12,7 @@ class SignalHandler(QObject):
     green_color_text_printer_selected = Signal()
     disabled_cars = Signal(str)
     car_configured = Signal(str)
+    changed_active_car_configurator_widgets = Signal(object)  # Type Hint of signal values: List[QWidget]
 
 
 def load_ui(ui_file: str, parent_widget: QWidget = None) -> QWidget:

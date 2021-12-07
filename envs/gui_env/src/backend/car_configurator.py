@@ -109,6 +109,13 @@ class CarConfigurator:
         self.propulsion_system_frame.setVisible(False)
         self.show_configuration_button.setVisible(False)
 
+        self.signal_handler.changed_active_car_configurator_widgets.emit([
+            (False, self.tire_selection_frame),
+            (False, self.interior_design_frame),
+            (False, self.propulsion_system_frame),
+            (False, self.show_configuration_button)
+        ])
+
     def _reset(self):
         cars = []
         if self.car_a:
@@ -315,6 +322,13 @@ class CarConfigurator:
         self.propulsion_system_frame.setVisible(False)
         self.show_configuration_button.setVisible(False)
 
+        self.signal_handler.changed_active_car_configurator_widgets.emit([
+            (True, self.tire_selection_frame),
+            (False, self.interior_design_frame),
+            (False, self.propulsion_system_frame),
+            (False, self.show_configuration_button)
+        ])
+
     @Slot()
     def change_selected_tire(self):
         selected_tire = self.tire_selection_combobox.currentText()
@@ -332,6 +346,13 @@ class CarConfigurator:
         self.propulsion_system_frame.setVisible(False)
         self.show_configuration_button.setVisible(False)
 
+        self.signal_handler.changed_active_car_configurator_widgets.emit([
+            (True, self.tire_selection_frame),
+            (True, self.interior_design_frame),
+            (False, self.propulsion_system_frame),
+            (False, self.show_configuration_button)
+        ])
+
     @Slot()
     def change_selected_interior(self):
         selected_interior = self.interior_design_combobox.currentText()
@@ -345,6 +366,13 @@ class CarConfigurator:
 
         self.propulsion_system_frame.setVisible(True)
         self.show_configuration_button.setVisible(False)
+
+        self.signal_handler.changed_active_car_configurator_widgets.emit([
+            (True, self.tire_selection_frame),
+            (True, self.interior_design_frame),
+            (True, self.propulsion_system_frame),
+            (False, self.show_configuration_button)
+        ])
 
     @Slot()
     def change_selected_propulsion_system(self):
@@ -362,6 +390,13 @@ class CarConfigurator:
         assert self.selected_propulsion_system in PROPULSION_SYSTEMS
 
         self.show_configuration_button.setVisible(True)
+
+        self.signal_handler.changed_active_car_configurator_widgets.emit([
+            (True, self.tire_selection_frame),
+            (True, self.interior_design_frame),
+            (True, self.propulsion_system_frame),
+            (True, self.show_configuration_button)
+        ])
 
     @Slot()
     def print_selected_configuration(self):
