@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.main_window)
 
         self.coverage_measurer = coverage_measurer
-        self.old_coverage_percentage = self.get_current_coverage_percentage()
+        self.old_coverage_percentage = 0
 
         self.paint_event_filter = paint_event_filter
 
