@@ -12,6 +12,7 @@ from PySide6.QtCore import QThread, Signal, Slot, QTimer
 from PySide6.QtWidgets import QApplication
 from coverage import Coverage
 
+from envs.gui_env.src.utils.paint_event_filter import PaintEventFilter
 from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
@@ -103,9 +104,11 @@ class GUIEnv(gym.Env):
         from envs.gui_env.src.main_window import MainWindow
         coverage_measurer.stop()
 
+        paint_event_filter = PaintEventFilter()
         app = QApplication()
+        app.installEventFilter(paint_event_filter)
 
-        self.main_window = MainWindow(coverage_measurer)
+        self.main_window = MainWindow(coverage_measurer, paint_event_filter)
         self.main_window.show()
 
         self.register_click_thread = RegisterClickThread(click_connection_child, terminate_connection_child,

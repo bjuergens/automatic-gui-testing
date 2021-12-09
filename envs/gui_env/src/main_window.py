@@ -1,13 +1,12 @@
 import logging
 import os
 import sys
-import time
 from functools import partial
 from typing import List, Union, Tuple
 
 import coverage.exceptions
 import numpy as np
-from PySide6.QtCore import Qt, QPoint, Slot, Signal
+from PySide6.QtCore import Qt, QPoint, Slot, Signal, QThread
 from PySide6.QtGui import QAction, QFontDatabase
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
@@ -19,6 +18,7 @@ from envs.gui_env.src.backend.car_configurator import (CarConfigurator, show_dis
 from envs.gui_env.src.backend.figure_printer import FigurePrinter, toggle_figure_printer_widgets
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
+from envs.gui_env.src.utils.paint_event_filter import PaintEventFilter
 from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
 from envs.gui_env.window_configuration import WINDOW_SIZE
 
@@ -27,8 +27,8 @@ class MainWindow(QMainWindow):
     observation_signal = Signal(float, np.ndarray)  # pragma: no cover
     observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)  # pragma: no cover
 
-    def __init__(self, coverage_measurer: Coverage, random_click_probability: float = None, random_seed: int = None,
-                 **kwargs):  # pragma: no cover
+    def __init__(self, coverage_measurer: Coverage, paint_event_filter: PaintEventFilter,
+                 random_click_probability: float = None, random_seed: int = None, **kwargs):  # pragma: no cover
         super().__init__(**kwargs)
 
         self.setWindowTitle("test-gui-worldmodels")
@@ -66,6 +66,8 @@ class MainWindow(QMainWindow):
         self.coverage_measurer = coverage_measurer
         self.old_coverage_percentage = self.get_current_coverage_percentage()
 
+        self.paint_event_filter = paint_event_filter
+
         self.random_click_probability = random_click_probability
         self.random_state = np.random.RandomState(random_seed)
 
@@ -79,6 +81,14 @@ class MainWindow(QMainWindow):
         self.menu_bar.addAction(self.settings_action)
         self.setMenuBar(self.menu_bar)
 
+        # Text Printer
+
+        # The inner widget of the text printer output is called 'qt_scrollarea_viewport', but this will interfere with
+        # some hacks that are done later when clicking on combo boxes. Therefore we need to change the name here
+        self.main_window.text_printer_output.findChild(QWidget, "qt_scrollarea_viewport").setObjectName(
+            "scrollarea_text_printer"
+        )
+
         # Car Configurator
 
         # Set top label to bold, to function as a headline
@@ -88,6 +98,11 @@ class MainWindow(QMainWindow):
         self.main_window.car_configurator_headline_label.setFont(font)
 
         # Figure Printer
+
+        # Same reason to do this, as with the text printer output a few lines above
+        self.main_window.figure_printer_output.findChild(QWidget, "qt_scrollarea_viewport").setObjectName(
+            "scrollarea_figure_printer"
+        )
 
         # Figure Printer is hidden at first, must be activated in the settings
         self.main_window.figure_printer_button.setVisible(False)
@@ -271,15 +286,25 @@ class MainWindow(QMainWindow):
         # in the queue are processed
         QApplication.processEvents()
 
+        timer = self.paint_event_filter.last_paint_event_timer
+        # Unfortunately the last paint event does not mean that the window is actually painted, it just means that
+        # it was signalled to I think the window manager of the OS. I could not find any way to tell exactly when all
+        # events are fully executed, therefore we have to use these hacky sleep values
+        if isinstance(recv_widget, QComboBox) or closed_combobox:
+            # Opening and closing a combo box is slower than other painting events. 500msec seem to be a working value
+            timer_value = 500
+        else:
+            timer_value = 200
+
+        while not timer.hasExpired(timer_value):
+            logging.debug("Sleeping because timer did not elapse")
+            QThread.msleep(50)
+        logging.debug("Woke up")
+
         if isinstance(recv_widget, QComboBox) and not closed_combobox:
             # If recv_widget is a QComboBox and we did not close a previously opened combo box, then we know that this
             # widget has to be a combo box that has just been opened.
             self.open_combobox = recv_widget
-
-        if isinstance(recv_widget, QComboBox) or closed_combobox:
-            # Opening and closing a combo box is slower than 1 frame, therefore sleep for half a second to let the
-            # combo box fully open or close and the invoke processEvents() to trigger the animation
-            time.sleep(0.5)
 
         reward = self.calculate_coverage_increase()
 
@@ -359,7 +384,7 @@ def main():  # pragma: no cover
 
     app = QApplication([])
     coverage_measurer = Coverage()
-    widget = MainWindow(coverage_measurer)
+    widget = MainWindow(coverage_measurer, None)
     widget.show()
     sys.exit(app.exec())
 
