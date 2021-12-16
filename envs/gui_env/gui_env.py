@@ -17,6 +17,11 @@ from envs.gui_env.src.utils.utils import take_screenshot
 from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
+LAST_STEP_TIMEOUT = 300
+LAST_PAINT_EVENT_TIMEOUT = 100
+ADDITIONAL_PAINT_TIMEOUT = 300
+
+
 class RegisterClickThread(QThread):
     position_signal = Signal(int, int)
     random_widget_signal = Signal()
@@ -56,8 +61,8 @@ class RegisterClickThread(QThread):
                     self.terminate_connection_child.send(True)
                     return
                 elif conn == self.click_connection_child:
-                    while not self.last_step_timer.hasExpired(250):
-                        QThread.msleep(50)
+                    while not self.last_step_timer.hasExpired(LAST_STEP_TIMEOUT):
+                        QThread.msleep(25)
 
                     try:
                         received_data = conn.recv()
@@ -69,18 +74,19 @@ class RegisterClickThread(QThread):
                         self.position_signal.emit(received_data[0], received_data[1])
                     else:
                         self.random_widget_signal.emit()
-
-                    self.last_step_timer.restart()
                 elif conn == self.screenshot_connection_child:
                     assert conn.recv()
-                    timer = self.paint_event_filter.last_paint_event_timer
+                    last_paint_event_timer = self.paint_event_filter.last_paint_event_timer
 
-                    while not timer.hasExpired(100):
-                        QThread.msleep(10)
-                    QThread.msleep(300)
+                    while not last_paint_event_timer.hasExpired(LAST_PAINT_EVENT_TIMEOUT):
+                        QThread.msleep(25)
+
+                    QThread.msleep(ADDITIONAL_PAINT_TIMEOUT)
 
                     screenshot = take_screenshot(self.window_id)
                     self.screenshot_connection_child.send(screenshot)
+
+                    self.last_step_timer.restart()
 
 
 class GUIEnv(gym.Env):
