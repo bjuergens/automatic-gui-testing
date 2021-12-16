@@ -254,7 +254,7 @@ class MainWindow(QMainWindow):
             # clicked
             is_ancestor = current_active_modal_widget.isAncestorOf(recv_widget)
 
-            if not is_ancestor:
+            if not is_ancestor and recv_widget.objectName() != "qt_scrollarea_viewport":
                 logging.debug(f"{self.i}: Is not an ancestor, set click function to none function")
                 click_function = none_function
 
