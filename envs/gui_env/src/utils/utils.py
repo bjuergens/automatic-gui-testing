@@ -2,7 +2,7 @@ import numpy as np
 from PySide6.QtCore import QFile, QObject, Signal
 from PySide6.QtGui import QImage
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QApplication
 
 
 class SignalHandler(QObject):
@@ -34,3 +34,10 @@ def convert_qimage_to_ndarray(image: QImage):
     # Discard Alpha channel at the end
     array = np.array(data).reshape((height, width, 4))[:, :, :3]
     return array
+
+
+def take_screenshot(window_id) -> np.ndarray:
+    screen = QApplication.primaryScreen()
+    screenshot = screen.grabWindow(window_id, 0, 0).toImage()
+
+    return convert_qimage_to_ndarray(screenshot)

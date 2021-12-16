@@ -6,7 +6,7 @@ from typing import List, Union, Tuple
 
 import coverage.exceptions
 import numpy as np
-from PySide6.QtCore import Qt, QPoint, Slot, Signal, QThread
+from PySide6.QtCore import Qt, QPoint, Slot, Signal
 from PySide6.QtGui import QAction, QFontDatabase
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QWidget, QComboBox
@@ -24,7 +24,6 @@ from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
 class MainWindow(QMainWindow):
-    observation_signal = Signal(float, np.ndarray)  # pragma: no cover
     observation_and_coordinates_signal = Signal(float, np.ndarray, int, int)  # pragma: no cover
 
     def __init__(self, coverage_measurer: Coverage, paint_event_filter: PaintEventFilter,
@@ -73,6 +72,8 @@ class MainWindow(QMainWindow):
 
         # Keep track of an open combo box to close it when clicked somewhere else
         self.open_combobox = None
+
+        self.i = 0
 
     def _initialize(self):
         # Initialize menu bar
@@ -217,13 +218,6 @@ class MainWindow(QMainWindow):
 
         self.currently_shown_widgets_main_window = currently_shown_widgets_main_window
 
-    def take_screenshot(self) -> np.ndarray:
-        screen = QApplication.primaryScreen()
-        window = self.window()
-        screenshot = screen.grabWindow(window.winId(), 0, 0).toImage()
-
-        return convert_qimage_to_ndarray(screenshot)
-
     def get_current_coverage_percentage(self):
         with open(os.devnull, "w") as f:
             try:
@@ -240,11 +234,16 @@ class MainWindow(QMainWindow):
         return reward
 
     def execute_mouse_click(self, recv_widget: Union[QWidget, QAction], local_pos: QPoint) -> float:
+        def none_function():
+            pass
+
         if isinstance(recv_widget, QAction):
             # QAction do not work with QTest.mouseClick, as this function only works with QWidgets
             click_function = recv_widget.trigger
+            logging.debug(f"{self.i}: Set click function to QAction.trigger")
         else:
             click_function = partial(QTest.mouseClick, recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
+            logging.debug(f"{self.i}: Set click function to QTest.mouseClick")
 
         # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
         # Unfortunately QTest.mouseClick() would ignore this
@@ -256,9 +255,7 @@ class MainWindow(QMainWindow):
             is_ancestor = current_active_modal_widget.isAncestorOf(recv_widget)
 
             if not is_ancestor:
-                def none_function():
-                    pass
-
+                logging.debug(f"{self.i}: Is not an ancestor, set click function to none function")
                 click_function = none_function
 
         closed_combobox = False
@@ -271,6 +268,7 @@ class MainWindow(QMainWindow):
             # Only if this is not the case we know that we clicked outside the combo box and therefore the combo box
             # should be closed, which we do with the hidePopup() function
             if recv_widget.objectName() != "qt_scrollarea_viewport":
+                logging.debug(f"{self.i}: Set click function to hidePopup")
                 click_function = self.open_combobox.hidePopup
 
             self.open_combobox = None
@@ -279,27 +277,6 @@ class MainWindow(QMainWindow):
         self.coverage_measurer.start()
         click_function()
         self.coverage_measurer.stop()
-
-        # Process events immediately, i.e. open the combo boxes, open dialogs, etc. Otherwise these events are queued
-        # until this method invocation is over. But that would also mean that we do not get the correct screenshot as
-        # we trigger the screenshot also from this method. Therefore the screenshot would be taken before the events
-        # in the queue are processed
-        QApplication.processEvents()
-
-        timer = self.paint_event_filter.last_paint_event_timer
-        # Unfortunately the last paint event does not mean that the window is actually painted, it just means that
-        # it was signalled to I think the window manager of the OS. I could not find any way to tell exactly when all
-        # events are fully executed, therefore we have to use these hacky sleep values
-        if isinstance(recv_widget, QComboBox) or closed_combobox:
-            # Opening and closing a combo box is slower than other painting events. 500msec seem to be a working value
-            timer_value = 500
-        else:
-            timer_value = 200
-
-        while not timer.hasExpired(timer_value):
-            logging.debug("Sleeping because timer did not elapse")
-            QThread.msleep(50)
-        logging.debug("Woke up")
 
         if isinstance(recv_widget, QComboBox) and not closed_combobox:
             # If recv_widget is a QComboBox and we did not close a previously opened combo box, then we know that this
@@ -314,17 +291,18 @@ class MainWindow(QMainWindow):
     def simulate_click(self, pos_x: int, pos_y: int):
         pos = QPoint(pos_x, pos_y)
         global_pos = self.mapToGlobal(pos)
-        logging.debug(f"Received position {pos}, mapped to global position {global_pos}")
+        logging.debug(f"{self.i}: Received position {pos}, mapped to global position {global_pos}")
 
         recv_widget = QApplication.widgetAt(global_pos)
         local_pos = recv_widget.mapFromGlobal(global_pos)
 
-        logging.debug(f"Found widget {recv_widget}, mapped to local position {local_pos}")
+        logging.debug(f"{self.i}: Found widget {recv_widget}, mapped to local position {local_pos}")
 
         reward = self.execute_mouse_click(recv_widget, local_pos)
 
-        screenshot = self.take_screenshot()
-        self.observation_signal.emit(reward, screenshot)
+        self.i += 1
+
+        return reward
 
     @Slot()
     def simulate_click_on_random_widget(self):
@@ -342,7 +320,7 @@ class MainWindow(QMainWindow):
                 # Actual clicks on an opened QComboBox happen in its view(), specifically in a child widget that has the
                 # object name "qt_scrollarea_viewport". Therefore, replace the found widget with its child widget, so a
                 # click can happen in an opened QComboBox
-                randomly_selected_widget = self.open_combobox.findChild(QWidget, "qt_scrollarea_viewport")
+                randomly_selected_widget = self.open_combobox.view().viewport()
 
         if isinstance(randomly_selected_widget, QAction):
             # QAction does not have the width() and height() functions as a QWidget does, therefore use workarounds
@@ -357,20 +335,34 @@ class MainWindow(QMainWindow):
         y = self.random_state.randint(0, height)
 
         local_pos = QPoint(x, y)
-        reward = self.execute_mouse_click(randomly_selected_widget, local_pos)
 
         if isinstance(randomly_selected_widget, QAction):
             global_pos = self.menu_bar.mapToGlobal(local_pos)
         else:
             global_pos = randomly_selected_widget.mapToGlobal(local_pos)
 
+        found_widget_at_point = QApplication.widgetAt(global_pos)
+
+        if not found_widget_at_point == randomly_selected_widget and not isinstance(randomly_selected_widget, QAction):
+            new_local_pos = found_widget_at_point.mapFromGlobal(global_pos)
+            logging.debug(
+                f"NOT EQUAL: Found widget {found_widget_at_point} at click point where randomly selected widget " +
+                f"{randomly_selected_widget} was set to be clicked. Compare old local_pos {local_pos} with " +
+                f"new {new_local_pos}"
+            )
+            randomly_selected_widget = found_widget_at_point
+            local_pos = new_local_pos
+
+        reward = self.execute_mouse_click(randomly_selected_widget, local_pos)
+
         main_window_pos = self.mapFromGlobal(global_pos)
+        logging.debug(f"{self.i}: Randomly selected widget '{randomly_selected_widget}' with local " +
+                      f"position '{local_pos}', global position '{global_pos}' and main window " +
+                      f"position '{main_window_pos}'")
 
-        logging.debug(f"Randomly selected widget '{randomly_selected_widget}' with local position '{local_pos}', " +
-                      f"global position '{global_pos}' and main window position '{main_window_pos}'")
+        self.i += 1
 
-        screenshot = self.take_screenshot()
-        self.observation_and_coordinates_signal.emit(reward, screenshot, main_window_pos.x(), main_window_pos.y())
+        return reward, main_window_pos.x(), main_window_pos.y()
 
     def generate_html_report(self, directory: str):
         try:
