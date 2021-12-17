@@ -17,9 +17,10 @@ from envs.gui_env.src.utils.utils import take_screenshot
 from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
-LAST_STEP_TIMEOUT = 300
+LAST_STEP_TIMEOUT = 100
+LAST_STEP_TIMEOUT_ADDITIONAL_DELAY = 300
 LAST_PAINT_EVENT_TIMEOUT = 100
-ADDITIONAL_PAINT_TIMEOUT = 300
+LAST_PAINT_EVENT_TIMEOUT_ADDITIONAL_DELAY = 300
 
 
 class RegisterClickThread(QThread):
@@ -46,6 +47,8 @@ class RegisterClickThread(QThread):
         self.last_step_timer = QElapsedTimer()
         self.last_step_timer.start()
 
+        self.current_last_step_timeout = LAST_STEP_TIMEOUT_ADDITIONAL_DELAY
+
     def run(self) -> None:
         logging.debug("Clicking Thread: Starting thread")
         while True:
@@ -61,7 +64,7 @@ class RegisterClickThread(QThread):
                     self.terminate_connection_child.send(True)
                     return
                 elif conn == self.click_connection_child:
-                    while not self.last_step_timer.hasExpired(LAST_STEP_TIMEOUT):
+                    while not self.last_step_timer.hasExpired(self.current_last_step_timeout):
                         QThread.msleep(25)
 
                     try:
@@ -75,13 +78,20 @@ class RegisterClickThread(QThread):
                     else:
                         self.random_widget_signal.emit()
                 elif conn == self.screenshot_connection_child:
-                    assert conn.recv()
+                    increased_delay = conn.recv()
+
+                    if increased_delay:
+                        self.current_last_step_timeout = LAST_STEP_TIMEOUT_ADDITIONAL_DELAY
+                        last_paint_event_timeout = LAST_PAINT_EVENT_TIMEOUT_ADDITIONAL_DELAY
+                    else:
+                        self.current_last_step_timeout = LAST_STEP_TIMEOUT
+                        last_paint_event_timeout = LAST_PAINT_EVENT_TIMEOUT
+
                     last_paint_event_timer = self.paint_event_filter.last_paint_event_timer
 
-                    while not last_paint_event_timer.hasExpired(LAST_PAINT_EVENT_TIMEOUT):
+                    while not last_paint_event_timer.hasExpired(last_paint_event_timeout):
                         QThread.msleep(25)
-
-                    QThread.msleep(ADDITIONAL_PAINT_TIMEOUT)
+                    QThread.msleep(last_paint_event_timeout)
 
                     screenshot = take_screenshot(self.window_id)
                     self.screenshot_connection_child.send(screenshot)
@@ -105,6 +115,7 @@ class GUIEnv(gym.Env):
 
         self.application_process: Process
 
+        # TODO technically not needed? since it is called in reset()
         self._initialize()
 
         self.random_state = np.random.RandomState()
@@ -165,13 +176,13 @@ class GUIEnv(gym.Env):
 
     @Slot(int, int)
     def _simulate_click(self, pos_x: int, pos_y: int):
-        reward = self.main_window.simulate_click(pos_x, pos_y)
-        self.click_connection_child.send(reward)
+        reward, increased_delay = self.main_window.simulate_click(pos_x, pos_y)
+        self.click_connection_child.send((reward, increased_delay))
 
     @Slot()
     def _simulate_click_on_random_widget(self):
-        reward, pos_x, pos_y = self.main_window.simulate_click_on_random_widget()
-        self.click_connection_child.send((reward, pos_x, pos_y))
+        reward, pos_x, pos_y, increased_delay = self.main_window.simulate_click_on_random_widget()
+        self.click_connection_child.send((reward, pos_x, pos_y, increased_delay))
 
     @Slot()
     def _generate_html_report(self):
@@ -194,15 +205,15 @@ class GUIEnv(gym.Env):
         self.click_connection_parent.send(action)
 
         if isinstance(action, bool):
-            reward, x, y = self.click_connection_parent.recv()
+            reward, x, y, increased_delay = self.click_connection_parent.recv()
         else:
-            reward = self.click_connection_parent.recv()
+            reward, increased_delay = self.click_connection_parent.recv()
             x = action[0]
             y = action[1]
 
         info = {"x": x, "y": y}
 
-        self.screenshot_connection_parent.send(True)
+        self.screenshot_connection_parent.send(increased_delay)
         observation = self.screenshot_connection_parent.recv()
 
         return reward, observation, False, info

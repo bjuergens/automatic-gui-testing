@@ -41,3 +41,7 @@ def take_screenshot(window_id) -> np.ndarray:
     screenshot = screen.grabWindow(window_id, 0, 0).toImage()
 
     return convert_qimage_to_ndarray(screenshot)
+
+
+def do_nothing_function():
+    pass

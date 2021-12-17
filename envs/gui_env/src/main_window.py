@@ -19,7 +19,7 @@ from envs.gui_env.src.backend.figure_printer import FigurePrinter, toggle_figure
 from envs.gui_env.src.backend.text_printer import TextPrinter
 from envs.gui_env.src.settings_dialog import SettingsDialog
 from envs.gui_env.src.utils.paint_event_filter import PaintEventFilter
-from envs.gui_env.src.utils.utils import load_ui, convert_qimage_to_ndarray
+from envs.gui_env.src.utils.utils import load_ui, do_nothing_function
 from envs.gui_env.window_configuration import WINDOW_SIZE
 
 
@@ -233,9 +233,19 @@ class MainWindow(QMainWindow):
         self.old_coverage_percentage = new_coverage_percentage
         return reward
 
-    def execute_mouse_click(self, recv_widget: Union[QWidget, QAction], local_pos: QPoint) -> float:
-        def none_function():
-            pass
+    def execute_mouse_click(self, recv_widget: Union[QWidget, QAction], local_pos: QPoint) -> Tuple[float, bool]:
+        """
+        QTest.mouseClick has some problems and works only for QWidgets, therefore we test for some conditions before
+        executing the click.
+
+        1. If a combo box is open, we want to close it, therefore we take either the click in the combo box, which will
+        select an item and closes it or hidePopup which simulates a click outside the combo box and closes it
+        2. If no combo box is open we check if a modal window is active. If this is the case we can only click inside
+        it, because other windows of the application cannot be clicked (because of the modality). If the click is
+        outside the modal window (this is checked with the isAncestorOf function), then we set the click function to
+        an essential "None function" which does nothing. Otherwise we use the QTest.mouseClick function or
+         QAction.trigger
+        """
 
         if isinstance(recv_widget, QAction):
             # QAction do not work with QTest.mouseClick, as this function only works with QWidgets
@@ -245,26 +255,14 @@ class MainWindow(QMainWindow):
             click_function = partial(QTest.mouseClick, recv_widget, Qt.LeftButton, Qt.NoModifier, local_pos)
             logging.debug(f"{self.i}: Set click function to QTest.mouseClick")
 
-        # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
-        # Unfortunately QTest.mouseClick() would ignore this
-        current_active_modal_widget = QApplication.activeModalWidget()
-
-        if current_active_modal_widget is not None:
-            # This checks if the recv_widget is part of the modal window, if this is the case it is allowed to be
-            # clicked
-            is_ancestor = current_active_modal_widget.isAncestorOf(recv_widget)
-
-            if not is_ancestor and recv_widget.objectName() != "qt_scrollarea_viewport":
-                logging.debug(f"{self.i}: Is not an ancestor, set click function to none function")
-                click_function = none_function
-
         closed_combobox = False
 
-        # If we have an open combo box and click somewhere else in the window, the combo box must be closed. Again
+        # If we have an open combo box and click somewhere else in the window, the combo box must be closed.
         # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
         if self.open_combobox is not None:
             # If this next condition is true, a click in the combo box is planned. For some reason testing for a widget
             # in an open combo box does not return the combo box but a QWidget with the name "qt_scrollarea_viewport".
+            # This is probably because the open QComboBox uses a viewport.
             # Only if this is not the case we know that we clicked outside the combo box and therefore the combo box
             # should be closed, which we do with the hidePopup() function
             if recv_widget.objectName() != "qt_scrollarea_viewport":
@@ -273,6 +271,19 @@ class MainWindow(QMainWindow):
 
             self.open_combobox = None
             closed_combobox = True
+        else:
+            # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
+            # Unfortunately QTest.mouseClick() would ignore this
+            current_active_modal_widget = QApplication.activeModalWidget()
+
+            if current_active_modal_widget is not None:
+                # This checks if the recv_widget is part of the modal window, if this is the case it is allowed to be
+                # clicked
+                is_ancestor = current_active_modal_widget.isAncestorOf(recv_widget)
+
+                if not is_ancestor and recv_widget.objectName() != "qt_scrollarea_viewport":
+                    click_function = do_nothing_function
+                    logging.debug(f"{self.i}: Is not an ancestor, set click function to do nothing function")
 
         self.coverage_measurer.start()
         click_function()
@@ -285,10 +296,16 @@ class MainWindow(QMainWindow):
 
         reward = self.calculate_coverage_increase()
 
-        return reward
+        increased_delay: bool = (
+                closed_combobox
+                or self.open_combobox is not None
+                or isinstance(recv_widget, QAction)
+                or isinstance(recv_widget, QMenuBar)
+        )
 
-    @Slot(int, int)
-    def simulate_click(self, pos_x: int, pos_y: int):
+        return reward, increased_delay
+
+    def simulate_click(self, pos_x: int, pos_y: int) -> Tuple[float, bool]:
         pos = QPoint(pos_x, pos_y)
         global_pos = self.mapToGlobal(pos)
         logging.debug(f"{self.i}: Received position {pos}, mapped to global position {global_pos}")
@@ -298,14 +315,13 @@ class MainWindow(QMainWindow):
 
         logging.debug(f"{self.i}: Found widget {recv_widget}, mapped to local position {local_pos}")
 
-        reward = self.execute_mouse_click(recv_widget, local_pos)
+        reward, increased_delay = self.execute_mouse_click(recv_widget, local_pos)
 
         self.i += 1
 
-        return reward
+        return reward, increased_delay
 
-    @Slot()
-    def simulate_click_on_random_widget(self):
+    def simulate_click_on_random_widget(self) -> Tuple[float, int, int, bool]:
         current_active_modal_widget = QApplication.activeModalWidget()
 
         if current_active_modal_widget is not None:
@@ -353,7 +369,7 @@ class MainWindow(QMainWindow):
             randomly_selected_widget = found_widget_at_point
             local_pos = new_local_pos
 
-        reward = self.execute_mouse_click(randomly_selected_widget, local_pos)
+        reward, increased_delay = self.execute_mouse_click(randomly_selected_widget, local_pos)
 
         main_window_pos = self.mapFromGlobal(global_pos)
         logging.debug(f"{self.i}: Randomly selected widget '{randomly_selected_widget}' with local " +
@@ -362,7 +378,7 @@ class MainWindow(QMainWindow):
 
         self.i += 1
 
-        return reward, main_window_pos.x(), main_window_pos.y()
+        return reward, main_window_pos.x(), main_window_pos.y(), increased_delay
 
     def generate_html_report(self, directory: str):
         try:
