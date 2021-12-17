@@ -256,6 +256,8 @@ class MainWindow(QMainWindow):
             logging.debug(f"{self.i}: Set click function to QTest.mouseClick")
 
         closed_combobox = False
+        # Use this to check which click function should be used and later if additional delay is needed
+        current_active_modal_widget = QApplication.activeModalWidget()
 
         # If we have an open combo box and click somewhere else in the window, the combo box must be closed.
         # QTest.mouseClick() ignores this unfortunately, therefore we have to manually close it
@@ -274,8 +276,6 @@ class MainWindow(QMainWindow):
         else:
             # First test if a modal window is active, if this is the case only clicks in the modal window are allowed
             # Unfortunately QTest.mouseClick() would ignore this
-            current_active_modal_widget = QApplication.activeModalWidget()
-
             if current_active_modal_widget is not None:
                 # This checks if the recv_widget is part of the modal window, if this is the case it is allowed to be
                 # clicked
@@ -301,6 +301,8 @@ class MainWindow(QMainWindow):
                 or self.open_combobox is not None
                 or isinstance(recv_widget, QAction)
                 or isinstance(recv_widget, QMenuBar)
+                or current_active_modal_widget != QApplication.activeModalWidget()  # Indicates a newly opened or closed
+                                                                                    # modal widget
         )
 
         return reward, increased_delay
