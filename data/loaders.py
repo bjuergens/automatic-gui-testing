@@ -7,6 +7,7 @@ import torch
 import torch.utils.data
 import numpy as np
 
+
 class _RolloutDataset(torch.utils.data.Dataset): # pylint: disable=too-few-public-methods
     def __init__(self, root, transform, buffer_size=200, train=True): # pylint: disable=too-many-arguments
         self._transform = transform
@@ -117,6 +118,7 @@ class RolloutSequenceDataset(_RolloutDataset): # pylint: disable=too-few-public-
 
     def _data_per_sequence(self, data_length):
         return data_length - self._seq_len
+
 
 class RolloutObservationDataset(_RolloutDataset): # pylint: disable=too-few-public-methods
     """ Encapsulates rollouts.
