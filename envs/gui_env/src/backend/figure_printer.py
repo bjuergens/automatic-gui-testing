@@ -133,7 +133,7 @@ def toggle_figure_printer_widgets(main_window, checked: bool):
         main_window.main_window.figure_printer_button.setEnabled(False)
         try:
             main_window.currently_shown_widgets_main_window.remove(main_window.main_window.figure_printer_button)
-        except ValueError:
+        except ValueError:  # pragma: no cover
             pass
 
         # Could be that the stacked widget is still on the figure printer but we deactivate it, therefore simply
