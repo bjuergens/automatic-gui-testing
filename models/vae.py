@@ -28,7 +28,7 @@ class Decoder(nn.Module):
         x = F.relu(self.deconv3(x))
         x = F.relu(self.deconv4(x))
         x = F.relu(self.deconv5(x))
-        reconstruction = F.sigmoid(self.deconv6(x))
+        reconstruction = torch.sigmoid(self.deconv6(x))
         return reconstruction
 
 
