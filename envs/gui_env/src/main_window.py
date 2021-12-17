@@ -209,6 +209,11 @@ class MainWindow(QMainWindow):
             if not is_visible and widget in self.currently_shown_widgets_main_window:
                 self.currently_shown_widgets_main_window.remove(widget)
 
+        # If the current main widget is the car configurator change the current active widgets here, since we maybe
+        # return to the initial state where only the car can be chosen
+        if self.main_window.main_stacked_widget.currentIndex() == 2:
+            self._set_currently_shown_widgets_car_configurator()
+
     def _set_currently_shown_widgets_figure_printer(self):
         currently_shown_widgets_main_window = self._get_main_widgets_main_window()
         currently_shown_widgets_main_window.extend([
