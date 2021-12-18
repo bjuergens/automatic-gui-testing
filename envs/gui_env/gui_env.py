@@ -101,8 +101,9 @@ class RegisterClickThread(QThread):
 
 class GUIEnv(gym.Env):
 
-    def __init__(self, generate_html_report: bool = False):
+    def __init__(self, generate_html_report: bool = False, html_report_directory: str = None):
         self.generate_html_report = generate_html_report
+        self.html_report_directory = html_report_directory
 
         self.click_connection_parent, self.click_connection_child = None, None
         self.terminate_connection_parent, self.terminate_connection_child = None, None
@@ -189,9 +190,12 @@ class GUIEnv(gym.Env):
 
     @Slot()
     def _generate_html_report(self):
-        clicker_type = self.get_clicker_type()
+        if self.html_report_directory is not None:
+            directory = self.html_report_directory
+        else:
+            clicker_type = self.get_clicker_type()
+            directory = os.path.join("coverage-reports", clicker_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
-        directory = os.path.join("coverage-reports", clicker_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         self.main_window.generate_html_report(directory=directory)
 
     @staticmethod
@@ -267,7 +271,7 @@ class GUIEnvRandomClick(GUIEnv):
 
 class GUIEnvRandomWidget(GUIEnv):
 
-    def __init__(self, random_click_probability: float, **kwargs):
+    def __init__(self, random_click_probability: float = 0.125, **kwargs):
         super().__init__(**kwargs)
         self.random_click_probability = random_click_probability
 

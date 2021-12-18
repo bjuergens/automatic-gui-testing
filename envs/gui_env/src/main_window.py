@@ -389,7 +389,7 @@ class MainWindow(QMainWindow):
 
     def generate_html_report(self, directory: str):
         try:
-            self.coverage_measurer.html_report(directory=directory)
+            self.coverage_measurer.html_report(directory=directory, precision=4)
         except coverage.exceptions.CoverageException:
             logging.debug("Did not create an HTML report because nothing was measured")
 
