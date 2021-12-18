@@ -104,19 +104,11 @@ class GUIEnv(gym.Env):
     def __init__(self, generate_html_report: bool = False):
         self.generate_html_report = generate_html_report
 
-        self.click_connection_parent: Connection
-        self.click_connection_child: Connection
-
-        self.terminate_connection_parent: Connection
-        self.terminate_connection_child: Connection
-
-        self.screenshot_connection_parent: Connection
-        self.screenshot_connection_child: Connection
+        self.click_connection_parent, self.click_connection_child = None, None
+        self.terminate_connection_parent, self.terminate_connection_child = None, None
+        self.screenshot_connection_parent, self.screenshot_connection_child = None, None
 
         self.application_process: Process
-
-        # TODO technically not needed? since it is called in reset()
-        self._initialize()
 
         self.random_state = np.random.RandomState()
 
@@ -133,6 +125,8 @@ class GUIEnv(gym.Env):
             args=(self.click_connection_child, self.terminate_connection_child, self.screenshot_connection_child,
                   self.generate_html_report)
         )
+
+        self.application_process.start()
 
     def _on_timeout(self):
         # Initial observation trigger
@@ -173,6 +167,15 @@ class GUIEnv(gym.Env):
         QTimer.singleShot(2000, self._on_timeout)
 
         app.exec()
+
+    def _stop_application_process(self):
+        logging.debug("Sending close indication to clicking thread")
+        self.terminate_connection_parent.send(True)
+        self.terminate_connection_parent.recv()
+
+        self.application_process.terminate()
+        self.application_process.join()
+        self.application_process.close()
 
     @Slot(int, int)
     def _simulate_click(self, pos_x: int, pos_y: int):
@@ -224,10 +227,10 @@ class GUIEnv(gym.Env):
         return reward, observation, done, info
 
     def reset(self):
-        # TODO Cleanup needed to restart an env that previously ran; similar to the code in close(), but calling close
-        #  would cleanup internal gym.Env stuff I think so that won't work
+        if self.terminate_connection_parent is not None:
+            self._stop_application_process()
+
         self._initialize()
-        self.application_process.start()
 
         initial_observation = self.screenshot_connection_parent.recv()
 
@@ -237,13 +240,7 @@ class GUIEnv(gym.Env):
         pass
 
     def close(self):
-        logging.debug("Sending close indication to clicking thread")
-        self.terminate_connection_parent.send(True)
-        self.terminate_connection_parent.recv()
-
-        self.application_process.terminate()
-        self.application_process.join()
-        self.application_process.close()
+        self._stop_application_process()
 
         logging.debug("Closed application process, closing environment now")
 
