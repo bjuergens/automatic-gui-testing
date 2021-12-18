@@ -137,7 +137,8 @@ class GUIEnv(gym.Env):
     def _start_application(self, click_connection_child: Connection, terminate_connection_child: Connection,
                            screenshot_connection_child: Connection, generate_html_report: bool):
 
-        coverage_measurer = Coverage(config_file="envs/gui_env/.coveragerc")
+        # data_suffix appends process id to the database file which is needed when this environment is run in parallel
+        coverage_measurer = Coverage(data_suffix=True, config_file="envs/gui_env/.coveragerc")
         coverage_measurer.start()
         from envs.gui_env.src.main_window import MainWindow
         coverage_measurer.stop()

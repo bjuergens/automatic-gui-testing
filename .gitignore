@@ -15,5 +15,5 @@ dock_config.json
 *.pyproject.user
 
 # coverage.py
-.coverage
+.coverage*
 coverage-reports/
