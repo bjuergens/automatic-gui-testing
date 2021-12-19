@@ -160,6 +160,20 @@ def main(stop_mode: str, amount: int, monkey_type: str, root_dir: str, directory
     start_monkey_tester(stop_mode, amount, monkey_type, chosen_directory, observations_directory, random_click_prob,
                         html_report, html_report_directory)
 
+    chosen_options = {
+        "Stop Mode": stop_mode,
+        "Amount": amount,
+        "Monkey Type": monkey_type,
+        "Root directory": root_dir,
+        "Explicit directory": directory,
+        "Random Click Probability": random_click_prob,
+        "Log": log,
+        "HTML Report": html_report
+    }
+
+    with open(os.path.join(chosen_directory, "data_generation_options.json"), "w", encoding="utf-8") as f:
+        json.dump(chosen_options, f, ensure_ascii=False, indent=4)
+
 
 if __name__ == "__main__":
     main()
