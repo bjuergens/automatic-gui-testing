@@ -202,6 +202,8 @@ def main(config_path: str):
 
     log_dir = experiment.get_logdir().split("tf")[0]
 
+    os.makedirs(os.path.join(log_dir, "samples"), exist_ok=True)
+
     for epoch in range(1, epochs + 1):
         train(epoch, model, train_loader, device, optimizer)
         validation_loss = validate(model, val_loader, device)
