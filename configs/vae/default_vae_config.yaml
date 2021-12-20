@@ -1,0 +1,21 @@
+model_parameters:
+  name: "VAE"
+  latent_size: 64
+
+experiment_parameters:
+  dataset: gui-dataset
+  data_path: "/home/pdeubel/PycharmProjects/data/test-gui"
+  img_size: 256
+  batch_size: 10
+  learning_rate: 0.005
+  kld_weight: 1.0
+
+trainer_parameters:
+  gpu: -1
+  max_epochs: 5
+  num_workers: 0
+
+logging_parameters:
+  debug: False
+  save_dir: "logs/vae/"
+  manual_seed: 100

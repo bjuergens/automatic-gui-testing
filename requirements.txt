@@ -8,3 +8,5 @@ pyside6
 click
 coverage
 Pillow
+pyyaml
+test_tube
