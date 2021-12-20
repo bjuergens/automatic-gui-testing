@@ -177,7 +177,7 @@ def main(config_path: str):
         save_dir=save_dir,
         name=config["model_parameters"]["name"],
         debug=config["logging_parameters"]["debug"],  # Turns off logging if True
-        create_git_tag=True
+        create_git_tag=False
     )
 
     # vae_dir = join(args.logdir, 'vae')
