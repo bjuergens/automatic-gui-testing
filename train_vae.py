@@ -97,7 +97,8 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
         for data in val_loader:
             data = data.to(device)
             recon_batch, mu, log_var = model(data)
-            test_loss += loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch, max_epochs).item()
+            test_loss += loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch,
+                                       max_epochs, is_train=False).item()
 
             if not logged_one_batch and not experiment.debug:
                 experiment.add_images("originals", data, global_step=current_epoch)
