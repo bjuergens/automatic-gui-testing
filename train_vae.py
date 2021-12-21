@@ -119,9 +119,13 @@ def main(config_path: str):
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
-    kld_weight = config["experiment_parameters"]["kld_weight"]
+    latent_size = config["model_parameters"]["latent_size"]
 
-    torch.manual_seed(123)
+    kld_weight = config["experiment_parameters"]["kld_weight"]
+    batch_size = config["experiment_parameters"]["batch_size"]
+    manual_seed = config["experiment_parameters"]["manual_seed"]
+
+    torch.manual_seed(manual_seed)
 
     # Fix numeric divergence due to bug in Cudnn
     # Also: Seems to search for the best algorithm to use; don't use if the input size changes a lot then it hurts
@@ -157,7 +161,6 @@ def main(config_path: str):
         raise RuntimeError("Currently only 'gui-dataset' supported as the dataset")
 
     additional_dataloader_args = {'num_workers': config["trainer_parameters"]["num_workers"], 'pin_memory': True}
-    batch_size = config["experiment_parameters"]["batch_size"]
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -173,7 +176,7 @@ def main(config_path: str):
         **additional_dataloader_args
     )
 
-    model = VAE(img_channels=3, latent_size=config["model_parameters"]["latent_size"]).to(device)
+    model = VAE(img_channels=3, latent_size=latent_size).to(device)
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
@@ -214,7 +217,6 @@ def main(config_path: str):
 
     if not experiment.debug:
         log_dir = experiment.get_logdir().split("tf")[0]
-        os.makedirs(os.path.join(log_dir, "samples"), exist_ok=True)
 
     for current_epoch in range(0, max_epochs):
         train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight)
@@ -240,9 +242,9 @@ def main(config_path: str):
             }, is_best, filename, best_filename)
 
             with torch.no_grad():
-                sample = torch.randn(10, config["model_parameters"]["latent_size"]).to(device)
-                reconstruction = model.decoder(sample).cpu()
-                save_image(reconstruction, os.path.join(log_dir, 'samples/sample_' + str(current_epoch) + '.png'))
+                sample = torch.randn(batch_size, latent_size).to(device)
+                sample_reconstructions = model.decoder(sample).cpu()
+                experiment.add_images("samples", sample_reconstructions, global_step=current_epoch)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(epoch))
