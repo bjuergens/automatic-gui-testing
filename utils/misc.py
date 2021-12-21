@@ -42,11 +42,13 @@ def sample_continuous_policy(action_space, seq_len, dt):
                     action_space.low, action_space.high))
     return actions
 
-def save_checkpoint(state, is_best, filename, best_filename):
-    """ Save state in filename. Also save in best_filename if is_best. """
-    torch.save(state, filename)
+
+def save_checkpoint(state, is_best, checkpoint_filename, best_filename):
+    """ Save state in checkpoint_filename. Also save in best_filename if is_best. """
+    torch.save(state, checkpoint_filename)
     if is_best:
         torch.save(state, best_filename)
+
 
 def flatten_parameters(params):
     """ Flattening parameters.

@@ -218,6 +218,8 @@ def main(config_path: str):
 
     if not experiment.debug:
         log_dir = experiment.get_logdir().split("tf")[0]
+        best_model_filename = os.path.join(log_dir, "best.pt")
+        checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
     for current_epoch in range(0, max_epochs):
         train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight)
@@ -227,20 +229,18 @@ def main(config_path: str):
 
         # checkpointing
         if not experiment.debug:
-            best_filename = os.path.join(log_dir, 'best.tar')
-            filename = os.path.join(log_dir, 'checkpoint.tar')
+
             is_best = not current_best or validation_loss < current_best
             if is_best:
                 current_best = validation_loss
 
             save_checkpoint({
-                'epoch': current_epoch,
-                'state_dict': model.state_dict(),
-                'precision': validation_loss,
-                'optimizer': optimizer.state_dict()
+                "epoch": current_epoch,
+                "state_dict": model.state_dict(),
+                "optimizer": optimizer.state_dict()
                 # 'scheduler': scheduler.state_dict(),
                 # 'earlystopping': earlystopping.state_dict()
-            }, is_best, filename, best_filename)
+            }, is_best, checkpoint_filename, best_model_filename)
 
             with torch.no_grad():
                 sample = torch.randn(batch_size, latent_size).to(device)
