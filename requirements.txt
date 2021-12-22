@@ -10,3 +10,4 @@ coverage
 Pillow
 pyyaml
 test_tube
+git+https://github.com/neuroevolution-ai/GymGuiEnvironments.git#egg=gym_gui_environments
