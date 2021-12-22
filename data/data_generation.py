@@ -8,10 +8,11 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 import click
+import gym
+# noinspection PyUnresolvedReferences
+import gym_gui_environments
 import numpy as np
 from PIL import Image
-
-from envs.gui_env.gui_env import GUIEnvRandomWidget, GUIEnvRandomClick
 
 RANDOM_CLICK_MONKEY_TYPE = "random-clicks"
 RANDOM_WIDGET_MONKEY_TYPE = "random-widgets"
@@ -74,15 +75,17 @@ def start_monkey_tester(stop_mode: str, amount: int, monkey_type: str, chosen_di
                         observations_directory: str, random_click_prob: Optional[float], html_report: bool,
                         html_report_directory: Optional[str]):
 
+    env_kwargs = {"generate_html_report": html_report, "html_report_directory": html_report_directory}
+
     if monkey_type == RANDOM_CLICK_MONKEY_TYPE:
-        env = GUIEnvRandomClick(html_report, html_report_directory)
+        env_id = "PySideGUIRandomClick-v0"
     else:
+        env_id = "PySideGUIRandomWidget-v0"
+
         if random_click_prob is not None:
-            env = GUIEnvRandomWidget(random_click_prob, generate_html_report=html_report,
-                                     html_report_directory=html_report_directory)
-        else:
-            # Use the default value for the random click probability
-            env = GUIEnvRandomWidget(generate_html_report=html_report, html_report_directory=html_report_directory)
+            env_kwargs["random_click_probability"] = random_click_prob
+
+    env = gym.make(env_id, **env_kwargs)
 
     observation = env.reset()
     _save_observation(observation, iteration=0, observations_directory=observations_directory)

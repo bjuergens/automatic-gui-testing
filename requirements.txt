@@ -4,9 +4,7 @@ gym[all]
 box2d
 tqdm
 numpy
-pyside6
 click
-coverage
 Pillow
 pyyaml
 test_tube
