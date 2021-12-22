@@ -41,23 +41,24 @@ def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: tor
 
     loss = reconstruction_loss + kld_weight * kld_warmup_term * kld_loss
 
+    # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
     if is_train:
         experiment.log({
-            "loss": loss,
-            "reconstruction_loss": reconstruction_loss,
-            "kld": kld_loss,
-            "mu": torch.mean(mu),
-            "log_var": torch.mean(log_var),
-            "var": torch.mean(log_var.exp())
+            "loss": loss.item(),
+            "reconstruction_loss": reconstruction_loss.item(),
+            "kld": kld_loss.item(),
+            "mu": torch.mean(mu).item(),
+            "log_var": torch.mean(log_var).item(),
+            "var": torch.mean(log_var.exp()).item()
         })
     else:
         experiment.log({
-            "val_loss": loss,
-            "val_reconstruction_loss": reconstruction_loss,
-            "val_kld": kld_loss,
-            "val_mu": torch.mean(mu),
-            "val_log_var": torch.mean(log_var),
-            "val_var": torch.mean(log_var.exp())
+            "val_loss": loss.item(),
+            "val_reconstruction_loss": reconstruction_loss.item(),
+            "val_kld": kld_loss.item(),
+            "val_mu": torch.mean(mu).item(),
+            "val_log_var": torch.mean(log_var).item(),
+            "val_var": torch.mean(log_var.exp()).item()
         })
 
     return loss
