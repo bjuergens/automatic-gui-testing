@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import shutil
-import sys
 import time
 from datetime import datetime
 from typing import Optional, Tuple
@@ -13,6 +12,8 @@ import gym
 import gym_gui_environments
 import numpy as np
 from PIL import Image
+
+from utils.misc import initialize_logger
 
 RANDOM_CLICK_MONKEY_TYPE = "random-clicks"
 RANDOM_WIDGET_MONKEY_TYPE = "random-widgets"
@@ -33,7 +34,7 @@ def _store_data(data: dict, iteration: int, action: Tuple[int, int], reward: flo
 
 def _rollout_one_iteration(env, current_iteration: int, data: dict, observations_directory: str,
                            reward_sum: float) -> Tuple[dict, float]:
-    reward, observation, done, info = env.step()
+    reward, observation, done, info = env.step(True)
     _save_observation(observation, current_iteration - 1, observations_directory)
 
     reward_sum += reward
@@ -140,8 +141,7 @@ def main(stop_mode: str, amount: int, monkey_type: str, root_dir: str, directory
     observations_directory = os.path.join(chosen_directory, "observations")
     os.makedirs(observations_directory, exist_ok=True)
 
-    logger = logging.getLogger("")
-    formatter = logging.Formatter('[%(asctime)s] - %(funcName)s - %(message)s', datefmt='%a, %d %b %Y %H:%M:%S')
+    logger, formatter = initialize_logger()
 
     if log:
         logger.setLevel(logging.DEBUG)
@@ -150,10 +150,6 @@ def main(stop_mode: str, amount: int, monkey_type: str, root_dir: str, directory
         logger.addHandler(fh)
     else:
         logger.setLevel(logging.INFO)
-
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
 
     html_report_directory = None
 

@@ -1,3 +1,4 @@
+import logging
 import os
 
 import click
@@ -12,7 +13,7 @@ from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset
 from models.vae import VAE
-from utils.misc import save_checkpoint
+from utils.misc import save_checkpoint, initialize_logger
 
 
 # from utils.misc import LSIZE, RED_SIZE
@@ -148,6 +149,9 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
 @click.option("-c", "--config", "config_path", type=str, required=True,
               help="Path to a YAML configuration containing training options")
 def main(config_path: str):
+    logger, _ = initialize_logger()
+    logger.setLevel(logging.INFO)
+
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
@@ -192,7 +196,7 @@ def main(config_path: str):
     else:
         raise RuntimeError("Currently only 'gui-dataset' supported as the dataset")
 
-    additional_dataloader_args = {'num_workers': config["trainer_parameters"]["num_workers"], 'pin_memory': True}
+    additional_dataloader_args = {"num_workers": config["trainer_parameters"]["num_workers"], "pin_memory": True}
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -252,6 +256,10 @@ def main(config_path: str):
         best_model_filename = os.path.join(log_dir, "best.pt")
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
+    training_version = experiment.version
+    if training_version is not None:
+        logging.info(f"Started VAE training version_{training_version}")
+
     for current_epoch in range(0, max_epochs):
         train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight)
         validation_loss = validate(model, experiment, val_loader, device, current_epoch, max_epochs, kld_weight)
@@ -283,5 +291,5 @@ def main(config_path: str):
         #     break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
