@@ -8,12 +8,13 @@ from test_tube import Experiment
 from torch import optim
 from torch.nn import functional as F
 from torchvision import transforms
-from torchvision.utils import save_image
+from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset
 from models.vae import VAE
-
 from utils.misc import save_checkpoint
+
+
 # from utils.misc import LSIZE, RED_SIZE
 # WARNING : THIS SHOULD BE REPLACE WITH PYTORCH 0.5
 # from utils.learning import EarlyStopping
@@ -67,7 +68,11 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
     model.train()
     # dataset_train.load_next_buffer()
     train_loss = 0
-    for batch_idx, data in enumerate(train_loader):
+
+    progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
+                        desc=f"Epoch {current_epoch} - Train")
+
+    for batch_idx, data in progress_bar:
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
@@ -75,42 +80,51 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        if batch_idx % 20 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                current_epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
-                loss.item() / len(data)))
+        # if batch_idx % 20 == 0:
+        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #         current_epoch, batch_idx * len(data), len(train_loader.dataset),
+        #         100. * batch_idx / len(train_loader),
+        #         loss.item() / len(data)))
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(
-        current_epoch, train_loss / len(train_loader.dataset)))
+        # pbar.set_description("Loss {:.4f}".format(loss.item()))
+        progress_bar.set_postfix({"loss": loss.item()})
+    # print('====> Epoch: {} Average loss: {:.4f}'.format(
+    #     current_epoch, train_loss / len(train_loader.dataset)))
 
 
 def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs, kld_weight):
     """ One test epoch """
     model.eval()
 
-    test_loss = 0
+    val_loss_sum = 0
 
     logged_one_batch = False
 
-    with torch.no_grad():
-        for data in val_loader:
+    progress_bar = tqdm(enumerate(val_loader), total=len(val_loader), unit="batch",
+                        desc=f"Epoch {current_epoch} - Validation")
+
+    for _, data in progress_bar:
+        with torch.no_grad():
             data = data.to(device)
             recon_batch, mu, log_var = model(data)
-            test_loss += loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch,
-                                       max_epochs, is_train=False).item()
+            val_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch, max_epochs,
+                                     is_train=False).item()
 
-            if not logged_one_batch and not experiment.debug:
-                experiment.add_images("originals", data, global_step=current_epoch)
-                experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
-                logged_one_batch = True
+            progress_bar.set_postfix({"val_loss": val_loss})
 
-    test_loss /= len(val_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss))
+            val_loss_sum += val_loss
+
+        if not logged_one_batch and not experiment.debug:
+            experiment.add_images("originals", data, global_step=current_epoch)
+            experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
+            logged_one_batch = True
+
+    val_loss_sum /= len(val_loader.dataset)
+    # print('====> Test set loss: {:.4f}'.format(test_loss))
 
     model.train()
 
-    return test_loss
+    return val_loss_sum
 
 
 @click.command()
