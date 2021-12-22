@@ -69,6 +69,8 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
     model.train()
     # dataset_train.load_next_buffer()
     train_loss = 0
+    train_mu = None
+    train_log_var = None
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Train")
@@ -79,8 +81,16 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         recon_batch, mu, logvar = model(data)
         loss = loss_function(experiment, data, recon_batch, mu, logvar, kld_weight, current_epoch, max_epochs)
         loss.backward()
-        train_loss += loss.item()
+        train_loss += loss.item() * data.size(0)
         optimizer.step()
+
+        if train_mu is None and train_log_var is None:
+            train_mu = mu
+            train_log_var = logvar
+        else:
+            train_mu = torch.cat([train_mu, mu], dim=0)
+            train_log_var = torch.cat([train_log_var, logvar], dim=0)
+
         # if batch_idx % 20 == 0:
         #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
         #         current_epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -91,6 +101,12 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         progress_bar.set_postfix({"loss": loss.item()})
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
     #     current_epoch, train_loss / len(train_loader.dataset)))
+
+    experiment.log({
+        "epoch_train_loss": train_loss / len(train_loader.dataset),
+        "epoch_mu": train_mu.mean().item(),
+        "epoch_var": train_log_var.exp().mean().item()
+    })
 
 
 def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs, kld_weight):
