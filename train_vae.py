@@ -103,6 +103,8 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
     #     current_epoch, train_loss / len(train_loader.dataset)))
 
+    progress_bar.close()
+
     experiment.log({
         "epoch_train_loss": train_loss / len(train_loader.dataset),
         "epoch_mu": train_mu.mean().item(),
@@ -137,6 +139,7 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
             experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
             logged_one_batch = True
 
+    progress_bar.close()
     val_loss_sum /= len(val_loader.dataset)
     # print('====> Test set loss: {:.4f}'.format(test_loss))
 
