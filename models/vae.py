@@ -53,7 +53,7 @@ class Encoder(nn.Module):
         self.conv6 = nn.Conv2d(128, 256, kernel_size=3, stride=2)
 
         self.fc_mu = nn.Linear(2*2*256, latent_size)
-        self.fc_logsigma = nn.Linear(2*2*256, latent_size)
+        self.fc_log_var = nn.Linear(2*2*256, latent_size)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -65,9 +65,9 @@ class Encoder(nn.Module):
         x = x.view(x.size(0), -1)
 
         mu = self.fc_mu(x)
-        logsigma = self.fc_logsigma(x)
+        log_var = self.fc_log_var(x)
 
-        return mu, logsigma
+        return mu, log_var
 
 
 class VAE(nn.Module):
@@ -78,10 +78,11 @@ class VAE(nn.Module):
         self.decoder = Decoder(img_channels, latent_size)
 
     def forward(self, x):
-        mu, logsigma = self.encoder(x)
-        sigma = logsigma.exp()
+        mu, log_var = self.encoder(x)
+        sigma = torch.exp(0.5 * log_var)
         eps = torch.randn_like(sigma)
+
         z = eps.mul(sigma).add_(mu)
 
         recon_x = self.decoder(z)
-        return recon_x, mu, logsigma
+        return recon_x, mu, log_var
