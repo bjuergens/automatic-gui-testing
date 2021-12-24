@@ -10,8 +10,7 @@ args = parser.parse_args()
 
 ctrl_file = join(args.logdir, 'ctrl', 'best.tar')
 
-assert exists(ctrl_file),\
-    "Controller was not trained..."
+assert (exists(ctrl_file), "Controller was not trained...")
 
 device = torch.device('cpu')
 

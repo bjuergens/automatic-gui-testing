@@ -41,7 +41,7 @@ assert exists(vae_file), "No trained VAE in the logdir..."
 state = torch.load(vae_file)
 print("Loading VAE at epoch {} "
       "with test error {}".format(
-          state['epoch'], state['precision']))
+    state['epoch'], state['precision']))
 
 vae = VAE(3, LSIZE).to(device)
 vae.load_state_dict(state['state_dict'])
@@ -59,17 +59,15 @@ optimizer = torch.optim.RMSprop(mdrnn.parameters(), lr=1e-3, alpha=.9)
 scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
 earlystopping = EarlyStopping('min', patience=30)
 
-
 if exists(rnn_file) and not args.noreload:
     rnn_state = torch.load(rnn_file)
     print("Loading MDRNN at epoch {} "
           "with test error {}".format(
-              rnn_state["epoch"], rnn_state["precision"]))
+        rnn_state["epoch"], rnn_state["precision"]))
     mdrnn.load_state_dict(rnn_state["state_dict"])
     optimizer.load_state_dict(rnn_state["optimizer"])
     scheduler.load_state_dict(state['scheduler'])
     earlystopping.load_state_dict(state['earlystopping'])
-
 
 # Data Loading
 transform = transforms.Lambda(
@@ -80,6 +78,7 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, train=False, buffer_size=10),
     batch_size=BSIZE, num_workers=8)
+
 
 def to_latent(obs, next_obs):
     """ Transform observations to latent space.
@@ -105,6 +104,7 @@ def to_latent(obs, next_obs):
             for x_mu, x_logsigma in
             [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
     return latent_obs, latent_next_obs
+
 
 def get_loss(latent_obs, action, reward, terminal,
              latent_next_obs, include_reward: bool):
@@ -144,7 +144,7 @@ def get_loss(latent_obs, action, reward, terminal,
     return dict(gmm=gmm, bce=bce, mse=mse, loss=loss)
 
 
-def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
+def data_pass(epoch, train, include_reward):  # pylint: disable=too-many-locals
     """ One pass through the data """
     if train:
         mdrnn.train()
@@ -187,8 +187,8 @@ def data_pass(epoch, train, include_reward): # pylint: disable=too-many-locals
 
         pbar.set_postfix_str("loss={loss:10.6f} bce={bce:10.6f} "
                              "gmm={gmm:10.6f} mse={mse:10.6f}".format(
-                                 loss=cum_loss / (i + 1), bce=cum_bce / (i + 1),
-                                 gmm=cum_gmm / LSIZE / (i + 1), mse=cum_mse / (i + 1)))
+            loss=cum_loss / (i + 1), bce=cum_bce / (i + 1),
+            gmm=cum_gmm / LSIZE / (i + 1), mse=cum_mse / (i + 1)))
         pbar.update(BSIZE)
     pbar.close()
     return cum_loss * BSIZE / len(loader.dataset)
@@ -215,7 +215,7 @@ for e in range(epochs):
         'earlystopping': earlystopping.state_dict(),
         "precision": test_loss,
         "epoch": e}, is_best, checkpoint_fname,
-                    rnn_file)
+        rnn_file)
 
     if earlystopping.stop:
         print("End of Training because of early stopping at epoch {}".format(e))

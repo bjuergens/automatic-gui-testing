@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as f
 from torch.distributions.normal import Normal
 
+
 def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many-arguments
     """ Computes the gmm loss.
 
@@ -45,6 +46,7 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many
         return - torch.mean(log_prob)
     return - log_prob
 
+
 class _MDRNNBase(nn.Module):
     def __init__(self, latents, actions, hiddens, gaussians):
         super().__init__()
@@ -58,6 +60,7 @@ class _MDRNNBase(nn.Module):
 
     def forward(self, *inputs):
         pass
+
 
 class MDRNN(_MDRNNBase):
     """ MDRNN model for multi steps forward """
@@ -104,6 +107,7 @@ class MDRNN(_MDRNNBase):
         ds = gmm_outs[:, :, -1]
 
         return mus, sigmas, logpi, rs, ds
+
 
 class MDRNNCell(_MDRNNBase):
     """ MDRNN model for one step forward """
