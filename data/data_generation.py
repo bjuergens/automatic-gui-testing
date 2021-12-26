@@ -4,7 +4,7 @@ import os
 import shutil
 import time
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Tuple
 
 import click
 import gym
@@ -72,22 +72,7 @@ def _iteration_mode_rollout(amount: int, env, observations_directory: str) -> Tu
     return data, reward_sum
 
 
-def start_monkey_tester(stop_mode: str, amount: int, monkey_type: str, chosen_directory: str,
-                        observations_directory: str, random_click_prob: Optional[float], html_report: bool,
-                        html_report_directory: Optional[str]):
-
-    env_kwargs = {"generate_html_report": html_report, "html_report_directory": html_report_directory}
-
-    if monkey_type == RANDOM_CLICK_MONKEY_TYPE:
-        env_id = "PySideGUIRandomClick-v0"
-    else:
-        env_id = "PySideGUIRandomWidget-v0"
-
-        if random_click_prob is not None:
-            env_kwargs["random_click_probability"] = random_click_prob
-
-    env = gym.make(env_id, **env_kwargs)
-
+def start_monkey_tester(env: gym.Env, stop_mode: str, amount: int, chosen_directory: str, observations_directory: str):
     observation = env.reset()
     _save_observation(observation, iteration=0, observations_directory=observations_directory)
 
@@ -156,18 +141,30 @@ def main(stop_mode: str, amount: int, monkey_type: str, root_dir: str, directory
     if html_report:
         html_report_directory = os.path.join(chosen_directory, "html-report")
 
-    start_monkey_tester(stop_mode, amount, monkey_type, chosen_directory, observations_directory, random_click_prob,
-                        html_report, html_report_directory)
+    env_kwargs = {"generate_html_report": html_report, "html_report_directory": html_report_directory}
+
+    if monkey_type == RANDOM_CLICK_MONKEY_TYPE:
+        env_id = "PySideGUIRandomClick-v0"
+    else:
+        env_id = "PySideGUIRandomWidget-v0"
+
+        if random_click_prob is not None:
+            env_kwargs["random_click_probability"] = random_click_prob
+
+    env = gym.make(env_id, **env_kwargs)
+
+    start_monkey_tester(env, stop_mode, amount, chosen_directory, observations_directory)
 
     chosen_options = {
-        "Stop Mode": stop_mode,
-        "Amount": amount,
-        "Monkey Type": monkey_type,
-        "Root directory": root_dir,
-        "Explicit directory": directory,
-        "Random Click Probability": random_click_prob,
-        "Log": log,
-        "HTML Report": html_report
+        "env-used": env_id,
+        "stop-mode": stop_mode,
+        "amount": amount,
+        "monkey-type": monkey_type,
+        "root-dir": root_dir,
+        "explicit-dir": directory,
+        "random-click-probability": random_click_prob,
+        "log": log,
+        "html-report": html_report
     }
 
     with open(os.path.join(chosen_directory, "data_generation_options.json"), "w", encoding="utf-8") as f:
