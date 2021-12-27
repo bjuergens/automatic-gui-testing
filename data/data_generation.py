@@ -32,8 +32,8 @@ def _store_data(data: dict, iteration: int, action: Tuple[int, int], reward: flo
     return data
 
 
-def _rollout_one_iteration(env, current_iteration: int, data: dict, observations_directory: str,
-                           reward_sum: float) -> Tuple[dict, float]:
+def _rollout_one_iteration(env, current_iteration: int, observations_directory: str,
+                           reward_sum: float, rewards: list, actions: list) -> Tuple[float, list, list]:
     reward, observation, done, info = env.step(True)
     _save_observation(observation, current_iteration, observations_directory)
 
@@ -44,32 +44,38 @@ def _rollout_one_iteration(env, current_iteration: int, data: dict, observations
             f"{current_iteration}: Current reward '{reward_sum}'"
         )
 
-    data = _store_data(data, current_iteration - 1, action=(info["x"], info["y"]), reward=reward)
+    rewards += [reward]
+    actions += [[info["x"], info["y"]]]
 
-    return data, reward_sum
+    return reward_sum, rewards, actions
 
 
-def _time_mode_rollout(amount: int, env, observations_directory: str) -> Tuple[dict, float]:
+def _time_mode_rollout(amount: int, env, observations_directory: str) -> Tuple[float, list, list]:
     i = 1
     reward_sum = 0
-    data = {}
+    rewards = []
+    actions = []
+
     start_time = time.time()
 
     while time.time() < start_time + amount:
-        data, reward_sum = _rollout_one_iteration(env, i, data, observations_directory, reward_sum)
+        reward_sum, rewards, actions = _rollout_one_iteration(env, i, observations_directory, reward_sum, rewards,
+                                                              actions)
         i += 1
 
-    return data, reward_sum
+    return reward_sum, rewards, actions
 
 
-def _iteration_mode_rollout(amount: int, env, observations_directory: str) -> Tuple[dict, float]:
+def _iteration_mode_rollout(amount: int, env, observations_directory: str) -> Tuple[float, list, list]:
     reward_sum = 0
-    data = {}
+    rewards = []
+    actions = []
 
     for i in range(1, amount + 1):
-        data, reward_sum = _rollout_one_iteration(env, i, data, observations_directory, reward_sum)
+        reward_sum, rewards, actions = _rollout_one_iteration(env, i, observations_directory, reward_sum, rewards,
+                                                              actions)
 
-    return data, reward_sum
+    return reward_sum, rewards, actions
 
 
 def start_monkey_tester(env: gym.Env, stop_mode: str, amount: int, chosen_directory: str, observations_directory: str):
@@ -77,12 +83,11 @@ def start_monkey_tester(env: gym.Env, stop_mode: str, amount: int, chosen_direct
     _save_observation(observation, iteration=0, observations_directory=observations_directory)
 
     if stop_mode == "time":
-        data, reward_sum = _time_mode_rollout(amount, env, observations_directory)
+        reward_sum, rewards, actions = _time_mode_rollout(amount, env, observations_directory)
     else:
-        data, reward_sum = _iteration_mode_rollout(amount, env, observations_directory)
+        reward_sum, rewards, actions = _iteration_mode_rollout(amount, env, observations_directory)
 
-    with open(os.path.join(chosen_directory, "data.json"), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    np.savez(os.path.join(chosen_directory, "data.npz"), rewards=rewards, actions=actions)
 
     logging.info(f"Finished data generation with a summed up reward of {reward_sum}")
     env.close()
