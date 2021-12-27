@@ -1,8 +1,66 @@
 import os
 
+import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+
+
+class GUISequenceDataset(Dataset):
+
+    def __init__(self, root_dir, train: bool, sequence_length: int, transform):
+        self.root_dir = root_dir
+        self.sequence_length = sequence_length
+        self.current_index = 0
+        self.transform = transform
+
+        data = np.load(os.path.join(self.root_dir, "data.npz"))
+        self.rewards: np.ndarray = data["rewards"]
+        self.actions: np.ndarray = data["actions"]
+
+        self.observation_files = [
+            os.path.join(self.root_dir, "observations", img_file)
+            for img_file in os.listdir(os.path.join(self.root_dir, "observations"))
+        ]
+        self.observation_files.sort()
+
+        assert self.rewards.shape[0] == self.actions.shape[0] == (len(self.observation_files) - 1)
+
+        split_percentage = 0.05
+        split_index = round(len(self.rewards) * (1 - split_percentage))
+        if train:
+            self.observation_files = self.observation_files[:split_index]
+            self.rewards = self.rewards[:split_index]
+            self.actions = self.actions[:split_index]
+        else:
+            self.observation_files = self.observation_files[split_index:]
+            self.rewards = self.rewards[split_index:]
+            self.actions = self.actions[split_index:]
+
+    def __len__(self):
+        return self.actions.shape[0] - self.sequence_length
+
+    def __getitem__(self, index):
+        all_observations = []
+        for i in range(self.sequence_length + 1):
+            image_file_path = self.observation_files[self.current_index + i + 1]
+            img = Image.open(image_file_path)
+
+            if self.transform:
+                img = self.transform(img)
+
+            all_observations.append(img)
+
+        all_observations = torch.stack(all_observations)
+        observations = all_observations[:-1]
+        next_observations = all_observations[1:]
+
+        rewards = self.rewards[self.current_index:self.current_index + self.sequence_length]
+        actions = self.actions[self.current_index:self.current_index + self.sequence_length]
+
+        self.current_index += self.sequence_length
+
+        return observations, next_observations, rewards, actions
 
 
 class GUIDataset(Dataset):
