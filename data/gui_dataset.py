@@ -11,7 +11,6 @@ class GUISequenceDataset(Dataset):
     def __init__(self, root_dir, train: bool, sequence_length: int, transform):
         self.root_dir = root_dir
         self.sequence_length = sequence_length
-        self.current_index = 0
         self.transform = transform
 
         data = np.load(os.path.join(self.root_dir, "data.npz"))
@@ -38,12 +37,12 @@ class GUISequenceDataset(Dataset):
             self.actions = self.actions[split_index:]
 
     def __len__(self):
-        return self.actions.shape[0] - self.sequence_length
+        return self.actions.shape[0] - self.sequence_length - 1
 
     def __getitem__(self, index):
         all_observations = []
         for i in range(self.sequence_length + 1):
-            image_file_path = self.observation_files[self.current_index + i + 1]
+            image_file_path = self.observation_files[index + i + 1]
             img = Image.open(image_file_path)
 
             if self.transform:
@@ -55,10 +54,8 @@ class GUISequenceDataset(Dataset):
         observations = all_observations[:-1]
         next_observations = all_observations[1:]
 
-        rewards = self.rewards[self.current_index:self.current_index + self.sequence_length]
-        actions = self.actions[self.current_index:self.current_index + self.sequence_length]
-
-        self.current_index += self.sequence_length
+        rewards = self.rewards[index:index + self.sequence_length]
+        actions = self.actions[index:index + self.sequence_length]
 
         return observations, next_observations, rewards, actions
 
