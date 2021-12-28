@@ -56,7 +56,7 @@ class _MDRNNBase(nn.Module):
         self.gaussians = gaussians
 
         self.gmm_linear = nn.Linear(
-            hiddens, (2 * latents + 1) * gaussians + 2)
+            hiddens, (2 * latents + 1) * gaussians + 1)
 
     def forward(self, *inputs):
         pass
@@ -102,11 +102,9 @@ class MDRNN(_MDRNNBase):
         pi = pi.view(seq_len, bs, self.gaussians)
         logpi = f.log_softmax(pi, dim=-1)
 
-        rs = gmm_outs[:, :, -2]
+        rewards = gmm_outs[:, :, -1]
 
-        ds = gmm_outs[:, :, -1]
-
-        return mus, sigmas, logpi, rs, ds
+        return mus, sigmas, logpi, rewards
 
 
 class MDRNNCell(_MDRNNBase):
