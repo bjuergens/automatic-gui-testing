@@ -20,4 +20,4 @@ trainer_parameters:
 
 logging_parameters:
   debug: False
-  save_dir: "logs/vae/"
+  base_save_dir: "logs/mdn-rnn/"
