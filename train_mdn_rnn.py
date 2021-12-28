@@ -111,8 +111,6 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, batc
     pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
     for i, data in enumerate(data_loader):
         observations, next_observations, rewards, actions = [d.to(device) for d in data]
-        rewards = rewards.float()
-        actions = actions.int()
 
         latent_obs, latent_next_obs = to_latent(observations, next_observations, vae, batch_size, sequence_length,
                                                 latent_size)

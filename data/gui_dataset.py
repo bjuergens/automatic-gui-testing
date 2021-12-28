@@ -14,8 +14,8 @@ class GUISequenceDataset(Dataset):
         self.transform = transform
 
         data = np.load(os.path.join(self.root_dir, "data.npz"))
-        self.rewards: np.ndarray = data["rewards"]
-        self.actions: np.ndarray = data["actions"]
+        self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
+        self.actions: torch.Tensor = torch.from_numpy(data["actions"])
 
         self.observation_files = [
             os.path.join(self.root_dir, "observations", img_file)
@@ -23,7 +23,9 @@ class GUISequenceDataset(Dataset):
         ]
         self.observation_files.sort()
 
-        assert self.rewards.shape[0] == self.actions.shape[0] == (len(self.observation_files) - 1)
+        assert self.rewards.size(0) == self.actions.size(0) == (len(self.observation_files) - 1)
+        assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
+                                    "data samples")
 
         split_percentage = 0.05
         split_index = round(len(self.rewards) * (1 - split_percentage))
@@ -37,7 +39,7 @@ class GUISequenceDataset(Dataset):
             self.actions = self.actions[split_index:]
 
     def __len__(self):
-        return self.actions.shape[0] - self.sequence_length - 1
+        return self.rewards.size(0) - self.sequence_length - 1
 
     def __getitem__(self, index):
         all_observations = []
