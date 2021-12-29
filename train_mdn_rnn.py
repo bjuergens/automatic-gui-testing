@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 
-from data.gui_dataset import GUISequenceDataset
+from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset
 from models.mdrnn import MDRNN, gmm_loss
 # from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
@@ -255,10 +255,16 @@ def main(config_path: str):
         set_range
     ])
 
-    train_dataset = GUISequenceDataset(dataset_path, train=True, sequence_length=sequence_length,
-                                       transform=transformation_functions)
-    test_dataset = GUISequenceDataset(dataset_path, train=False, sequence_length=sequence_length,
-                                      transform=transformation_functions)
+    if dataset_name == "gui_multiple_sequences":
+        train_dataset = GUIMultipleSequencesDataset(dataset_path, train=True, sequence_length=sequence_length,
+                                                    transform=transformation_functions)
+        test_dataset = GUIMultipleSequencesDataset(dataset_path, train=False, sequence_length=sequence_length,
+                                                   transform=transformation_functions)
+    else:
+        train_dataset = GUISequenceDataset(dataset_path, train=True, sequence_length=sequence_length,
+                                           transform=transformation_functions)
+        test_dataset = GUISequenceDataset(dataset_path, train=False, sequence_length=sequence_length,
+                                          transform=transformation_functions)
 
     additional_dataloader_args = {"num_workers": num_workers, "pin_memory": True}
 
@@ -266,6 +272,7 @@ def main(config_path: str):
         train_dataset,
         batch_size=batch_size,
         shuffle=False,
+        drop_last=False,
         **additional_dataloader_args
     )
 
