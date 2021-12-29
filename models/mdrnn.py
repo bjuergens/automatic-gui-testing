@@ -63,10 +63,10 @@ def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
     """
     batch = batch.unsqueeze(-2)
 
-    nll_using_log = _gmm_loss_using_log(batch, mus, sigmas, log_pi, reduce)
+    # nll_using_log = _gmm_loss_using_log(batch, mus, sigmas, log_pi, reduce)
     nll = _gmm_loss(batch, mus, sigmas, log_pi, reduce)
 
-    assert torch.equal(nll_using_log, nll)
+    # assert torch.isclose(nll_using_log, nll)
 
     return nll
 
