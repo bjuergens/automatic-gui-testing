@@ -8,7 +8,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 
-GAUSSIAN_DISTRIBUTION_CONSTANT = 1.0 / math.sqrt(2 * math.pi)
+ONE_OVER_SQRT_2PI = 1.0 / math.sqrt(2 * math.pi)
+LOG2PI = math.log(2 * math.pi)
+
+
+def _gmm_loss_using_log(batch, mus, sigmas, log_pi, reduce=True):
+    log_prob = -torch.log(sigmas) - 0.5 * LOG2PI - 0.5 * torch.pow((batch - mus) / sigmas, 2)
+    log_prob_sum = log_prob.sum(dim=-1)
+    log_prob_sum = torch.logsumexp(log_pi + log_prob_sum, dim=-1)
+
+    if reduce:
+        nll = -log_prob_sum.mean()
+    else:
+        nll = -log_prob_sum
+
+    return nll
+
+
+def _gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
+    prob = ONE_OVER_SQRT_2PI * torch.exp(-0.5 * torch.pow((batch - mus) / sigmas, 2)) / sigmas
+    log_prob = torch.log(prob).sum(dim=-1)
+    log_prob = torch.logsumexp(log_pi + log_prob, dim=-1)
+
+    if reduce:
+        nll = -log_prob.mean()
+    else:
+        nll = -log_prob
+
+    return nll
 
 
 def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
@@ -35,14 +62,11 @@ def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
     with fs).
     """
     batch = batch.unsqueeze(-2)
-    prob = GAUSSIAN_DISTRIBUTION_CONSTANT * torch.exp(-0.5 * torch.pow((batch - mus) / sigmas, 2)) / sigmas
-    log_prob = torch.log(prob).sum(dim=-1)
-    log_prob = torch.logsumexp(log_pi + log_prob, dim=-1)
 
-    if reduce:
-        nll = -log_prob.mean()
-    else:
-        nll = -log_prob
+    nll_using_log = _gmm_loss_using_log(batch, mus, sigmas, log_pi, reduce)
+    nll = _gmm_loss(batch, mus, sigmas, log_pi, reduce)
+
+    assert torch.equal(nll_using_log, nll)
 
     return nll
 
