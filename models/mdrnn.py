@@ -2,13 +2,16 @@
 Define MDRNN model, supposed to be used as a world model
 on the latent space.
 """
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
-from torch.distributions.normal import Normal
+
+GAUSSIAN_DISTRIBUTION_CONSTANT = 1.0 / math.sqrt(2 * math.pi)
 
 
-def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many-arguments
+def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
     """ Computes the gmm loss.
 
     Compute minus the log probability of batch under the GMM model described
@@ -20,7 +23,7 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many
     :args batch: (bs1, bs2, *, fs) torch tensor
     :args mus: (bs1, bs2, *, gs, fs) torch tensor
     :args sigmas: (bs1, bs2, *, gs, fs) torch tensor
-    :args logpi: (bs1, bs2, *, gs) torch tensor
+    :args log_pi: (bs1, bs2, *, gs) torch tensor
     :args reduce: if not reduce, the mean in the following formula is ommited
 
     :returns:
@@ -32,19 +35,16 @@ def gmm_loss(batch, mus, sigmas, logpi, reduce=True): # pylint: disable=too-many
     with fs).
     """
     batch = batch.unsqueeze(-2)
-    normal_dist = Normal(mus, sigmas)
-    g_log_probs = normal_dist.log_prob(batch)
-    g_log_probs = logpi + torch.sum(g_log_probs, dim=-1)
-    max_log_probs = torch.max(g_log_probs, dim=-1, keepdim=True)[0]
-    g_log_probs = g_log_probs - max_log_probs
+    prob = GAUSSIAN_DISTRIBUTION_CONSTANT * torch.exp(-0.5 * torch.pow((batch - mus) / sigmas, 2)) / sigmas
+    log_prob = torch.log(prob).sum(dim=-1)
+    log_prob = torch.logsumexp(log_pi + log_prob, dim=-1)
 
-    g_probs = torch.exp(g_log_probs)
-    probs = torch.sum(g_probs, dim=-1)
-
-    log_prob = max_log_probs.squeeze() + torch.log(probs)
     if reduce:
-        return - torch.mean(log_prob)
-    return - log_prob
+        nll = -log_prob.mean()
+    else:
+        nll = -log_prob
+
+    return nll
 
 
 class _MDRNNBase(nn.Module):
@@ -68,7 +68,7 @@ class MDRNN(_MDRNNBase):
         super().__init__(latents, actions, hiddens, gaussians)
         self.rnn = nn.LSTM(latents + actions, hiddens)
 
-    def forward(self, actions, latents): # pylint: disable=arguments-differ
+    def forward(self, actions, latents):
         """ MULTI STEPS forward.
 
         :args actions: (SEQ_LEN, BSIZE, ASIZE) torch tensor
@@ -100,11 +100,11 @@ class MDRNN(_MDRNNBase):
 
         pi = gmm_outs[:, :, 2 * stride: 2 * stride + self.gaussians]
         pi = pi.view(seq_len, bs, self.gaussians)
-        logpi = f.log_softmax(pi, dim=-1)
+        log_pi = f.log_softmax(pi, dim=-1)
 
         rewards = gmm_outs[:, :, -1]
 
-        return mus, sigmas, logpi, rewards
+        return mus, sigmas, log_pi, rewards
 
 
 class MDRNNCell(_MDRNNBase):

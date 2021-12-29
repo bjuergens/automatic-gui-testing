@@ -1,7 +1,5 @@
 import logging
 import os
-from functools import partial
-from os.path import join
 
 import click
 import torch
@@ -10,19 +8,19 @@ import yaml
 from test_tube import Experiment
 from torch.utils.data import DataLoader
 from torchvision import transforms
-import numpy as np
 from tqdm import tqdm
 
 from data.gui_dataset import GUISequenceDataset
+from models.mdrnn import MDRNN, gmm_loss
+# from data.loaders import RolloutSequenceDataset
+from models.vae import VAE
 from utils.misc import save_checkpoint, initialize_logger
+
+
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
 # from utils.learning import EarlyStopping
 ## WARNING : THIS SHOULD BE REPLACED WITH PYTORCH 0.5
 # from utils.learning import ReduceLROnPlateau
-
-# from data.loaders import RolloutSequenceDataset
-from models.vae import VAE
-from models.mdrnn import MDRNN, gmm_loss
 
 
 def to_latent(obs, next_obs, vae, latent_size):
@@ -82,8 +80,8 @@ def get_loss(mdn_rnn, latent_obs, action, reward, latent_next_obs):
     """
     latent_obs, latent_next_obs, reward, action = [d.transpose(1, 0) for d in [latent_obs, latent_next_obs, reward, action]]
 
-    mus, sigmas, logpi, rs = mdn_rnn(action, latent_obs)
-    gmm = gmm_loss(latent_next_obs, mus, sigmas, logpi)
+    mus, sigmas, log_pi, rs = mdn_rnn(action, latent_obs)
+    gmm = gmm_loss(latent_next_obs, mus, sigmas, log_pi)
     # bce = f.binary_cross_entropy_with_logits(ds, terminal)
 
     mse = f.mse_loss(rs, reward)
