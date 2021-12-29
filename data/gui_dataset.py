@@ -23,20 +23,20 @@ class GUISequenceDataset(Dataset):
         ]
         self.observation_files.sort()
 
-        assert self.rewards.size(0) == self.actions.size(0) == (len(self.observation_files) - 1)
-        assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
-                                    "data samples")
-
         split_percentage = 0.05
         split_index = round(len(self.rewards) * (1 - split_percentage))
         if train:
-            self.observation_files = self.observation_files[:split_index]
+            self.observation_files = self.observation_files[:split_index + 1]
             self.rewards = self.rewards[:split_index]
             self.actions = self.actions[:split_index]
         else:
             self.observation_files = self.observation_files[split_index:]
             self.rewards = self.rewards[split_index:]
             self.actions = self.actions[split_index:]
+
+        assert self.rewards.size(0) == self.actions.size(0) == (len(self.observation_files) - 1)
+        assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
+                                    "data samples")
 
     def __len__(self):
         return self.rewards.size(0) - self.sequence_length - 1
