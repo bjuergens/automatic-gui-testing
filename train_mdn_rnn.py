@@ -25,7 +25,7 @@ from models.vae import VAE
 from models.mdrnn import MDRNN, gmm_loss
 
 
-def to_latent(obs, next_obs, vae, batch_size, sequence_length, latent_size):
+def to_latent(obs, next_obs, vae, latent_size):
     """ Transform observations to latent space.
 
     :args obs: 5D torch tensor (BSIZE, SEQ_LEN, ASIZE, SIZE, SIZE)
@@ -40,6 +40,8 @@ def to_latent(obs, next_obs, vae, batch_size, sequence_length, latent_size):
         #     f.upsample(x.view(-1, 3, SIZE, SIZE), size=RED_SIZE,
         #                mode='bilinear', align_corners=True)
         #     for x in (obs, next_obs)]
+        batch_size = obs.size(0)
+        sequence_length = obs.size(1)
 
         obs = obs.view(-1, 3, obs.size(3), obs.size(4))
         next_obs = next_obs.view(-1, 3, next_obs.size(3), next_obs.size(4))
@@ -93,8 +95,8 @@ def get_loss(mdn_rnn, latent_obs, action, reward, latent_next_obs):
     return loss, gmm, mse
 
 
-def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, batch_size, sequence_length, latent_size,
-              device: torch.device, current_epoch: int, train: bool):
+def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, latent_size, device: torch.device,
+              current_epoch: int, train: bool):
     """ One pass through the data """
     # loader.dataset.load_next_buffer()
 
@@ -111,9 +113,9 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, batc
     pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
     for i, data in enumerate(data_loader):
         observations, next_observations, rewards, actions = [d.to(device) for d in data]
+        batch_size = observations.size(0)
 
-        latent_obs, latent_next_obs = to_latent(observations, next_observations, vae, batch_size, sequence_length,
-                                                latent_size)
+        latent_obs, latent_next_obs = to_latent(observations, next_observations, vae, latent_size)
 
         if train:
             optimizer.zero_grad()
@@ -306,11 +308,10 @@ def main(config_path: str):
 
     current_best = None
     for current_epoch in range(max_epochs):
-        data_pass(mdn_rnn, vae, experiment, optimizer, train_dataloader, batch_size, sequence_length, latent_size,
-                  device, current_epoch, train=True)
+        data_pass(mdn_rnn, vae, experiment, optimizer, train_dataloader, latent_size, device, current_epoch, train=True)
 
-        test_loss = data_pass(mdn_rnn, vae, experiment, optimizer, test_dataloader, batch_size, sequence_length,
-                              latent_size, device, current_epoch, train=False)
+        test_loss = data_pass(mdn_rnn, vae, experiment, optimizer, test_dataloader, latent_size, device, current_epoch,
+                              train=False)
 
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
