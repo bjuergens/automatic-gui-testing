@@ -73,13 +73,14 @@ def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
 
 
 class _MDRNNBase(nn.Module):
-    def __init__(self, latents, actions, hiddens, gaussians, batch_size):
+    def __init__(self, latents, actions, hiddens, gaussians, batch_size, device):
         super().__init__()
         self.latents = latents
         self.actions = actions
         self.hiddens = hiddens
         self.gaussians = gaussians
         self.batch_size = batch_size
+        self.device = device
 
         self.gmm_linear = nn.Linear(
             hiddens, (2 * latents + 1) * gaussians + 1)
@@ -90,14 +91,14 @@ class _MDRNNBase(nn.Module):
 
 class MDRNN(_MDRNNBase):
     """ MDRNN model for multi steps forward """
-    def __init__(self, latents, actions, hiddens, gaussians, batch_size):
-        super().__init__(latents, actions, hiddens, gaussians, batch_size)
+    def __init__(self, latents, actions, hiddens, gaussians, batch_size, device):
+        super().__init__(latents, actions, hiddens, gaussians, batch_size, device)
         self.rnn = nn.LSTM(latents + actions, hiddens)
         self.hidden_state, self.cell_state = self.initialize_hidden()
 
     def initialize_hidden(self):
-        hidden = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens))
-        cell = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens))
+        hidden = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens), device=self.device)
+        cell = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens), device=self.device)
         return (hidden, cell)
 
     def forward(self, actions, latents):

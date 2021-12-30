@@ -241,7 +241,7 @@ def main(config_path: str):
 
     action_size = 2
 
-    mdn_rnn = MDRNN(latent_size, action_size, hidden_size, gaussians=5, batch_size=batch_size).to(device)
+    mdn_rnn = MDRNN(latent_size, action_size, hidden_size, gaussians=5, batch_size=batch_size, device=device).to(device)
     # optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
     optimizer = torch.optim.Adam(mdn_rnn.parameters(), lr=learning_rate)
 
