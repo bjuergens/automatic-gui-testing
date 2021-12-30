@@ -7,6 +7,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
+from torch.nn import Parameter
 
 ONE_OVER_SQRT_2PI = 1.0 / math.sqrt(2 * math.pi)
 LOG2PI = math.log(2 * math.pi)
@@ -72,12 +73,13 @@ def gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
 
 
 class _MDRNNBase(nn.Module):
-    def __init__(self, latents, actions, hiddens, gaussians):
+    def __init__(self, latents, actions, hiddens, gaussians, batch_size):
         super().__init__()
         self.latents = latents
         self.actions = actions
         self.hiddens = hiddens
         self.gaussians = gaussians
+        self.batch_size = batch_size
 
         self.gmm_linear = nn.Linear(
             hiddens, (2 * latents + 1) * gaussians + 1)
@@ -88,9 +90,15 @@ class _MDRNNBase(nn.Module):
 
 class MDRNN(_MDRNNBase):
     """ MDRNN model for multi steps forward """
-    def __init__(self, latents, actions, hiddens, gaussians):
-        super().__init__(latents, actions, hiddens, gaussians)
+    def __init__(self, latents, actions, hiddens, gaussians, batch_size):
+        super().__init__(latents, actions, hiddens, gaussians, batch_size)
         self.rnn = nn.LSTM(latents + actions, hiddens)
+        self.hidden_state, self.cell_state = self.initialize_hidden()
+
+    def initialize_hidden(self):
+        hidden = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens))
+        cell = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens))
+        return (hidden, cell)
 
     def forward(self, actions, latents):
         """ MULTI STEPS forward.
@@ -110,7 +118,10 @@ class MDRNN(_MDRNNBase):
         seq_len, bs = actions.size(0), actions.size(1)
 
         ins = torch.cat([actions, latents], dim=-1)
-        outs, _ = self.rnn(ins)
+        # outs, (hz, cz) = self.rnn(ins)
+        outs, (self.hidden_state, self.cell_state) = self.rnn(ins, (self.hidden_state, self.cell_state))
+        self.hidden_state, self.cell_state = self.hidden_state.detach(), self.cell_state.detach()
+
         gmm_outs = self.gmm_linear(outs)
 
         stride = self.gaussians * self.latents
@@ -137,7 +148,7 @@ class MDRNNCell(_MDRNNBase):
         super().__init__(latents, actions, hiddens, gaussians)
         self.rnn = nn.LSTMCell(latents + actions, hiddens)
 
-    def forward(self, action, latent, hidden): # pylint: disable=arguments-differ
+    def forward(self, action, latent, hidden):
         """ ONE STEP forward.
 
         :args actions: (BSIZE, ASIZE) torch tensor

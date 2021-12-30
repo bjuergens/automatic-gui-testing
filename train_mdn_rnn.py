@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 
-from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset
+from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GUISequenceBatchSampler
 from models.mdrnn import MDRNN, gmm_loss
 # from data.loaders import RolloutSequenceDataset
 from models.vae import VAE
@@ -108,9 +108,19 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
     # cum_bce = 0
     cum_mse = 0
 
+    old_dataset_index = None
+
     pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
     for i, data in enumerate(data_loader):
-        observations, next_observations, rewards, actions = [d.to(device) for d in data]
+        observations, next_observations, rewards, actions = [d.to(device) for d in data[0]]
+        dataset_indices: torch.Tensor = data[1]
+        current_dataset_index = dataset_indices[0]
+        assert all(dataset_indices == current_dataset_index)
+
+        if old_dataset_index is None or old_dataset_index != current_dataset_index:
+            old_dataset_index = current_dataset_index
+            mdn_rnn.initialize_hidden()
+
         batch_size = observations.size(0)
 
         latent_obs, latent_next_obs = to_latent(observations, next_observations, vae, latent_size)
@@ -158,6 +168,7 @@ def main(config_path: str):
     # parser.add_argument('--include_reward', action='store_true',
     #                     help="Add a reward modelisation term to the loss.")
     # args = parser.parse_args()
+    # torch.autograd.set_detect_anomaly(True)
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -230,8 +241,9 @@ def main(config_path: str):
 
     action_size = 2
 
-    mdn_rnn = MDRNN(latent_size, action_size, hidden_size, gaussians=5).to(device)
-    optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
+    mdn_rnn = MDRNN(latent_size, action_size, hidden_size, gaussians=5, batch_size=batch_size).to(device)
+    # optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
+    optimizer = torch.optim.Adam(mdn_rnn.parameters(), lr=learning_rate)
 
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
@@ -268,18 +280,18 @@ def main(config_path: str):
 
     additional_dataloader_args = {"num_workers": num_workers, "pin_memory": True}
 
+    custom_sampler_train = GUISequenceBatchSampler(train_dataset, batch_size=batch_size, drop_last=True)
+    custom_sampler_test = GUISequenceBatchSampler(test_dataset, batch_size=batch_size, drop_last=True)
+
     train_dataloader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=False,
+        batch_sampler=custom_sampler_train,
         **additional_dataloader_args
     )
 
     test_dataloader = DataLoader(
         test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
+        batch_sampler=custom_sampler_test,
         **additional_dataloader_args
     )
 

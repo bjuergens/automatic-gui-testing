@@ -5,7 +5,8 @@ from typing import Optional
 import numpy as np
 import torch
 from PIL import Image
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
+from torch.utils.data.sampler import SequentialSampler
 
 
 class GUIMultipleSequencesDataset(Dataset):
@@ -48,7 +49,36 @@ class GUIMultipleSequencesDataset(Dataset):
 
         dataset = self.sequence_datasets[dataset_index]
 
-        return dataset[index % self.individual_sequence_length]
+        return dataset[index % self.individual_sequence_length], dataset_index
+
+
+class GUISequenceBatchSampler(Sampler):
+    def __init__(self, data_source: GUIMultipleSequencesDataset, batch_size, drop_last=False):
+        super().__init__(data_source)
+        self.data_source = data_source
+        self.batch_size = batch_size
+        self.drop_last = drop_last
+
+        self.sampler = SequentialSampler(self.data_source)
+
+        self.max_sequence_index = self.data_source.dataset_lengths[0]
+
+        self.current_stop_point = self.max_sequence_index
+
+    def __iter__(self):
+        batch = []
+        for idx in self.sampler:
+            if idx > self.current_stop_point:
+                if len(batch) == self.batch_size:
+                    yield batch
+                batch = []
+                self.current_stop_point += self.max_sequence_index
+            batch.append(idx)
+            if len(batch) == self.batch_size:
+                yield batch
+                batch = []
+        if len(batch) > 0 and not self.drop_last:
+            yield batch
 
 
 class GUISequenceDataset(Dataset):
