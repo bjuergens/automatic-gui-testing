@@ -68,7 +68,7 @@ class GUISequenceBatchSampler(Sampler):
     def __iter__(self):
         batch = []
         for idx in self.sampler:
-            if idx > self.current_stop_point:
+            if idx >= self.current_stop_point:
                 if len(batch) == self.batch_size:
                     yield batch
                 batch = []
