@@ -89,9 +89,13 @@ def start_monkey_tester(env: gym.Env, stop_mode: str, amount: int, chosen_direct
     else:
         reward_sum, rewards, actions = _iteration_mode_rollout(amount, env, observations_directory)
 
+    rewards = np.array(rewards, dtype=np.float32)
+
+    assert np.all(rewards >= 0), "Critical error, some rewards are negative which cannot be"
+
     np.savez(
         os.path.join(chosen_directory, "data.npz"),
-        rewards=np.array(rewards, dtype=np.float32),
+        rewards=rewards,
         actions=np.array(actions, dtype=np.int32)
     )
 
