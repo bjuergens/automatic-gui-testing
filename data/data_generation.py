@@ -37,7 +37,7 @@ def _rollout_one_iteration(env, current_iteration: int, observations_directory: 
     reward, observation, done, info = env.step(True)
     _save_observation(observation, current_iteration, observations_directory)
 
-    reward_sum += reward
+    reward_sum += reward / 100.0
 
     if current_iteration % 500 == 0:
         logging.info(

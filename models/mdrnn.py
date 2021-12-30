@@ -139,6 +139,7 @@ class MDRNN(_MDRNNBase):
         log_pi = f.log_softmax(pi, dim=-1)
 
         rewards = gmm_outs[:, :, -1]
+        rewards = torch.sigmoid(rewards)
 
         return mus, sigmas, log_pi, rewards
 
