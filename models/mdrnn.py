@@ -7,7 +7,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
-from torch.nn import Parameter
 
 ONE_OVER_SQRT_2PI = 1.0 / math.sqrt(2 * math.pi)
 LOG2PI = math.log(2 * math.pi)
@@ -100,6 +99,21 @@ class MDRNN(_MDRNNBase):
         hidden = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens), device=self.device)
         cell = torch.zeros((self.rnn.num_layers, self.batch_size, self.hiddens), device=self.device)
         return (hidden, cell)
+
+    def predict_next_latent(self, batch, mus, sigmas, log_pi):
+        # batch: (SEQ_LEN, BATCH_SIZE, 1, L_SIZE)
+        # mus, sigmas: (SEQ_LEN, BATCH_SIZE, N_GAUSS, L_SIZE)
+        # log_pi: (SEQ_LEN, BATCH_SIZE, N_GAUSS)
+        batch = batch.unsqueeze(-2)
+        # prob: (SEQ_LEN, BATCH_SIZE, N_GAUSS, L_SIZE)
+        prob = ONE_OVER_SQRT_2PI * torch.exp(-0.5 * torch.pow((batch - mus) / sigmas, 2)) / sigmas
+        # log_pi: (SEQ_LEN, BATCH_SIZE, N_GAUSS, 1)
+        pi = log_pi.exp().unsqueeze(-1)
+
+        prediction = torch.sum(prob * pi, dim=2)
+
+        # Result: (SEQ_LEN, BATCH_SIZE, L_SIZE)
+        return prediction
 
     def forward(self, actions, latents):
         """ MULTI STEPS forward.
