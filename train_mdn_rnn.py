@@ -313,6 +313,10 @@ def main(config_path: str):
         with open(os.path.join(log_dir, "config.yaml"), "w") as file:
             yaml.safe_dump(config, file, default_flow_style=False)
 
+    training_version = experiment.version
+    if training_version is not None:
+        logging.info(f"Started MDN-RNN training version_{training_version}")
+
     # Data Loading
     # transform = transforms.Lambda(
     #     lambda x: np.transpose(x, (0, 3, 1, 2)) / 255)
