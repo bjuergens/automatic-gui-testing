@@ -27,7 +27,9 @@ def _gmm_loss_using_log(batch, mus, sigmas, log_pi, reduce=True):
 
 def _gmm_loss(batch, mus, sigmas, log_pi, reduce=True):
     prob = ONE_OVER_SQRT_2PI * torch.exp(-0.5 * torch.pow((batch - mus) / sigmas, 2)) / sigmas
-    log_prob = torch.log(prob).sum(dim=-1)
+
+    eps = 1e-10
+    log_prob = torch.log(prob + eps).sum(dim=-1)
     log_prob = torch.logsumexp(log_pi + log_prob, dim=-1)
 
     if reduce:
