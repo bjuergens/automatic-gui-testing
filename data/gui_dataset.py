@@ -9,6 +9,58 @@ from torch.utils.data import Dataset, Sampler
 from torch.utils.data.sampler import SequentialSampler
 
 
+POSSIBLE_SPLITS = ["train", "val", "test"]
+
+# Key value is the amount of sequences that were used in the data generation (located in root_dir), and the values is
+# a list, which tell the end indices of the sequences that are used for the corresponding split. Therefore, the list has
+# always a length of three and because we have [train, val, test] splits. See the first example down below for more
+# detail.
+IMPLEMENTED_SPLITS = {
+    16: [10, 12, 16],  # e.g. 16 sequences, 0-10 for training, 10-12 for validation, 12-16 for testing
+    10: [7, 8, 10]  # sequences# : 7 training, 1 validation, 2 testing
+}
+
+
+class GUIMultipleSequencesObservationDataset(Dataset):
+
+    def __init__(self, root_dir, split: str, transform):
+        self.root_dir = root_dir
+        self.transform = transform
+
+        assert split in POSSIBLE_SPLITS
+        self.split = split
+
+        self.number_of_sequences = len(os.listdir(self.root_dir))
+        assert self.number_of_sequences in IMPLEMENTED_SPLITS.keys()
+
+        if self.split == "train":
+            self.start_index = 0
+            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][0]
+        elif self.split == "val":
+            self.start_index = IMPLEMENTED_SPLITS[self.number_of_sequences][0]
+            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][1]
+        elif self.split == "test":
+            self.start_index = IMPLEMENTED_SPLITS[self.number_of_sequences][1]
+            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][2]
+
+        self.observation_images = []
+
+        for sequence_sub_dir in sorted(os.listdir(self.root_dir))[self.start_index:self.end_index]:
+            sequence_images_list = sorted(os.listdir(os.path.join(self.root_dir, sequence_sub_dir, "observations")))
+
+            self.observation_images.extend(
+                [os.path.join(self.root_dir, sequence_sub_dir, "observations", x) for x in sequence_images_list]
+            )
+
+        self.number_of_observations = len(self.observation_images)
+
+    def __len__(self):
+        return self.number_of_observations
+
+    def __getitem__(self, index):
+        return self.transform(Image.open(self.observation_images[index]))
+
+
 class GUIMultipleSequencesDataset(Dataset):
 
     def __init__(self, root_dir, train: bool, sequence_length: int, transform):
@@ -18,11 +70,13 @@ class GUIMultipleSequencesDataset(Dataset):
 
         self.sequence_dirs = []
         for _sequence_dir in os.listdir(self.root_dir):
+            # TODO remove this when its not longer needed
             if _sequence_dir == "mixed":
                 continue
 
             self.sequence_dirs.append(os.path.join(self.root_dir, _sequence_dir))
 
+        # TODO use new "implemented splits dict" method
         if train:
             self.sequence_dirs = self.sequence_dirs[:-2]
         else:
