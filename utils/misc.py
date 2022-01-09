@@ -6,7 +6,8 @@ from os.path import join, exists
 import torch
 from torchvision import transforms
 import numpy as np
-from models import MDRNNCell, VAE, Controller
+from models import MDRNNCell, Controller
+from models.vae import VAE
 import gym
 import gym.envs.box2d
 

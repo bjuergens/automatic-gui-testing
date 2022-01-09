@@ -12,7 +12,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset
-from models.vae import VAE
+from models.vae import VAE, VAEFullInputSize
 from utils.misc import save_checkpoint, initialize_logger
 
 
