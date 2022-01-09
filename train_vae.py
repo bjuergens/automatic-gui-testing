@@ -183,12 +183,9 @@ def main(config_path: str):
     else:
         device = torch.device("cpu")
 
-    set_range = transforms.Lambda(lambda x: 2 * x - 1.0)
-
     transformation_functions = transforms.Compose([
         transforms.Resize((config["experiment_parameters"]["img_size"], config["experiment_parameters"]["img_size"])),
-        transforms.ToTensor(),
-        set_range
+        transforms.ToTensor()
     ])
 
     if dataset_name == "gui_dataset":
