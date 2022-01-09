@@ -278,7 +278,7 @@ def main(config_path: str):
 
     training_version = experiment.version
     if training_version is not None:
-        logging.info(f"Started VAE training version_{training_version}")
+        logging.info(f"Started VAE training version_{training_version} for {max_epochs} epochs")
 
     for current_epoch in range(0, max_epochs):
         train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight)
