@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Tuple
 
 import click
 import torch
@@ -25,13 +26,10 @@ from utils.misc import save_checkpoint, initialize_logger
 
 def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: torch.Tensor, mu: torch.Tensor,
                   log_var: torch.Tensor, kld_weight: float, current_epoch: int, max_epochs: int,
-                  is_train: bool = True) -> torch.Tensor:
+                  is_train: bool = True) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     # MSE
     batch_dim = x.size(0)
     reconstruction_loss = F.mse_loss(x, reconstruction_x, reduction="sum") / batch_dim
-
-    # KLD
-    kld_warmup_term = current_epoch / max_epochs
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -40,29 +38,27 @@ def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: tor
     # Take also the mean over the batch_dim (outermost function call)
     kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1), dim=0)
 
-    loss = reconstruction_loss + kld_weight * kld_warmup_term * kld_loss
+    # KLD
+    kld_warmup_term = current_epoch / max_epochs
+    kld_loss_term = kld_weight * kld_warmup_term * kld_loss
+
+    loss = reconstruction_loss + kld_loss_term
 
     # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
     if is_train:
         experiment.log({
-            "loss": loss.item(),
-            "reconstruction_loss": reconstruction_loss.item(),
-            "kld": kld_loss.item(),
-            "mu": torch.mean(mu).item(),
-            "log_var": torch.mean(log_var).item(),
-            "var": torch.mean(log_var.exp()).item()
+            "loss": loss.item() / batch_dim,
+            "reconstruction_loss": reconstruction_loss.item() / batch_dim,
+            "kld": kld_loss.item() / batch_dim
         })
     else:
         experiment.log({
-            "val_loss": loss.item(),
-            "val_reconstruction_loss": reconstruction_loss.item(),
-            "val_kld": kld_loss.item(),
-            "val_mu": torch.mean(mu).item(),
-            "val_log_var": torch.mean(log_var).item(),
-            "val_var": torch.mean(log_var.exp()).item()
+            "val_loss": loss.item() / batch_dim,
+            "val_reconstruction_loss": reconstruction_loss.item() / batch_dim,
+            "val_kld": kld_loss.item() / batch_dim
         })
 
-    return loss
+    return loss, reconstruction_loss, kld_loss
 
 
 def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight):
@@ -70,8 +66,6 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
     model.train()
     # dataset_train.load_next_buffer()
     train_loss = 0
-    train_mu = None
-    train_log_var = None
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Train")
@@ -80,17 +74,11 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, log_var = model(data)
-        loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch, max_epochs)
+        loss, mse_loss, kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch,
+                                                 max_epochs)
         loss.backward()
         train_loss += loss.item() * data.size(0)
         optimizer.step()
-
-        if train_mu is None and train_log_var is None:
-            train_mu = mu
-            train_log_var = log_var
-        else:
-            train_mu = torch.cat([train_mu, mu], dim=0)
-            train_log_var = torch.cat([train_log_var, log_var], dim=0)
 
         # if batch_idx % 20 == 0:
         #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -99,16 +87,19 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         #         loss.item() / len(data)))
 
         # pbar.set_description("Loss {:.4f}".format(loss.item()))
-        progress_bar.set_postfix({"loss": loss.item()})
+        batch_size = data.size(0)
+        progress_bar.set_postfix_str(
+            f"loss={loss.item() / batch_size :10.6f} mse={mse_loss.item() / batch_size:10.6f} "
+            f"kld={kld_loss.item() / batch_size:8.6f}"
+        )
+
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
     #     current_epoch, train_loss / len(train_loader.dataset)))
 
     progress_bar.close()
 
     experiment.log({
-        "epoch_train_loss": train_loss / len(train_loader.dataset),
-        "epoch_mu": train_mu.mean().item(),
-        "epoch_var": train_log_var.exp().mean().item()
+        "epoch_train_loss": train_loss / len(train_loader.dataset)
     })
 
 
@@ -127,12 +118,16 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
         with torch.no_grad():
             data = data.to(device)
             recon_batch, mu, log_var = model(data)
-            val_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch, max_epochs,
-                                     is_train=False).item()
+            val_loss, val_mse_loss, val_kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight,
+                                                                 current_epoch, max_epochs, is_train=False)
 
-            progress_bar.set_postfix({"val_loss": val_loss})
+            batch_size = data.size(0)
+            progress_bar.set_postfix_str(
+                f"val_loss={val_loss.item() / batch_size :10.6f} val_mse={val_mse_loss.item() / batch_size:10.6f} "
+                f"val_kld= 2{val_kld_loss.item() / batch_size:8.6f}"
+            )
 
-            val_loss_sum += val_loss
+            val_loss_sum += val_loss.item() * batch_size
 
         if not logged_one_batch and not experiment.debug:
             experiment.add_images("originals", data, global_step=current_epoch)
@@ -140,10 +135,12 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
             logged_one_batch = True
 
     progress_bar.close()
-    val_loss_sum /= len(val_loader.dataset)
-    # print('====> Test set loss: {:.4f}'.format(test_loss))
 
-    model.train()
+    val_loss_sum /= len(val_loader.dataset)
+
+    experiment.log({
+        "epoch_val_loss": val_loss_sum
+    })
 
     return val_loss_sum
 
