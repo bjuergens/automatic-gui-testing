@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from torchvision import transforms
 from tqdm import tqdm
 
-from data.gui_dataset import GUIDataset
+from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
 from models.vae import VAE, VAEFullInputSize
 from utils.misc import save_checkpoint, initialize_logger
 
@@ -158,11 +158,18 @@ def main(config_path: str):
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
-    latent_size = config["model_parameters"]["latent_size"]
-
     kld_weight = config["experiment_parameters"]["kld_weight"]
     batch_size = config["experiment_parameters"]["batch_size"]
     manual_seed = config["experiment_parameters"]["manual_seed"]
+
+    dataset_name = config["experiment_parameters"]["dataset"]
+    dataset_path = config["experiment_parameters"]["dataset_path"]
+
+    number_of_workers = config["trainer_parameters"]["num_workers"]
+
+    # VAE configuration
+    vae_name = config["model_parameters"]["name"]
+    latent_size = config["model_parameters"]["latent_size"]
 
     torch.manual_seed(manual_seed)
 
@@ -184,22 +191,25 @@ def main(config_path: str):
         set_range
     ])
 
-    if config["experiment_parameters"]["dataset"] == "gui-dataset":
-        data_path = config["experiment_parameters"]["data_path"]
-        train_dataset = GUIDataset(
-            data_path,
-            split="train",
-            transform=transformation_functions
-        )
-        val_dataset = GUIDataset(
-            data_path,
-            split="val",
-            transform=transformation_functions
-        )
+    if dataset_name == "gui_dataset":
+        dataset = GUIDataset
+    elif dataset_name == "gui_multiple_sequences":
+        dataset = GUIMultipleSequencesObservationDataset
     else:
-        raise RuntimeError("Currently only 'gui-dataset' supported as the dataset")
+        raise RuntimeError("Currently only 'gui_dataset' or 'gui_multiple_sequences' supported as the dataset")
 
-    additional_dataloader_args = {"num_workers": config["trainer_parameters"]["num_workers"], "pin_memory": True}
+    train_dataset = dataset(
+        dataset_path,
+        split="train",
+        transform=transformation_functions
+    )
+    val_dataset = dataset(
+        dataset_path,
+        split="val",
+        transform=transformation_functions
+    )
+
+    additional_dataloader_args = {"num_workers": number_of_workers, "pin_memory": True}
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -215,7 +225,14 @@ def main(config_path: str):
         **additional_dataloader_args
     )
 
-    model = VAE(img_channels=3, latent_size=latent_size).to(device)
+    if vae_name == "vae_half_input_size":
+        model_type = VAE
+    elif vae_name == "vae_full_input_size":
+        model_type = VAEFullInputSize
+    else:
+        raise RuntimeError(f"Not supported VAE type: {vae_name}")
+
+    model = model_type(img_channels=3, latent_size=latent_size).to(device)
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
@@ -233,6 +250,9 @@ def main(config_path: str):
         create_git_tag=False,
         autosave=True
     )
+
+    # Log hyperparameters to the tensorboard
+    experiment.tag(config)
 
     # vae_dir = join(args.logdir, 'vae')
     # if not exists(vae_dir):
@@ -274,7 +294,6 @@ def main(config_path: str):
 
         # checkpointing
         if not experiment.debug:
-
             is_best = not current_best or validation_loss < current_best
             if is_best:
                 current_best = validation_loss

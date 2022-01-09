@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class VAEFullInputSize(nn.Module):
 
-    def __init__(self, latent_size: int):
+    def __init__(self, img_channels: int, latent_size: int):
         super().__init__()
 
         self.latent_size = latent_size
@@ -32,7 +32,7 @@ class VAEFullInputSize(nn.Module):
         z = self.reparameterize(mu, log_var)
         reconstruction = self.decoder(z)
 
-        return reconstruction
+        return reconstruction, mu, log_var
 
     def sample(self, number_of_samples: int):
         z = torch.randn((number_of_samples, self.latent_size))

@@ -194,7 +194,7 @@ class GUISequenceDataset(Dataset):
 
 class GUIDataset(Dataset):
 
-    def __init__(self, root_dir, split: str = "train", transform=None):
+    def __init__(self, root_dir, split: str, transform):
 
         self.root_dir = root_dir
         self.split = split
@@ -242,8 +242,6 @@ class GUIDataset(Dataset):
             )
 
         img = Image.open(image_path)
-
-        if self.transform:
-            img = self.transform(img)
+        img = self.transform(img)
 
         return img

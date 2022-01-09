@@ -1,11 +1,11 @@
 model_parameters:
-  name: "VAE"
-  latent_size: 64
+  name: "vae_full_input_size"
+  latent_size: 256
 
 experiment_parameters:
-  dataset: gui-dataset
-  data_path: "/home/pdeubel/PycharmProjects/data/test-gui"
-  img_size: 256
+  dataset: gui_dataset
+  dataset_path: "/home/pdeubel/PycharmProjects/data/test-gui"
+  img_size: 448
   batch_size: 10
   learning_rate: 0.005
   kld_weight: 1.0
