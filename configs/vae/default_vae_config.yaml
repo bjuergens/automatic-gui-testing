@@ -9,6 +9,7 @@ experiment_parameters:
   batch_size: 10
   learning_rate: 0.005
   kld_weight: 1.0
+  manual_seed: 1010
 
 trainer_parameters:
   gpu: -1
@@ -18,4 +19,3 @@ trainer_parameters:
 logging_parameters:
   debug: False
   save_dir: "logs/vae/"
-  manual_seed: 100
