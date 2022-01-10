@@ -1,6 +1,7 @@
 model_parameters:
   name: "vae_full_input_size"
   latent_size: 256
+  input_channels: 3
 
 experiment_parameters:
   dataset: gui_dataset
@@ -9,6 +10,7 @@ experiment_parameters:
   batch_size: 10
   learning_rate: 0.005
   kld_weight: 1.0
+  kld_warmup: True
   manual_seed: 1010
 
 trainer_parameters:

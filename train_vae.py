@@ -13,7 +13,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
-from models.vae import VAE, VAEFullInputSize
+from models.vae import VAEHalfInputSize, VAEFullInputSize
 from utils.misc import save_checkpoint, initialize_logger
 
 
@@ -24,35 +24,7 @@ from utils.misc import save_checkpoint, initialize_logger
 # from data.loaders import RolloutObservationDataset
 
 
-def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: torch.Tensor, mu: torch.Tensor,
-                  log_var: torch.Tensor, kld_weight: float, current_epoch: int, max_epochs: int,
-                  is_train: bool = True) -> Tuple[torch.Tensor, float, float]:
-    # MSE
-    batch_dim = x.size(0)
-    reconstruction_loss = F.mse_loss(x, reconstruction_x, reduction="sum") / batch_dim
-
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    # Take also the mean over the batch_dim (outermost function call)
-    kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1), dim=0)
-
-    # KLD
-    kld_warmup_term = current_epoch / max_epochs
-    kld_loss_term = kld_weight * kld_warmup_term * kld_loss
-
-    loss = reconstruction_loss + kld_loss_term
-
-    # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
-    loss_float = loss.item()
-    reconstruction_loss_float = reconstruction_loss.item()
-    kld_loss_float = kld_loss.item()
-
-    return loss, reconstruction_loss_float, kld_loss_float
-
-
-def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight):
+def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs):
     """ One training epoch """
     model.train()
     # dataset_train.load_next_buffer()
@@ -67,8 +39,7 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, log_var = model(data)
-        loss, mse_loss, kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight, current_epoch,
-                                                 max_epochs)
+        loss, mse_loss, kld_loss = model.loss_function(data, recon_batch, mu, log_var, current_epoch, max_epochs)
         loss.backward()
         train_loss += loss.item() * data.size(0)
         optimizer.step()
@@ -119,9 +90,9 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
 
         with torch.no_grad():
             recon_batch, mu, log_var = model(data)
-
-        val_loss, val_mse_loss, val_kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight,
-                                                             current_epoch, max_epochs, is_train=False)
+            val_loss, val_mse_loss, val_kld_loss = model.loss_function(
+                data, recon_batch, mu, log_var, current_epoch, max_epochs
+            )
 
         val_loss_float = val_loss.item()
 
@@ -164,6 +135,7 @@ def main(config_path: str):
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
+    use_kld_warmup = config["experiment_parameters"]["kld_warmup"]
     kld_weight = config["experiment_parameters"]["kld_weight"]
     batch_size = config["experiment_parameters"]["batch_size"]
     manual_seed = config["experiment_parameters"]["manual_seed"]
@@ -175,7 +147,6 @@ def main(config_path: str):
 
     # VAE configuration
     vae_name = config["model_parameters"]["name"]
-    latent_size = config["model_parameters"]["latent_size"]
 
     torch.manual_seed(manual_seed)
 
@@ -229,13 +200,14 @@ def main(config_path: str):
     )
 
     if vae_name == "vae_half_input_size":
-        model_type = VAE
+        model_type = VAEHalfInputSize
     elif vae_name == "vae_full_input_size":
         model_type = VAEFullInputSize
     else:
         raise RuntimeError(f"Not supported VAE type: {vae_name}")
 
-    model = model_type(img_channels=3, latent_size=latent_size).to(device)
+    model = model_type(config["model_parameters"], use_kld_warmup, kld_weight).to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
@@ -290,8 +262,8 @@ def main(config_path: str):
         logging.info(f"Started VAE training version_{training_version} for {max_epochs} epochs")
 
     for current_epoch in range(0, max_epochs):
-        train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight)
-        validation_loss = validate(model, experiment, val_loader, device, current_epoch, max_epochs, kld_weight)
+        train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs)
+        validation_loss = validate(model, experiment, val_loader, device, current_epoch, max_epochs)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
 
@@ -310,8 +282,7 @@ def main(config_path: str):
             }, is_best, checkpoint_filename, best_model_filename)
 
             with torch.no_grad():
-                sample = torch.randn(batch_size, latent_size).to(device)
-                sample_reconstructions = model.decoder(sample).cpu()
+                sample_reconstructions = model.sample(batch_size, device).cpu()
                 experiment.add_images("samples", sample_reconstructions, global_step=current_epoch)
 
         # if earlystopping.stop:
