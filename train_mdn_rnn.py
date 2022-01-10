@@ -100,8 +100,14 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
 
     if train:
         mdn_rnn.train()
+        loss_key = "loss"
+        gmm_key = "gmm"
+        mse_key = "mse"
     else:
         mdn_rnn.eval()
+        loss_key = "val_loss"
+        gmm_key = "val_gmm"
+        mse_key = "val_mse"
 
     cum_loss = 0
     cum_gmm = 0
@@ -109,6 +115,8 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
     cum_mse = 0
 
     old_dataset_index = None
+
+    log_interval = 20
 
     pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
     for i, data in enumerate(data_loader):
@@ -145,12 +153,20 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
             loss=cum_loss / ((i + 1) * batch_size),
             gmm=cum_gmm / latent_size / ((i + 1) * batch_size), mse=cum_mse / ((i + 1) * batch_size)))
         pbar.update(batch_size)
+
+        if i % log_interval == 0:
+            experiment.log({
+                loss_key: loss.item(),
+                gmm_key: gmm.item(),
+                mse_key: mse.item()
+            })
+
     pbar.close()
 
     experiment.log({
-        "epoch_loss": cum_loss / len(data_loader.dataset),
-        "epoch_gmm": cum_gmm / len(data_loader.dataset),
-        "epoch_mse": cum_mse / len(data_loader.dataset),
+        f"epoch_{loss_key}": cum_loss / len(data_loader.dataset),
+        f"epoch_{gmm_key}": cum_gmm / len(data_loader.dataset),
+        f"epoch_{mse_key}": cum_mse / len(data_loader.dataset),
     })
 
     return cum_loss * batch_size / len(data_loader.dataset)
@@ -315,7 +331,7 @@ def main(config_path: str):
 
     training_version = experiment.version
     if training_version is not None:
-        logging.info(f"Started MDN-RNN training version_{training_version}")
+        logging.info(f"Started MDN-RNN training version_{training_version} for {max_epochs}")
 
     # Data Loading
     # transform = transforms.Lambda(
