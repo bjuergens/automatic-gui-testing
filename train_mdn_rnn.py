@@ -13,7 +13,7 @@ from tqdm import tqdm
 from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GUISequenceBatchSampler
 from models.mdrnn import MDRNN, gmm_loss
 # from data.loaders import RolloutSequenceDataset
-from models.vae import VAE
+from models.vae import VAE, VAEFullInputSize
 from utils.misc import save_checkpoint, initialize_logger
 
 
@@ -233,7 +233,14 @@ def main(config_path: str):
 
     vae_name = vae_config["model_parameters"]["name"]
 
-    vae = VAE(3, vae_config["model_parameters"]["latent_size"]).to(device)
+    if vae_name == "vae_half_input_size":
+        vae_model = VAE
+    elif vae_name == "vae_full_input_size":
+        vae_model = VAEFullInputSize
+    else:
+        raise RuntimeError(f"Not supported VAE type: {vae_name}")
+
+    vae = vae_model(3, vae_config["model_parameters"]["latent_size"]).to(device)
     checkpoint = torch.load(os.path.join(vae_directory, "best.pt"), map_location=device)
     vae.load_state_dict(checkpoint["state_dict"])
 
