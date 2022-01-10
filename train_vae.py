@@ -90,7 +90,6 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
                 "reconstruction_loss": mse_loss,
                 "kld": kld_loss
             })
-        break
 
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
     #     current_epoch, train_loss / len(train_loader.dataset)))
