@@ -26,7 +26,7 @@ from utils.misc import save_checkpoint, initialize_logger
 
 def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: torch.Tensor, mu: torch.Tensor,
                   log_var: torch.Tensor, kld_weight: float, current_epoch: int, max_epochs: int,
-                  is_train: bool = True) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                  is_train: bool = True) -> Tuple[torch.Tensor, float, float]:
     # MSE
     batch_dim = x.size(0)
     reconstruction_loss = F.mse_loss(x, reconstruction_x, reduction="sum") / batch_dim
@@ -45,20 +45,24 @@ def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: tor
     loss = reconstruction_loss + kld_loss_term
 
     # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
+    loss_float = loss.item()
+    reconstruction_loss_float = reconstruction_loss.item()
+    kld_loss_float = kld_loss.item()
+
     if is_train:
         experiment.log({
-            "loss": loss.item() / batch_dim,
-            "reconstruction_loss": reconstruction_loss.item() / batch_dim,
-            "kld": kld_loss.item() / batch_dim
+            "loss": loss_float,
+            "reconstruction_loss": reconstruction_loss_float,
+            "kld": kld_loss_float
         })
     else:
         experiment.log({
-            "val_loss": loss.item() / batch_dim,
-            "val_reconstruction_loss": reconstruction_loss.item() / batch_dim,
-            "val_kld": kld_loss.item() / batch_dim
+            "val_loss": loss_float,
+            "val_reconstruction_loss": reconstruction_loss_float,
+            "val_kld": kld_loss_float
         })
 
-    return loss, reconstruction_loss, kld_loss
+    return loss, reconstruction_loss_float, kld_loss_float
 
 
 def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, kld_weight):
@@ -86,11 +90,8 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         #         100. * batch_idx / len(train_loader),
         #         loss.item() / len(data)))
 
-        # pbar.set_description("Loss {:.4f}".format(loss.item()))
-        batch_size = data.size(0)
         progress_bar.set_postfix_str(
-            f"loss={loss.item() / batch_size :10.6f} mse={mse_loss.item() / batch_size:10.6f} "
-            f"kld={kld_loss.item() / batch_size:8.6f}"
+            f"loss={loss.item():.4f} mse={mse_loss:.4f} kld={kld_loss:.4f}"
         )
 
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
@@ -123,8 +124,7 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
 
             batch_size = data.size(0)
             progress_bar.set_postfix_str(
-                f"val_loss={val_loss.item() / batch_size :10.6f} val_mse={val_mse_loss.item() / batch_size:10.6f} "
-                f"val_kld= 2{val_kld_loss.item() / batch_size:8.6f}"
+                f"val_loss={val_loss.item():.4f} val_mse={val_mse_loss:.4f} val_kld={val_kld_loss:.4f}"
             )
 
             val_loss_sum += val_loss.item() * batch_size
