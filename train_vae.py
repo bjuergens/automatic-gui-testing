@@ -49,19 +49,6 @@ def loss_function(experiment: Experiment, x: torch.Tensor, reconstruction_x: tor
     reconstruction_loss_float = reconstruction_loss.item()
     kld_loss_float = kld_loss.item()
 
-    if is_train:
-        experiment.log({
-            "loss": loss_float,
-            "reconstruction_loss": reconstruction_loss_float,
-            "kld": kld_loss_float
-        })
-    else:
-        experiment.log({
-            "val_loss": loss_float,
-            "val_reconstruction_loss": reconstruction_loss_float,
-            "val_kld": kld_loss_float
-        })
-
     return loss, reconstruction_loss_float, kld_loss_float
 
 
@@ -73,6 +60,8 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Train")
+
+    log_interval = 20
 
     for batch_idx, data in progress_bar:
         data = data.to(device)
@@ -90,9 +79,18 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         #         100. * batch_idx / len(train_loader),
         #         loss.item() / len(data)))
 
+        loss_float = loss.item()
         progress_bar.set_postfix_str(
-            f"loss={loss.item():.4f} mse={mse_loss:.4f} kld={kld_loss:.4f}"
+            f"loss={loss_float:.4f} mse={mse_loss:.4f} kld={kld_loss:.4f}"
         )
+
+        if batch_idx % log_interval == 0:
+            experiment.log({
+                "loss": loss_float,
+                "reconstruction_loss": mse_loss,
+                "kld": kld_loss
+            })
+        break
 
     # print('====> Epoch: {} Average loss: {:.4f}'.format(
     #     current_epoch, train_loss / len(train_loader.dataset)))
@@ -115,24 +113,36 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
     progress_bar = tqdm(enumerate(val_loader), total=len(val_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Validation")
 
-    for _, data in progress_bar:
+    log_interval = 20
+
+    for batch_idx, data in progress_bar:
+        data = data.to(device)
+
         with torch.no_grad():
-            data = data.to(device)
             recon_batch, mu, log_var = model(data)
-            val_loss, val_mse_loss, val_kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight,
-                                                                 current_epoch, max_epochs, is_train=False)
 
-            batch_size = data.size(0)
-            progress_bar.set_postfix_str(
-                f"val_loss={val_loss.item():.4f} val_mse={val_mse_loss:.4f} val_kld={val_kld_loss:.4f}"
-            )
+        val_loss, val_mse_loss, val_kld_loss = loss_function(experiment, data, recon_batch, mu, log_var, kld_weight,
+                                                             current_epoch, max_epochs, is_train=False)
 
-            val_loss_sum += val_loss.item() * batch_size
+        val_loss_float = val_loss.item()
+
+        progress_bar.set_postfix_str(
+            f"val_loss={val_loss_float:.4f} val_mse={val_mse_loss:.4f} val_kld={val_kld_loss:.4f}"
+        )
+
+        val_loss_sum += val_loss_float * data.size(0)
 
         if not logged_one_batch and not experiment.debug:
             experiment.add_images("originals", data, global_step=current_epoch)
             experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
             logged_one_batch = True
+
+        if batch_idx % log_interval == 0:
+            experiment.log({
+                "val_loss": val_loss_float,
+                "val_reconstruction_loss": val_mse_loss,
+                "val_kld": val_kld_loss
+            })
 
     progress_bar.close()
 
