@@ -281,13 +281,10 @@ def main(config_path: str):
     #     scheduler.load_state_dict(state['scheduler'])
     #     earlystopping.load_state_dict(state['earlystopping'])
 
-    set_range = transforms.Lambda(lambda x: 2 * x - 1.0)
-
     transformation_functions = transforms.Compose([
         transforms.Resize((vae_config["experiment_parameters"]["img_size"],
                            vae_config["experiment_parameters"]["img_size"])),
-        transforms.ToTensor(),
-        set_range
+        transforms.ToTensor()
     ])
 
     if dataset_name == "gui_multiple_sequences":
