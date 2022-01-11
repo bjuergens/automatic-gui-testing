@@ -161,7 +161,7 @@ class BaseSimpleRNN(BaseRNN):
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
-        predicted_reward = f.sigmoid(predictions[:, :, self.latent_size:])
+        predicted_reward = torch.sigmoid(predictions[:, :, self.latent_size:])
 
         return predicted_latent_vector, predicted_reward
 
