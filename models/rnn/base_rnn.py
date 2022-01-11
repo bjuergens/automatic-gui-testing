@@ -170,7 +170,7 @@ class BaseSimpleRNN(BaseRNN):
 
         # TODO check if reduction needs to be adapted to batch size and sequence length
         latent_loss = f.mse_loss(predicted_latent, next_latent_vector)
-        reward_loss = f.mse_loss(predicted_reward, reward)
+        reward_loss = f.mse_loss(predicted_reward.squeeze(-1), reward)
 
         loss = latent_loss + reward_loss
 

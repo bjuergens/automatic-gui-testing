@@ -109,6 +109,8 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
                                                                        reward=rewards, model_output=model_output)
 
         loss_sum += loss.item() * batch_size
+        latent_loss_sum += latent_loss.item() * batch_size
+        reward_loss_sum += reward_loss.item() * batch_size
 
         # TODO gmm divide by latent_size correct? Was done by previous authors
         pbar.set_postfix_str("loss={loss:10.6f} "
@@ -270,6 +272,8 @@ def main(config_path: str):
         create_git_tag=False,
         autosave=True
     )
+
+    experiment.tag(config)
 
     if not experiment.debug:
         log_dir = experiment.get_logdir().split("tf")[0]
