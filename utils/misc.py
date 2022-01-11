@@ -6,8 +6,7 @@ from os.path import join, exists
 import torch
 from torchvision import transforms
 import numpy as np
-from models import MDRNNCell, Controller
-from models.vae import VAE
+from models import Controller
 import gym
 import gym.envs.box2d
 
@@ -24,6 +23,7 @@ transform = transforms.Compose([
     transforms.Resize((RED_SIZE, RED_SIZE)),
     transforms.ToTensor()
 ])
+
 
 def sample_continuous_policy(action_space, seq_len, dt):
     """ Sample a continuous policy.
