@@ -1,6 +1,9 @@
 model_parameters:
   name: "MDN-RNN"
   hidden_size: 32
+  hidden_layers: 1
+  action_size: 2
+  number_of_gaussians: 5
 
 experiment_parameters:
   dataset: gui-dataset

@@ -3,7 +3,6 @@ import os
 
 import click
 import torch
-import torch.nn.functional as f
 import yaml
 from test_tube import Experiment
 from torch.utils.data import DataLoader
@@ -11,9 +10,9 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GUISequenceBatchSampler
-from models.mdrnn import MDRNN, gmm_loss
 # from data.loaders import RolloutSequenceDataset
-from models.vae import VAE, VAEFullInputSize
+from models import select_rnn_model, select_vae_model
+from models.rnn import BaseRNN
 from utils.misc import save_checkpoint, initialize_logger
 
 
@@ -60,59 +59,22 @@ def to_latent(obs, next_obs, vae, latent_size):
     return latent_obs, latent_next_obs
 
 
-def get_loss(mdn_rnn, latent_obs, action, reward, latent_next_obs):
-    """ Compute losses.
-
-    The loss that is computed is:
-    (GMMLoss(latent_next_obs, GMMPredicted) + MSE(reward, predicted_reward) +
-         BCE(terminal, logit_terminal)) / (LSIZE + 2)
-    The LSIZE + 2 factor is here to counteract the fact that the GMMLoss scales
-    approximately linearily with LSIZE. All losses are averaged both on the
-    batch and the sequence dimensions (the two first dimensions).
-
-    :args latent_obs: (BSIZE, SEQ_LEN, LSIZE) torch tensor
-    :args action: (BSIZE, SEQ_LEN, ASIZE) torch tensor
-    :args reward: (BSIZE, SEQ_LEN) torch tensor
-    :args latent_next_obs: (BSIZE, SEQ_LEN, LSIZE) torch tensor
-
-    :returns: dictionary of losses, containing the gmm, the mse, the bce and
-        the averaged loss.
-    """
-    latent_obs, latent_next_obs, reward, action = [d.transpose(1, 0) for d in [latent_obs, latent_next_obs, reward, action]]
-
-    mus, sigmas, log_pi, rs = mdn_rnn(action, latent_obs)
-    gmm = gmm_loss(latent_next_obs, mus, sigmas, log_pi)
-    # bce = f.binary_cross_entropy_with_logits(ds, terminal)
-
-    mse = f.mse_loss(rs, reward)
-    # scale = LSIZE + 2
-
-    # loss = (gmm + bce + mse) / scale
-    loss = (gmm + mse)
-
-    return loss, gmm, mse
-
-
-def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, latent_size, device: torch.device,
+def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoader, latent_size, device: torch.device,
               current_epoch: int, train: bool):
-    """ One pass through the data """
-    # loader.dataset.load_next_buffer()
-
     if train:
-        mdn_rnn.train()
+        model.train()
         loss_key = "loss"
-        gmm_key = "gmm"
-        mse_key = "mse"
+        latent_loss_key = "latent_loss"
+        reward_loss_key = "reward_loss"
     else:
-        mdn_rnn.eval()
+        model.eval()
         loss_key = "val_loss"
-        gmm_key = "val_gmm"
-        mse_key = "val_mse"
+        latent_loss_key = "val_latent_loss"
+        reward_loss_key = "val_reward_loss"
 
-    cum_loss = 0
-    cum_gmm = 0
-    # cum_bce = 0
-    cum_mse = 0
+    loss_sum = 0
+    latent_loss_sum = 0
+    reward_loss_sum = 0
 
     old_dataset_index = None
 
@@ -127,7 +89,7 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
 
         if old_dataset_index is None or old_dataset_index != current_dataset_index:
             old_dataset_index = current_dataset_index
-            mdn_rnn.initialize_hidden()
+            model.initialize_hidden()
 
         batch_size = observations.size(0)
 
@@ -135,56 +97,51 @@ def data_pass(mdn_rnn, vae, experiment, optimizer, data_loader: DataLoader, late
 
         if train:
             optimizer.zero_grad()
-            loss, gmm, mse = get_loss(mdn_rnn, latent_obs, actions, rewards, latent_next_obs)
+            model_output = model(latent_obs, actions)
+            loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs, reward=rewards,
+                                                                   model_output=model_output)
             loss.backward()
             optimizer.step()
         else:
             with torch.no_grad():
-                loss, gmm, mse = get_loss(mdn_rnn, latent_obs, actions, rewards, latent_next_obs)
+                model_output = model(latent_obs, actions)
+                loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs,
+                                                                       reward=rewards, model_output=model_output)
 
-        cum_loss += loss.item() * batch_size
-        cum_gmm += gmm.item() * batch_size
-        # cum_bce += bce * batch_size
-        cum_mse += mse.item() * batch_size
+        loss_sum += loss.item() * batch_size
 
         # TODO gmm divide by latent_size correct? Was done by previous authors
         pbar.set_postfix_str("loss={loss:10.6f} "
                              "gmm={gmm:10.6f} mse={mse:10.6f}".format(
-            loss=cum_loss / ((i + 1) * batch_size),
-            gmm=cum_gmm / latent_size / ((i + 1) * batch_size), mse=cum_mse / ((i + 1) * batch_size)))
+            loss=loss_sum / ((i + 1) * batch_size),
+            gmm=latent_loss_sum / latent_size / ((i + 1) * batch_size), mse=reward_loss_sum / ((i + 1) * batch_size)))
         pbar.update(batch_size)
 
         if i % log_interval == 0:
             experiment.log({
                 loss_key: loss.item(),
-                gmm_key: gmm.item(),
-                mse_key: mse.item()
+                latent_loss_key: latent_loss,
+                reward_loss_key: reward_loss
             })
 
     pbar.close()
 
     experiment.log({
-        f"epoch_{loss_key}": cum_loss / len(data_loader.dataset),
-        f"epoch_{gmm_key}": cum_gmm / len(data_loader.dataset),
-        f"epoch_{mse_key}": cum_mse / len(data_loader.dataset),
+        f"epoch_{loss_key}": loss_sum / len(data_loader.dataset),
+        f"epoch_{latent_loss_key}": latent_loss_sum / len(data_loader.dataset),
+        f"epoch_{reward_loss_key}": reward_loss_sum / len(data_loader.dataset),
     })
 
-    return cum_loss * batch_size / len(data_loader.dataset)
+    return latent_loss_sum * batch_size / len(data_loader.dataset)
 
 
 @click.command()
 @click.option("-c", "--config", "config_path", type=str, required=True,
               help="Path to a YAML configuration containing training options")
 def main(config_path: str):
-    # parser = argparse.ArgumentParser("MDRNN training")
-    # parser.add_argument('--logdir', type=str,
-    #                     help="Where things are logged and models are loaded from.")
-    # parser.add_argument('--noreload', action='store_true',
-    #                     help="Do not reload if specified.")
-    # parser.add_argument('--include_reward', action='store_true',
-    #                     help="Add a reward modelisation term to the loss.")
-    # args = parser.parse_args()
+    # Enable this for debugging gradient calculation
     # torch.autograd.set_detect_anomaly(True)
+
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -195,8 +152,6 @@ def main(config_path: str):
     sequence_length = config["experiment_parameters"]["sequence_length"]
     learning_rate = config["experiment_parameters"]["learning_rate"]
     max_epochs = config["experiment_parameters"]["max_epochs"]
-
-    hidden_size = config["model_parameters"]["hidden_size"]
 
     dataset_name = config["experiment_parameters"]["dataset"]
     dataset_path = config["experiment_parameters"]["data_path"]
@@ -217,12 +172,7 @@ def main(config_path: str):
         device = torch.device("cpu")
 
     base_save_dir = config["logging_parameters"]["base_save_dir"]
-    mdn_rnn_name = config["model_parameters"]["name"]
-
-    # constants
-    # BSIZE = 16
-    # SEQ_LEN = 32
-    # epochs = 30
+    model_name = config["model_parameters"]["name"]
 
     vae_directory = config["vae_parameters"]["directory"]
 
@@ -230,17 +180,13 @@ def main(config_path: str):
         vae_config = yaml.safe_load(vae_config_file)
 
     latent_size = vae_config["model_parameters"]["latent_size"]
+    use_kld_warmup = vae_config["experiment_parameters"]["kld_warmup"]
+    kld_weight = vae_config["experiment_parameters"]["kld_weight"]
 
     vae_name = vae_config["model_parameters"]["name"]
 
-    if vae_name == "vae_half_input_size":
-        vae_model = VAE
-    elif vae_name == "vae_full_input_size":
-        vae_model = VAEFullInputSize
-    else:
-        raise RuntimeError(f"Not supported VAE type: {vae_name}")
-
-    vae = vae_model(3, vae_config["model_parameters"]["latent_size"]).to(device)
+    vae_model = select_vae_model(vae_name)
+    vae = vae_model(vae_config["model_parameters"], use_kld_warmup, kld_weight).to(device)
     checkpoint = torch.load(os.path.join(vae_directory, "best.pt"), map_location=device)
     vae.load_state_dict(checkpoint["state_dict"])
 
@@ -262,11 +208,11 @@ def main(config_path: str):
     # if not exists(rnn_dir):
     #     mkdir(rnn_dir)
 
-    action_size = 2
+    model_type = select_rnn_model(model_name)
+    model = model_type(config["model_parameters"], latent_size, batch_size, device).to(device)
 
-    mdn_rnn = MDRNN(latent_size, action_size, hidden_size, gaussians=5, batch_size=batch_size, device=device).to(device)
     # optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
-    optimizer = torch.optim.Adam(mdn_rnn.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
@@ -319,7 +265,7 @@ def main(config_path: str):
 
     experiment = Experiment(
         save_dir=save_dir,
-        name=mdn_rnn_name,
+        name=model_name,
         debug=config["logging_parameters"]["debug"],  # Turns off logging if True
         create_git_tag=False,
         autosave=True
@@ -349,9 +295,9 @@ def main(config_path: str):
 
     current_best = None
     for current_epoch in range(max_epochs):
-        data_pass(mdn_rnn, vae, experiment, optimizer, train_dataloader, latent_size, device, current_epoch, train=True)
+        data_pass(model, vae, experiment, optimizer, train_dataloader, latent_size, device, current_epoch, train=True)
 
-        test_loss = data_pass(mdn_rnn, vae, experiment, optimizer, test_dataloader, latent_size, device, current_epoch,
+        test_loss = data_pass(model, vae, experiment, optimizer, test_dataloader, latent_size, device, current_epoch,
                               train=False)
 
         # scheduler.step(test_loss)
@@ -364,7 +310,7 @@ def main(config_path: str):
 
             save_checkpoint({
                 "epoch": current_epoch,
-                "state_dict": mdn_rnn.state_dict(),
+                "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 # 'scheduler': scheduler.state_dict(),
                 # 'earlystopping': earlystopping.state_dict(),
