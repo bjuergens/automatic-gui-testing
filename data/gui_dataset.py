@@ -117,16 +117,15 @@ class GUISequenceBatchSampler(Sampler):
 
         self.max_sequence_index = self.data_source.dataset_lengths[0]
 
-        self.current_stop_point = self.max_sequence_index
-
     def __iter__(self):
         batch = []
+        current_stop_point = self.max_sequence_index
         for idx in self.sampler:
-            if idx >= self.current_stop_point:
+            if idx >= current_stop_point:
                 if len(batch) == self.batch_size:
                     yield batch
                 batch = []
-                self.current_stop_point += self.max_sequence_index
+                current_stop_point += self.max_sequence_index
             batch.append(idx)
             if len(batch) == self.batch_size:
                 yield batch
