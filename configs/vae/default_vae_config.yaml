@@ -11,11 +11,11 @@ experiment_parameters:
   learning_rate: 0.005
   kld_weight: 1.0
   kld_warmup: True
+  max_epochs: 5
   manual_seed: 1010
 
 trainer_parameters:
   gpu: -1
-  max_epochs: 5
   num_workers: 0
 
 logging_parameters:

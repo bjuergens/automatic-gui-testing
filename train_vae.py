@@ -72,7 +72,7 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
     })
 
 
-def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs, kld_weight):
+def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs):
     """ One test epoch """
     model.eval()
 
@@ -247,7 +247,7 @@ def main(config_path: str):
     #     earlystopping.load_state_dict(state['earlystopping'])
 
     current_best = None
-    max_epochs = config["trainer_parameters"]["max_epochs"]
+    max_epochs = config["experiment_parameters"]["max_epochs"]
 
     if not experiment.debug:
         log_dir = experiment.get_logdir().split("tf")[0]

@@ -31,7 +31,7 @@ class VAEHalfInputSize(BaseVAE):
         self.deconv3 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2)   # 27
         self.deconv4 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2)  # 55
         self.deconv5 = nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2)  # 111
-        self.deconv6 = nn.ConvTranspose2d(32, self.img_channels, kernel_size=4, stride=2)  # 224
+        self.deconv6 = nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2)  # 224
 
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = F.relu(self.conv1(x))
@@ -48,7 +48,7 @@ class VAEHalfInputSize(BaseVAE):
         return mu, log_var
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        x = F.relu(self.fc_deccoder(z))
+        x = F.relu(self.fc_decoder(z))
         x = x.view(-1, 256, 2, 2)
         x = F.relu(self.deconv1(x))
         x = F.relu(self.deconv2(x))
