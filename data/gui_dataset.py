@@ -1,5 +1,8 @@
 import os
 from bisect import bisect
+from collections import OrderedDict
+from multiprocessing import Lock
+from time import time
 from typing import Optional
 
 import numpy as np
@@ -134,6 +137,45 @@ class GUISequenceBatchSampler(Sampler):
             yield batch
 
 
+class TimeBoundedLRU:
+    "LRU Cache that invalidates and refreshes old entries."
+
+    def __init__(self, transform, maxsize=128):
+        self.cache = OrderedDict()      # { args : (timestamp, result)}
+        self.transform = transform
+        self.maxsize = maxsize
+
+        self.lock = Lock()
+
+    def _load_img_to_buffer(self, img_file_path):
+        img = Image.open(img_file_path)
+
+        if self.transform:
+            img = self.transform(img)
+
+        return img
+
+    def __call__(self, file_index, file_path):
+        if file_index in self.cache:
+            self.lock.acquire()
+            self.cache.move_to_end(file_index)
+            timestamp, result = self.cache[file_index]
+            self.lock.release()
+            return result
+
+        result = self._load_img_to_buffer(file_path)
+
+        self.lock.acquire()
+        self.cache[file_index] = time(), result
+        self.lock.release()
+
+        if len(self.cache) > self.maxsize:
+            self.lock.acquire()
+            self.cache.popitem(False)
+            self.lock.release()
+        return result
+
+
 class GUISequenceDataset(Dataset):
 
     def __init__(self, root_dir, train: Optional[bool], sequence_length: int, transform):
@@ -167,29 +209,17 @@ class GUISequenceDataset(Dataset):
         assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
                                     "data samples")
 
-        self.buffer = []
+        self.buffer = TimeBoundedLRU(self.transform, maxsize=512)
 
     def __len__(self):
         return self.rewards.size(0) - self.sequence_length
 
-    def _load_img_to_buffer(self, image_file_path):
-        img = Image.open(image_file_path)
-
-        if self.transform:
-            img = self.transform(img)
-
-        self.buffer.append(img)
-
     def __getitem__(self, index):
-        if index == 0:
-            self.buffer = []
-            for i in range(self.sequence_length + 1):
-                self._load_img_to_buffer(self.observation_files[index + i + 1])
-        else:
-            self.buffer = self.buffer[1:]
-            self._load_img_to_buffer(self.observation_files[index + self.sequence_length + 1])
+        observation_sequence = []
+        for i in range(self.sequence_length + 1):
+            observation_sequence.append(self.buffer(index + i + 1, self.observation_files[index + i + 1]))
 
-        all_observations = torch.stack(self.buffer)
+        all_observations = torch.stack(observation_sequence)
         observations = all_observations[:-1]
         next_observations = all_observations[1:]
 
