@@ -141,9 +141,9 @@ class GUISequenceDataset(Dataset):
         self.sequence_length = sequence_length
         self.transform = transform
 
-        data = np.load(os.path.join(self.root_dir, "data.npz"))
-        self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
-        self.actions: torch.Tensor = torch.from_numpy(data["actions"])
+        with np.load(os.path.join(self.root_dir, "data.npz")) as data:
+            self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
+            self.actions: torch.Tensor = torch.from_numpy(data["actions"])
 
         self.observation_files = [
             os.path.join(self.root_dir, "observations", img_file)
@@ -167,21 +167,29 @@ class GUISequenceDataset(Dataset):
         assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
                                     "data samples")
 
+        self.buffer = []
+
     def __len__(self):
         return self.rewards.size(0) - self.sequence_length
 
+    def _load_img_to_buffer(self, image_file_path):
+        img = Image.open(image_file_path)
+
+        if self.transform:
+            img = self.transform(img)
+
+        self.buffer.append(img)
+
     def __getitem__(self, index):
-        all_observations = []
-        for i in range(self.sequence_length + 1):
-            image_file_path = self.observation_files[index + i + 1]
-            img = Image.open(image_file_path)
+        if index == 0:
+            self.buffer = []
+            for i in range(self.sequence_length + 1):
+                self._load_img_to_buffer(self.observation_files[index + i + 1])
+        else:
+            self.buffer = self.buffer[1:]
+            self._load_img_to_buffer(self.observation_files[index + self.sequence_length + 1])
 
-            if self.transform:
-                img = self.transform(img)
-
-            all_observations.append(img)
-
-        all_observations = torch.stack(all_observations)
+        all_observations = torch.stack(self.buffer)
         observations = all_observations[:-1]
         next_observations = all_observations[1:]
 
