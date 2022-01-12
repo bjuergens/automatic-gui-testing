@@ -28,6 +28,8 @@ class BaseRNN(abc.ABC, nn.Module):
         self.fc = None
         self.hidden_state, self.cell_state = None, None
 
+        self.initialize_hidden()
+
     def initialize_hidden(self):
         self.hidden_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
                                         device=self.device)
