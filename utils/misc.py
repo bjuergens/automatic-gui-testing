@@ -1,7 +1,5 @@
 """ Various auxiliary utilities """
-import logging
 import math
-import sys
 from os.path import join, exists
 import torch
 from torchvision import transforms
@@ -203,14 +201,3 @@ class RolloutGenerator(object):
             if done or i > self.time_limit:
                 return - cumulative
             i += 1
-
-
-def initialize_logger():
-    logger = logging.getLogger("")
-    formatter = logging.Formatter('[%(asctime)s] - %(funcName)s - %(message)s', datefmt="%a, %d %b %Y %H:%M:%S")
-
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-
-    return logger, formatter

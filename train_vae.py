@@ -14,7 +14,9 @@ from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
 from models.vae import VAEHalfInputSize, VAEFullInputSize
-from utils.misc import save_checkpoint, initialize_logger
+from utils.misc import save_checkpoint
+from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device
+from utils.training_utils import vae_transformation_functions
 
 
 # from utils.misc import LSIZE, RED_SIZE
@@ -132,8 +134,7 @@ def main(config_path: str):
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
-    with open(config_path, "r") as file:
-        config = yaml.safe_load(file)
+    config = load_yaml_config(config_path)
 
     use_kld_warmup = config["experiment_parameters"]["kld_warmup"]
     kld_weight = config["experiment_parameters"]["kld_weight"]
@@ -143,28 +144,20 @@ def main(config_path: str):
     dataset_name = config["experiment_parameters"]["dataset"]
     dataset_path = config["experiment_parameters"]["dataset_path"]
 
+    img_size = config["experiment_parameters"]["img_size"]
+
     number_of_workers = config["trainer_parameters"]["num_workers"]
+    gpu_id = config["trainer_parameters"]["gpu"]
 
     # VAE configuration
     vae_name = config["model_parameters"]["name"]
 
-    torch.manual_seed(manual_seed)
+    set_seeds(manual_seed)
+    device = get_device(gpu_id)
 
-    # Fix numeric divergence due to bug in Cudnn
-    # Also: Seems to search for the best algorithm to use; don't use if the input size changes a lot then it hurts
-    # performance
-    torch.backends.cudnn.benchmark = True
+    transformation_functions = vae_transformation_functions(img_size)
 
-    if config["trainer_parameters"]["gpu"] >= 0 and torch.cuda.is_available():
-        device = torch.device(f"cuda:{config['trainer_parameters']['gpu']}")
-    else:
-        device = torch.device("cpu")
-
-    transformation_functions = transforms.Compose([
-        transforms.Resize((config["experiment_parameters"]["img_size"], config["experiment_parameters"]["img_size"])),
-        transforms.ToTensor()
-    ])
-
+    # TODO make a select dataset based on name function in the dataset __init__.py
     if dataset_name == "gui_dataset":
         dataset = GUIDataset
     elif dataset_name == "gui_multiple_sequences":

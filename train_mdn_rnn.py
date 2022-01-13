@@ -13,7 +13,8 @@ from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GU
 # from data.loaders import RolloutSequenceDataset
 from models import select_rnn_model, select_vae_model
 from models.rnn import BaseRNN
-from utils.misc import save_checkpoint, initialize_logger
+from utils.misc import save_checkpoint
+from utils.setup_utils import initialize_logger
 
 
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
