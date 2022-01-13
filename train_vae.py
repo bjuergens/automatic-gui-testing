@@ -1,22 +1,17 @@
 import logging
 import os
-from typing import Tuple
 
 import click
 import torch
 import torch.utils.data
-import yaml
 from test_tube import Experiment
 from torch import optim
-from torch.nn import functional as F
-from torchvision import transforms
 from tqdm import tqdm
 
 from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
-from models.vae import VAEHalfInputSize, VAEFullInputSize
-from utils.misc import save_checkpoint
-from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device
-from utils.training_utils import vae_transformation_functions
+from models import select_vae_model
+from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
+from utils.training_utils import save_checkpoint, vae_transformation_functions
 
 
 # from utils.misc import LSIZE, RED_SIZE
@@ -192,13 +187,7 @@ def main(config_path: str):
         **additional_dataloader_args
     )
 
-    if vae_name == "vae_half_input_size":
-        model_type = VAEHalfInputSize
-    elif vae_name == "vae_full_input_size":
-        model_type = VAEFullInputSize
-    else:
-        raise RuntimeError(f"Not supported VAE type: {vae_name}")
-
+    model_type = select_vae_model(vae_name)
     model = model_type(config["model_parameters"], use_kld_warmup, kld_weight).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
@@ -209,7 +198,6 @@ def main(config_path: str):
 
     # Use a subfolder in the log for every dataset
     save_dir = os.path.join(config["logging_parameters"]["save_dir"], config["experiment_parameters"]["dataset"])
-    os.makedirs(save_dir, exist_ok=True)
 
     experiment = Experiment(
         save_dir=save_dir,
@@ -247,8 +235,7 @@ def main(config_path: str):
         best_model_filename = os.path.join(log_dir, "best.pt")
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
-        with open(os.path.join(log_dir, "config.yaml"), "w") as file:
-            yaml.safe_dump(config, file, default_flow_style=False)
+        save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
 
     training_version = experiment.version
     if training_version is not None:
@@ -272,7 +259,7 @@ def main(config_path: str):
                 "optimizer": optimizer.state_dict()
                 # 'scheduler': scheduler.state_dict(),
                 # 'earlystopping': earlystopping.state_dict()
-            }, is_best, checkpoint_filename, best_model_filename)
+            }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
             with torch.no_grad():
                 sample_reconstructions = model.sample(batch_size, device).cpu()

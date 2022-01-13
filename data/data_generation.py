@@ -13,7 +13,7 @@ import gym_gui_environments
 import numpy as np
 from PIL import Image
 
-from utils.misc import initialize_logger
+from utils.setup_utils import initialize_logger
 
 RANDOM_CLICK_MONKEY_TYPE = "random-clicks"
 RANDOM_WIDGET_MONKEY_TYPE = "random-widgets"

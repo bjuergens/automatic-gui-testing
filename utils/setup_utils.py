@@ -23,6 +23,11 @@ def load_yaml_config(config_file_path: str) -> dict:
     return config
 
 
+def save_yaml_config(save_file_path: str, yaml_config: dict):
+    with open(save_file_path, "w") as file:
+        yaml.safe_dump(yaml_config, file, default_flow_style=False)
+
+
 def set_seeds(seed: int):
     torch.manual_seed(seed)
 

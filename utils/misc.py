@@ -44,13 +44,6 @@ def sample_continuous_policy(action_space, seq_len, dt):
     return actions
 
 
-def save_checkpoint(state, is_best, checkpoint_filename, best_filename):
-    """ Save state in checkpoint_filename. Also save in best_filename if is_best. """
-    torch.save(state, checkpoint_filename)
-    if is_best:
-        torch.save(state, best_filename)
-
-
 def flatten_parameters(params):
     """ Flattening parameters.
 
@@ -60,6 +53,7 @@ def flatten_parameters(params):
         parameters concatenated)
     """
     return torch.cat([p.detach().view(-1) for p in params], dim=0).cpu().numpy()
+
 
 def unflatten_parameters(params, example, device):
     """ Unflatten parameters.

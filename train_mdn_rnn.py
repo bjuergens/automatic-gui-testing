@@ -3,18 +3,16 @@ import os
 
 import click
 import torch
-import yaml
 from test_tube import Experiment
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from tqdm import tqdm
 
 from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GUISequenceBatchSampler
 # from data.loaders import RolloutSequenceDataset
-from models import select_rnn_model, select_vae_model
+from models import select_rnn_model
 from models.rnn import BaseRNN
-from utils.misc import save_checkpoint
-from utils.setup_utils import initialize_logger
+from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
+from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
 
 
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
@@ -142,14 +140,10 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
 @click.option("-c", "--config", "config_path", type=str, required=True,
               help="Path to a YAML configuration containing training options")
 def main(config_path: str):
-    # Enable this for debugging gradient calculation
-    # torch.autograd.set_detect_anomaly(True)
-
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
-    with open(config_path, "r") as file:
-        config = yaml.safe_load(file)
+    config = load_yaml_config(config_path)
 
     batch_size = config["experiment_parameters"]["batch_size"]
     sequence_length = config["experiment_parameters"]["sequence_length"]
@@ -160,56 +154,22 @@ def main(config_path: str):
     dataset_path = config["experiment_parameters"]["data_path"]
 
     num_workers = config["trainer_parameters"]["num_workers"]
+    gpu_id = config["trainer_parameters"]["gpu"]
 
     manual_seed = config["experiment_parameters"]["manual_seed"]
-    torch.manual_seed(manual_seed)
 
-    # Fix numeric divergence due to bug in Cudnn
-    # Also: Seems to search for the best algorithm to use; don't use if the input size changes a lot then it hurts
-    # performance
-    torch.backends.cudnn.benchmark = True
-
-    if config["trainer_parameters"]["gpu"] >= 0 and torch.cuda.is_available():
-        device = torch.device(f"cuda:{config['trainer_parameters']['gpu']}")
-    else:
-        device = torch.device("cpu")
+    set_seeds(manual_seed)
+    device = get_device(gpu_id)
 
     base_save_dir = config["logging_parameters"]["base_save_dir"]
     model_name = config["model_parameters"]["name"]
 
     vae_directory = config["vae_parameters"]["directory"]
+    vae = load_vae_architecture(vae_directory, device, load_best=True)
 
-    with open(os.path.join(vae_directory, "config.yaml")) as vae_config_file:
-        vae_config = yaml.safe_load(vae_config_file)
-
+    vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     latent_size = vae_config["model_parameters"]["latent_size"]
-    use_kld_warmup = vae_config["experiment_parameters"]["kld_warmup"]
-    kld_weight = vae_config["experiment_parameters"]["kld_weight"]
-
-    vae_name = vae_config["model_parameters"]["name"]
-
-    vae_model = select_vae_model(vae_name)
-    vae = vae_model(vae_config["model_parameters"], use_kld_warmup, kld_weight).to(device)
-    checkpoint = torch.load(os.path.join(vae_directory, "best.pt"), map_location=device)
-    vae.load_state_dict(checkpoint["state_dict"])
-
-    # Loading VAE
-    # vae_file = join(args.logdir, 'vae', 'best.tar')
-    # assert exists(vae_file), "No trained VAE in the logdir..."
-    # state = torch.load(vae_file)
-    # print("Loading VAE at epoch {} "
-    #       "with test error {}".format(
-    #     state['epoch'], state['precision']))
-
-    # vae = VAE(3, LSIZE).to(device)
-    # vae.load_state_dict(state['state_dict'])
-
-    # Loading model
-    # rnn_dir = join(args.logdir, 'mdrnn')
-    # rnn_file = join(rnn_dir, 'best.tar')
-
-    # if not exists(rnn_dir):
-    #     mkdir(rnn_dir)
+    img_size = vae_config["experiment_parameters"]["img_size"]
 
     model_type = select_rnn_model(model_name)
     model = model_type(config["model_parameters"], latent_size, batch_size, device).to(device)
@@ -230,11 +190,7 @@ def main(config_path: str):
     #     scheduler.load_state_dict(state['scheduler'])
     #     earlystopping.load_state_dict(state['earlystopping'])
 
-    transformation_functions = transforms.Compose([
-        transforms.Resize((vae_config["experiment_parameters"]["img_size"],
-                           vae_config["experiment_parameters"]["img_size"])),
-        transforms.ToTensor()
-    ])
+    transformation_functions = vae_transformation_functions(img_size)
 
     if dataset_name == "gui_multiple_sequences":
         train_dataset = GUIMultipleSequencesDataset(dataset_path, train=True, sequence_length=sequence_length,
@@ -281,22 +237,14 @@ def main(config_path: str):
         best_model_filename = os.path.join(log_dir, "best.pt")
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
-        with open(os.path.join(log_dir, "config.yaml"), "w") as file:
-            yaml.safe_dump(config, file, default_flow_style=False)
+        save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
+    else:
+        # Enables debugging of the gradient calculation, shows where errors/NaN etc. occur
+        torch.autograd.set_detect_anomaly(True)
 
     training_version = experiment.version
     if training_version is not None:
-        logging.info(f"Started MDN-RNN training version_{training_version} for {max_epochs}")
-
-    # Data Loading
-    # transform = transforms.Lambda(
-    #     lambda x: np.transpose(x, (0, 3, 1, 2)) / 255)
-    # train_loader = DataLoader(
-    #     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, buffer_size=30),
-    #     batch_size=BSIZE, num_workers=8, shuffle=True)
-    # test_loader = DataLoader(
-    #     RolloutSequenceDataset('datasets/carracing', SEQ_LEN, transform, train=False, buffer_size=10),
-    #     batch_size=BSIZE, num_workers=8)
+        logging.info(f"Started MDN-RNN training version_{training_version} for {max_epochs} epochs")
 
     current_best = None
     for current_epoch in range(max_epochs):
@@ -320,7 +268,7 @@ def main(config_path: str):
                 # 'scheduler': scheduler.state_dict(),
                 # 'earlystopping': earlystopping.state_dict(),
                 # "precision": test_loss,
-            }, is_best, checkpoint_filename, best_model_filename)
+            }, is_best=is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(e))
