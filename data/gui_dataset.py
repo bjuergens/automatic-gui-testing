@@ -1,16 +1,13 @@
 import os
 from bisect import bisect
-from collections import OrderedDict
-from multiprocessing import Lock
-from time import time
-from typing import Optional
+from typing import Tuple
 
+import h5py
 import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset, Sampler
 from torch.utils.data.sampler import SequentialSampler
-
 
 POSSIBLE_SPLITS = ["train", "val", "test"]
 
@@ -24,6 +21,24 @@ IMPLEMENTED_SPLITS = {
 }
 
 
+def get_start_and_end_indices_from_split(number_of_sequences: int, split: str) -> Tuple[int, int]:
+    assert number_of_sequences in IMPLEMENTED_SPLITS.keys()
+
+    if split == "train":
+        start_index = 0
+        end_index = IMPLEMENTED_SPLITS[number_of_sequences][0]
+    elif split == "val":
+        start_index = IMPLEMENTED_SPLITS[number_of_sequences][0]
+        end_index = IMPLEMENTED_SPLITS[number_of_sequences][1]
+    elif split == "test":
+        start_index = IMPLEMENTED_SPLITS[number_of_sequences][1]
+        end_index = IMPLEMENTED_SPLITS[number_of_sequences][2]
+    else:
+        raise RuntimeError(f"Selected split {split} is not supported")
+
+    return start_index, end_index
+
+
 class GUIMultipleSequencesObservationDataset(Dataset):
 
     def __init__(self, root_dir, split: str, transform):
@@ -34,17 +49,7 @@ class GUIMultipleSequencesObservationDataset(Dataset):
         self.split = split
 
         self.number_of_sequences = len(os.listdir(self.root_dir))
-        assert self.number_of_sequences in IMPLEMENTED_SPLITS.keys()
-
-        if self.split == "train":
-            self.start_index = 0
-            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][0]
-        elif self.split == "val":
-            self.start_index = IMPLEMENTED_SPLITS[self.number_of_sequences][0]
-            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][1]
-        elif self.split == "test":
-            self.start_index = IMPLEMENTED_SPLITS[self.number_of_sequences][1]
-            self.end_index = IMPLEMENTED_SPLITS[self.number_of_sequences][2]
+        self.start_index, self.end_index = get_start_and_end_indices_from_split(self.number_of_sequences, self.split)
 
         self.observation_images = []
 
@@ -66,30 +71,28 @@ class GUIMultipleSequencesObservationDataset(Dataset):
 
 class GUIMultipleSequencesDataset(Dataset):
 
-    def __init__(self, root_dir, train: bool, sequence_length: int, transform):
+    def __init__(self, root_dir, split: str, vae_output_file_name: str, sequence_length: int, transform):
         self.root_dir = root_dir
+        self.split = split
+        self.vae_output_file_name = vae_output_file_name
         self.sequence_length = sequence_length
         self.transform = transform
 
+        self.number_of_sequences = len(os.listdir(self.root_dir))
+        self.start_index, self.end_index = get_start_and_end_indices_from_split(self.number_of_sequences, self.split)
+
         self.sequence_dirs = []
-        for _sequence_dir in os.listdir(self.root_dir):
-            # TODO remove this when its not longer needed
-            if _sequence_dir == "mixed":
-                continue
 
-            self.sequence_dirs.append(os.path.join(self.root_dir, _sequence_dir))
-
-        # TODO use new "implemented splits dict" method
-        if train:
-            self.sequence_dirs = self.sequence_dirs[:-2]
-        else:
-            self.sequence_dirs = self.sequence_dirs[-2:]
+        for sequence_sub_dir in sorted(os.listdir(self.root_dir))[self.start_index:self.end_index]:
+            self.sequence_dirs.append(os.path.join(self.root_dir, sequence_sub_dir))
 
         self.sequence_datasets = [
-            GUISequenceDataset(_sq_dir, None, self.sequence_length, self.transform) for _sq_dir in self.sequence_dirs
+            GUISequenceDataset(
+                seq_dir, vae_output_file_name, self.sequence_length, self.transform
+            ) for seq_dir in self.sequence_dirs
         ]
 
-        self.dataset_lengths = [_sq_dataset.__len__() for _sq_dataset in self.sequence_datasets]
+        self.dataset_lengths = [seq_dataset.__len__() for seq_dataset in self.sequence_datasets]
         self.individual_sequence_length = self.dataset_lengths[0]
         self.summed_length = sum(self.dataset_lengths)
         assert all([x == self.individual_sequence_length for x in self.dataset_lengths]), "Sequences are not of the same length"
@@ -137,49 +140,11 @@ class GUISequenceBatchSampler(Sampler):
             yield batch
 
 
-class TimeBoundedLRU:
-    "LRU Cache that invalidates and refreshes old entries."
-
-    def __init__(self, transform, maxsize=128):
-        self.cache = OrderedDict()      # { args : (timestamp, result)}
-        self.transform = transform
-        self.maxsize = maxsize
-
-        self.lock = Lock()
-
-    def _load_img_to_buffer(self, img_file_path):
-        img = Image.open(img_file_path)
-
-        if self.transform:
-            img = self.transform(img)
-
-        return img
-
-    def __call__(self, file_index, file_path):
-        if file_index in self.cache:
-            self.lock.acquire()
-            self.cache.move_to_end(file_index)
-            timestamp, result = self.cache[file_index]
-            self.lock.release()
-            return result
-
-        result = self._load_img_to_buffer(file_path)
-
-        self.lock.acquire()
-        self.cache[file_index] = time(), result
-        self.lock.release()
-
-        if len(self.cache) > self.maxsize:
-            self.lock.acquire()
-            self.cache.popitem(False)
-            self.lock.release()
-        return result
-
-
 class GUISequenceDataset(Dataset):
 
-    def __init__(self, root_dir, train: Optional[bool], sequence_length: int, transform):
+    def __init__(self, root_dir: str, vae_output_file_name: str, sequence_length: int, transform):
         self.root_dir = root_dir
+        self.vae_output_file_name = vae_output_file_name
         self.sequence_length = sequence_length
         self.transform = transform
 
@@ -187,46 +152,31 @@ class GUISequenceDataset(Dataset):
             self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
             self.actions: torch.Tensor = torch.from_numpy(data["actions"])
 
-        self.observation_files = [
-            os.path.join(self.root_dir, "observations", img_file)
-            for img_file in os.listdir(os.path.join(self.root_dir, "observations"))
-        ]
-        self.observation_files.sort()
+        self.vae_preprocessed_data = h5py.File(os.path.join(self.root_dir, self.vae_output_file_name), "r")
 
-        if train is not None:
-            split_percentage = 0.05
-            split_index = round(len(self.rewards) * (1 - split_percentage))
-            if train:
-                self.observation_files = self.observation_files[:split_index + 1]
-                self.rewards = self.rewards[:split_index]
-                self.actions = self.actions[:split_index]
-            else:
-                self.observation_files = self.observation_files[split_index:]
-                self.rewards = self.rewards[split_index:]
-                self.actions = self.actions[split_index:]
+        self.mus = self.vae_preprocessed_data["mus"]
+        self.log_vars = self.vae_preprocessed_data["log_vars"]
 
-        assert self.rewards.size(0) == self.actions.size(0) == (len(self.observation_files) - 1)
+        assert self.rewards.size(0) == self.actions.size(0) == (self.mus.shape[0] - 1) == (self.log_vars.shape[0] - 1)
         assert self.__len__() > 0, ("Dataset length is 0 or negative, probably too large sequence length or too few "
                                     "data samples")
-
-        self.buffer = TimeBoundedLRU(self.transform, maxsize=512)
 
     def __len__(self):
         return self.rewards.size(0) - self.sequence_length
 
     def __getitem__(self, index):
-        observation_sequence = []
-        for i in range(self.sequence_length + 1):
-            observation_sequence.append(self.buffer(index + i + 1, self.observation_files[index + i + 1]))
+        sub_sequence_mus = self.mus[index:index + self.sequence_length + 1]
+        sub_sequence_log_vars = self.log_vars[index:index + self.sequence_length + 1]
 
-        all_observations = torch.stack(observation_sequence)
-        observations = all_observations[:-1]
-        next_observations = all_observations[1:]
+        mus = sub_sequence_mus[:-1]
+        next_mus = sub_sequence_mus[1:]
+        log_vars = sub_sequence_log_vars[:-1]
+        next_log_vars = sub_sequence_log_vars[1:]
 
         rewards = self.rewards[index:index + self.sequence_length]
         actions = self.actions[index:index + self.sequence_length]
 
-        return observations, next_observations, rewards, actions
+        return mus, next_mus, log_vars, next_log_vars, rewards, actions
 
 
 class GUIDataset(Dataset):

@@ -53,7 +53,7 @@ def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_
 
 
 def preprocess_observations_with_vae(dataset_path: str, vae: BaseVAE, vae_name: str, vae_version: int, img_size: int,
-                                     device: torch.device, force: bool = False):
+                                     device: torch.device, force: bool = False) -> str:
     dataset_path_content = os.listdir(dataset_path)
     dataset_path_content.sort()
 
@@ -68,3 +68,5 @@ def preprocess_observations_with_vae(dataset_path: str, vae: BaseVAE, vae_name: 
             current_folder = os.path.join(dataset_path, sequence)
             if vae_output_file_name not in os.listdir(current_folder) or force:
                 generate_vae_output(current_folder, vae, img_size, vae_output_file_name, device)
+
+    return vae_output_file_name

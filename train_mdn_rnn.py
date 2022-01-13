@@ -7,7 +7,7 @@ from test_tube import Experiment
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GUISequenceBatchSampler
+from data.gui_dataset import GUIMultipleSequencesDataset, GUISequenceBatchSampler
 # from data.loaders import RolloutSequenceDataset
 from models import select_rnn_model
 from models.rnn import BaseRNN
@@ -82,7 +82,7 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
 
     pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
     for i, data in enumerate(data_loader):
-        observations, next_observations, rewards, actions = [d.to(device) for d in data[0]]
+        mus, next_mus, log_vars, next_log_vars, rewards, actions = [d.to(device) for d in data[0]]
         dataset_indices: torch.Tensor = data[1]
         current_dataset_index = dataset_indices[0]
         assert all(dataset_indices == current_dataset_index)
@@ -91,9 +91,9 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
             old_dataset_index = current_dataset_index
             model.initialize_hidden()
 
-        batch_size = observations.size(0)
-
-        latent_obs, latent_next_obs = to_latent(observations, next_observations, vae, latent_size)
+        batch_size = mus.size(0)
+        latent_obs = vae.reparameterize(mus, log_vars)
+        latent_next_obs = vae.reparameterize(next_mus, next_log_vars)
 
         if train:
             optimizer.zero_grad()
@@ -193,25 +193,31 @@ def main(config_path: str):
 
     transformation_functions = vae_transformation_functions(img_size)
 
-    preprocess_observations_with_vae(dataset_path, vae, vae_name=vae_name,
-                                     vae_version=vae_directory.split("version_")[-1], img_size=img_size, device=device,
-                                     force=True)
+    vae_output_file_name = preprocess_observations_with_vae(dataset_path, vae, vae_name=vae_name,
+                                                            vae_version=vae_directory.split("version_")[-1],
+                                                            img_size=img_size, device=device, force=False)
 
     if dataset_name == "gui_multiple_sequences":
-        train_dataset = GUIMultipleSequencesDataset(dataset_path, train=True, sequence_length=sequence_length,
-                                                    transform=transformation_functions)
-        test_dataset = GUIMultipleSequencesDataset(dataset_path, train=False, sequence_length=sequence_length,
-                                                   transform=transformation_functions)
+        train_dataset = GUIMultipleSequencesDataset(
+            dataset_path, split="train",
+            vae_output_file_name=vae_output_file_name,
+            sequence_length=sequence_length,
+            transform=transformation_functions
+        )
+
+        val_dataset = GUIMultipleSequencesDataset(
+            dataset_path, split="val",
+            vae_output_file_name=vae_output_file_name,
+            sequence_length=sequence_length,
+            transform=transformation_functions
+        )
     else:
-        train_dataset = GUISequenceDataset(dataset_path, train=True, sequence_length=sequence_length,
-                                           transform=transformation_functions)
-        test_dataset = GUISequenceDataset(dataset_path, train=False, sequence_length=sequence_length,
-                                          transform=transformation_functions)
+        raise RuntimeError(f"Dataset {dataset_name} currently not supported")
 
     additional_dataloader_args = {"num_workers": num_workers, "pin_memory": True}
 
     custom_sampler_train = GUISequenceBatchSampler(train_dataset, batch_size=batch_size, drop_last=True)
-    custom_sampler_test = GUISequenceBatchSampler(test_dataset, batch_size=batch_size, drop_last=True)
+    custom_sampler_test = GUISequenceBatchSampler(val_dataset, batch_size=batch_size, drop_last=True)
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -219,8 +225,8 @@ def main(config_path: str):
         **additional_dataloader_args
     )
 
-    test_dataloader = DataLoader(
-        test_dataset,
+    val_dataloader = DataLoader(
+        val_dataset,
         batch_sampler=custom_sampler_test,
         **additional_dataloader_args
     )
@@ -255,16 +261,16 @@ def main(config_path: str):
     for current_epoch in range(max_epochs):
         data_pass(model, vae, experiment, optimizer, train_dataloader, latent_size, device, current_epoch, train=True)
 
-        test_loss = data_pass(model, vae, experiment, optimizer, test_dataloader, latent_size, device, current_epoch,
-                              train=False)
+        val_loss = data_pass(model, vae, experiment, optimizer, val_dataloader, latent_size, device, current_epoch,
+                             train=False)
 
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
         if not experiment.debug:
-            is_best = not current_best or test_loss < current_best
+            is_best = not current_best or val_loss < current_best
 
             if is_best:
-                current_best = test_loss
+                current_best = val_loss
 
             save_checkpoint({
                 "epoch": current_epoch,
