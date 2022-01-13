@@ -11,6 +11,7 @@ from data.gui_dataset import GUISequenceDataset, GUIMultipleSequencesDataset, GU
 # from data.loaders import RolloutSequenceDataset
 from models import select_rnn_model
 from models.rnn import BaseRNN
+from utils.data_processing_utils import preprocess_observations_with_vae
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
 
@@ -165,7 +166,7 @@ def main(config_path: str):
     model_name = config["model_parameters"]["name"]
 
     vae_directory = config["vae_parameters"]["directory"]
-    vae = load_vae_architecture(vae_directory, device, load_best=True)
+    vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
 
     vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     latent_size = vae_config["model_parameters"]["latent_size"]
@@ -191,6 +192,10 @@ def main(config_path: str):
     #     earlystopping.load_state_dict(state['earlystopping'])
 
     transformation_functions = vae_transformation_functions(img_size)
+
+    preprocess_observations_with_vae(dataset_path, vae, vae_name=vae_name,
+                                     vae_version=vae_directory.split("version_")[-1], img_size=img_size, device=device,
+                                     force=True)
 
     if dataset_name == "gui_multiple_sequences":
         train_dataset = GUIMultipleSequencesDataset(dataset_path, train=True, sequence_length=sequence_length,

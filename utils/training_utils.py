@@ -42,4 +42,4 @@ def load_vae_architecture(vae_directory: str, device: torch.device, load_best: b
     checkpoint = torch.load(os.path.join(vae_directory, state_dict_file_name), map_location=device)
     vae.load_state_dict(checkpoint["state_dict"])
 
-    return vae
+    return vae, vae_name
