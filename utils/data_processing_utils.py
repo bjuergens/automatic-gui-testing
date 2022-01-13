@@ -44,8 +44,8 @@ def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_
             calculated_mus.append(mu)
             calculated_log_vars.append(log_var)
 
-    calculated_mus = torch.cat(calculated_mus, dim=0)
-    calculated_log_vars = torch.cat(calculated_log_vars, dim=0)
+    calculated_mus = torch.cat(calculated_mus, dim=0).cpu()
+    calculated_log_vars = torch.cat(calculated_log_vars, dim=0).cpu()
 
     with h5py.File(os.path.join(dataset_root_dir, vae_output_file_name), "w") as f:
         f.create_dataset("mus", data=calculated_mus)
