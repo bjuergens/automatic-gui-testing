@@ -11,7 +11,7 @@ from tqdm import tqdm
 from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
 from models import select_vae_model
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
-from utils.training_utils import save_checkpoint, vae_transformation_functions
+from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
 
 
 # from utils.misc import LSIZE, RED_SIZE
@@ -125,7 +125,10 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
 @click.command()
 @click.option("-c", "--config", "config_path", type=str, required=True,
               help="Path to a YAML configuration containing training options")
-def main(config_path: str):
+@click.option("-l", "--load", "load_path", type=str,
+              help=("Path to a previous training, from which training shall continue (will create a new experiment "
+                    "directory)"))
+def main(config_path: str, load_path: str):
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -187,10 +190,19 @@ def main(config_path: str):
         **additional_dataloader_args
     )
 
-    model_type = select_vae_model(vae_name)
-    model = model_type(config["model_parameters"], use_kld_warmup, kld_weight).to(device)
+    if load_path is not None:
+        model, model_name, optimizer_state_dict = load_vae_architecture(load_path, device, load_best=False,
+                                                                        load_optimizer=True)
+    else:
+        model_type = select_vae_model(vae_name)
+        model = model_type(config["model_parameters"], use_kld_warmup, kld_weight).to(device)
+        optimizer_state_dict = None
 
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
+
+    if optimizer_state_dict is not None:
+        optimizer.load_state_dict(optimizer_state_dict)
+
     # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
     # earlystopping = EarlyStopping('min', patience=30)
 

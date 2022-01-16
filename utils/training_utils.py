@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 from torchvision import transforms
@@ -24,7 +24,8 @@ def save_checkpoint(state: dict, is_best: bool, checkpoint_filename: str, best_f
         torch.save(state, best_filename)
 
 
-def load_vae_architecture(vae_directory: str, device: torch.device, load_best: bool = True) -> Tuple[BaseVAE, str]:
+def load_vae_architecture(vae_directory: str, device: torch.device, load_best: bool = True,
+                          load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
     vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     vae_name = vae_config["model_parameters"]["name"]
 
@@ -42,4 +43,6 @@ def load_vae_architecture(vae_directory: str, device: torch.device, load_best: b
     checkpoint = torch.load(os.path.join(vae_directory, state_dict_file_name), map_location=device)
     vae.load_state_dict(checkpoint["state_dict"])
 
+    if load_optimizer:
+        return vae, vae_name, checkpoint["optimizer"]
     return vae, vae_name
