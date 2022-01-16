@@ -1,11 +1,12 @@
 from typing import Union
 
-from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize
+from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels
 from models.rnn import BaseRNN, StandardMDNRNN, SimpleLSTM
 
 vae_models = {
     "vae_half_input_size": VAEHalfInputSize,
-    "vae_full_input_size": VAEFullInputSize
+    "vae_full_input_size": VAEFullInputSize,
+    "large_vae_small_kernel": LargeVAESmallKernels
 }
 
 rnn_models = {
