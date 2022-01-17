@@ -103,29 +103,35 @@ def start_monkey_tester(env: gym.Env, stop_mode: str, amount: int, chosen_direct
     env.close()
 
 
+def data_generation_options(function):
+    function = click.option("-t", "--time", "stop_mode", flag_value="time", default=True,
+                            help="Use elapsed time in seconds to stop the data generation")(function)
+    function = click.option("-i", "--iterations", "stop_mode", flag_value="iterations",
+                            help="Use the number of iterations to stop the data generation")(function)
+    function = click.option("--amount", type=int, help="Amount on how long the data generation shall run (seconds or "
+                                                       "number of iterations, depending on the stop_mode")(function)
+    function = click.option("-m", "--monkey-type", default=RANDOM_WIDGET_MONKEY_TYPE,
+                            type=click.Choice([RANDOM_CLICK_MONKEY_TYPE, RANDOM_WIDGET_MONKEY_TYPE]),
+                            show_default=True, help="Choose which type of random monkey tester to use")(function)
+    function = click.option("--random-click-prob", type=float,
+                            help="If the random widget monkey tester is chosen, use this to define the probability for "
+                                 "random clicks")(function)
+    function = click.option("--log/--no-log", type=bool, default=True,
+                            help="If true set logging level to debug and log to a file")(function)
+    function = click.option("--html-report/--no-html-report", type=bool, default=True,
+                            help="If true, save the HTML Report of the coverage")(function)
+    return function
+
+
 @click.command()
-@click.option("-t", "--time", "stop_mode", flag_value="time", default=True,
-              help="Use elapsed time in seconds to stop the data generation")
-@click.option("-i", "--iterations", "stop_mode", flag_value="iterations",
-              help="Use the number of iterations to stop the data generation")
-@click.option("--amount", type=int,
-              help="Amount on how long the data generation shall run (seconds or number of iterations, depending on "
-                   "the stop_mode")
-@click.option("-m", "--monkey-type", default=RANDOM_WIDGET_MONKEY_TYPE,
-              type=click.Choice([RANDOM_CLICK_MONKEY_TYPE, RANDOM_WIDGET_MONKEY_TYPE]),
-              show_default=True, help="Choose which type of random monkey tester to use")
 @click.option("--root-dir", type=str, default="datasets/gui_env",
               help="In this directory, subfolders are automatically created based on time to store the generated data")
 @click.option("--directory", type=str,
               help="This directory is directly used to store the data, instead of automatically generated subfolders "
                    "as with --root-dir")
-@click.option("--random-click-prob", type=float,
-              help="If the random widget monkey tester is chosen, use this to define the probability for random clicks")
-@click.option("--log/--no-log", type=bool, default=True, help="If true set logging level to debug and log to a file")
-@click.option("--html-report/--no-html-report", type=bool, default=True,
-              help="If true, save the HTML Report of the coverage")
-def main(stop_mode: str, amount: int, monkey_type: str, root_dir: str, directory: str, random_click_prob: float,
-         log: bool, html_report: bool):
+@data_generation_options
+def main(root_dir: str, directory: str,
+         stop_mode: str, amount: int, monkey_type: str, random_click_prob: float, log: bool, html_report: bool):
     if directory is not None:
         chosen_directory = directory
     else:
