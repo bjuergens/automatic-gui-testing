@@ -248,6 +248,9 @@ def main(config_path: str, load_path: str):
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
         save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
+    else:
+        # Enables debugging of the gradient calculation, shows where errors/NaN etc. occur
+        torch.autograd.set_detect_anomaly(True)
 
     training_version = experiment.version
     if training_version is not None:
