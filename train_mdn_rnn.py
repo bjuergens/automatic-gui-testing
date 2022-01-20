@@ -7,8 +7,7 @@ from test_tube import Experiment
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.gui_dataset import GUIMultipleSequencesDataset, GUISequenceBatchSampler
-# from data.loaders import RolloutSequenceDataset
+from data.dataset_implementations import get_rnn_dataloader
 from models import select_rnn_model
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae
@@ -197,38 +196,26 @@ def main(config_path: str):
                                                             vae_version=vae_directory.split("version_")[-1],
                                                             img_size=img_size, device=device, force=False)
 
-    if dataset_name == "gui_multiple_sequences":
-        train_dataset = GUIMultipleSequencesDataset(
-            dataset_path, split="train",
-            vae_output_file_name=vae_output_file_name,
-            sequence_length=sequence_length,
-            transform=transformation_functions
-        )
+    additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 
-        val_dataset = GUIMultipleSequencesDataset(
-            dataset_path, split="val",
-            vae_output_file_name=vae_output_file_name,
-            sequence_length=sequence_length,
-            transform=transformation_functions
-        )
-    else:
-        raise RuntimeError(f"Dataset {dataset_name} currently not supported")
-
-    additional_dataloader_args = {"num_workers": num_workers, "pin_memory": True}
-
-    custom_sampler_train = GUISequenceBatchSampler(train_dataset, batch_size=batch_size, drop_last=True)
-    custom_sampler_test = GUISequenceBatchSampler(val_dataset, batch_size=batch_size, drop_last=True)
-
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_sampler=custom_sampler_train,
-        **additional_dataloader_args
+    train_dataloader = get_rnn_dataloader(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
+        split="train",
+        vae_output_file_name=vae_output_file_name,
+        sequence_length=sequence_length,
+        batch_size=batch_size,
+        **additional_dataloader_kwargs
     )
 
-    val_dataloader = DataLoader(
-        val_dataset,
-        batch_sampler=custom_sampler_test,
-        **additional_dataloader_args
+    val_dataloader = get_rnn_dataloader(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
+        split="val",
+        vae_output_file_name=vae_output_file_name,
+        sequence_length=sequence_length,
+        batch_size=batch_size,
+        **additional_dataloader_kwargs
     )
 
     save_dir = os.path.join(base_save_dir, dataset_name)

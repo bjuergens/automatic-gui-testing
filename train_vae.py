@@ -8,7 +8,7 @@ from test_tube import Experiment
 from torch import optim
 from tqdm import tqdm
 
-from data.gui_dataset import GUIDataset, GUIMultipleSequencesObservationDataset
+from data.dataset_implementations import get_vae_dataloader
 from models import select_vae_model
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
@@ -155,39 +155,26 @@ def main(config_path: str, load_path: str):
 
     transformation_functions = vae_transformation_functions(img_size)
 
-    # TODO make a select dataset based on name function in the dataset __init__.py
-    if dataset_name == "gui_dataset":
-        dataset = GUIDataset
-    elif dataset_name == "gui_multiple_sequences":
-        dataset = GUIMultipleSequencesObservationDataset
-    else:
-        raise RuntimeError("Currently only 'gui_dataset' or 'gui_multiple_sequences' supported as the dataset")
+    additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True}
 
-    train_dataset = dataset(
-        dataset_path,
+    train_loader = get_vae_dataloader(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
         split="train",
-        transform=transformation_functions
-    )
-    val_dataset = dataset(
-        dataset_path,
-        split="val",
-        transform=transformation_functions
-    )
-
-    additional_dataloader_args = {"num_workers": number_of_workers, "pin_memory": True}
-
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
+        transformation_functions=transformation_functions,
         batch_size=batch_size,
         shuffle=True,
-        **additional_dataloader_args
+        **additional_dataloader_kwargs
     )
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
+    val_loader = get_vae_dataloader(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
+        split="val",
+        transformation_functions=transformation_functions,
         batch_size=batch_size,
         shuffle=False,
-        **additional_dataloader_args
+        **additional_dataloader_kwargs
     )
 
     if load_path is not None:
