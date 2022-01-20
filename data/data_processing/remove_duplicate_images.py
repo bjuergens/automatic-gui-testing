@@ -9,15 +9,17 @@ import fiftyone.core.utils as fou
 import numpy as np
 from PIL import Image
 from fiftyone import ViewField
-
+from tqdm import tqdm
 
 PROCESSED_FOLDER_NAME = "deduplicated-images"
 
 
 def deduplicate_images(dataset):
-    for sample in dataset:
+    print("Calculating image hashes")
+    for sample in tqdm(dataset):
         sample["file_hash"] = fou.compute_filehash(sample.filepath)
         sample.save()
+    print("Finished calculating image hashes")
 
 
 def find_duplicates(dataset):
