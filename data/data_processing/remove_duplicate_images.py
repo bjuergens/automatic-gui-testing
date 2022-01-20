@@ -11,24 +11,10 @@ from PIL import Image
 from fiftyone import ViewField
 
 
-MIXED_FOLDER_NAME = "mixed"
 PROCESSED_FOLDER_NAME = "deduplicated-images"
 
 
-def copy_observations_in_one_folder(root_dir: str, mixed_dir: str):
-    i = 0
-    for sequence_dir in os.listdir(root_dir):
-        current_dir = os.path.join(root_dir, sequence_dir)
-        observations_dir = os.path.join(current_dir, "observations")
-
-        for file in os.listdir(observations_dir):
-            shutil.copy(os.path.join(observations_dir, file), f"{mixed_dir}/{os.path.basename(root_dir)}-{i}-{file}")
-
-        i += 1
-
-
 def deduplicate_images(dataset):
-
     for sample in dataset:
         sample["file_hash"] = fou.compute_filehash(sample.filepath)
         sample.save()
@@ -54,19 +40,11 @@ def find_duplicates(dataset):
     return dup_view
 
 
-def remove_duplicates(root_dir: str, mixed_dir, processed_dir):
-    dataset_name = os.path.basename(root_dir)
-
-    try:
-        dataset = fo.load_dataset(dataset_name)
-        logging.info("Found dataset in database with the same name, loading it. Attention if you changed files on "
-                     "disk, these changes will (I think) not be present now")
-    except ValueError:
-        dataset = fo.Dataset.from_dir(
-            mixed_dir,
-            fo.types.ImageDirectory,
-            name=dataset_name
-        )
+def remove_duplicates(image_dir: str, processed_dir):
+    dataset = fo.Dataset.from_dir(
+        image_dir,
+        fo.types.ImageDirectory
+    )
 
     dup_view = find_duplicates(dataset)
 
@@ -119,41 +97,20 @@ def _custom_comparison(dataset_path):
 
 
 @click.command()
-@click.option("--root-dir", type=str, required=True,
+@click.option("-d", "--image-dir", type=str, required=True,
               help="Root dir of the dataset from which the observations shall be de-duplicated")
-@click.option("--copy-save-dir", type=str,
-              help="Can be used to provide a (possibly non-empty) folder where the copies shall be stored")
-@click.option("--keep-copy/--no-keep-copy", type=bool, default=False,
+@click.option("--keep-copy/--no-keep-copy", type=bool, default=True,
               help="Keep the copied files that were created in the 'mixed' directory")
-@click.option("--copy-only/--no-copy-only", type=bool, default=False,
-              help="Copy only the files to the mixed directory, do not remove duplicates")
-def main(root_dir: str, copy_save_dir: str, keep_copy: bool, copy_only: bool):
-    root_dir = os.path.normpath(root_dir)
+def main(image_dir: str, keep_copy: bool):
+    image_dir = os.path.normpath(image_dir)
+    processed_dir = f"{image_dir}-{PROCESSED_FOLDER_NAME}"
 
-    if copy_save_dir is not None:
-        mixed_dir = os.path.normpath(copy_save_dir)
-    else:
-        mixed_dir = f"{root_dir}-{MIXED_FOLDER_NAME}"
+    remove_duplicates(image_dir, processed_dir)
 
-        if os.path.exists(mixed_dir):
-            print("Warning, the mixed-dir already exists, possibly already containing images from another dataset. "
-                  "Consider deleting it or specifying a folder for the copied data by setting '--copy-save-dir'.")
+    print(f"Removed duplicates and saved them to '{processed_dir}'")
 
-    processed_dir = f"{root_dir}-{PROCESSED_FOLDER_NAME}"
-
-    # processed_dir will be created by fiftyone when removing the duplications
-    os.makedirs(mixed_dir, exist_ok=True)
-
-    assert os.path.exists(root_dir), f"The provided root_dir '{root_dir}' does not exist"
-
-    copy_observations_in_one_folder(root_dir, mixed_dir)
-
-    if not copy_only:
-        remove_duplicates(root_dir, mixed_dir, processed_dir)
-        print(f"Removed duplicates and saved them to '{os.path.join(root_dir, PROCESSED_FOLDER_NAME)}'")
-
-    if not keep_copy and not copy_only:
-        shutil.rmtree(mixed_dir)
+    if not keep_copy:
+        shutil.rmtree(image_dir)
 
 
 if __name__ == "__main__":
