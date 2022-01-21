@@ -3,7 +3,7 @@ from bisect import bisect
 
 from torch.utils.data import Dataset
 
-from data.dataset_implementations import get_start_and_end_indices_from_split
+from data.dataset_implementations.possible_splits import get_start_and_end_indices_from_split
 from data.dataset_implementations.rnn import GUISingleSequenceDataset
 
 

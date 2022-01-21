@@ -4,7 +4,7 @@ model_parameters:
   input_channels: 3
 
 experiment_parameters:
-  dataset: gui_dataset
+  dataset: multiple_sequences_vae
   dataset_path: "/home/pdeubel/PycharmProjects/data/test-gui"
   img_size: 448
   batch_size: 10

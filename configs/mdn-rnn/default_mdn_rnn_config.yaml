@@ -6,7 +6,7 @@ model_parameters:
   number_of_gaussians: 5
 
 experiment_parameters:
-  dataset: gui-dataset
+  dataset: multiple_sequences_identical_length_rnn
   data_path: "datasets/gui_env/random-widgets/2021-12-27_22-10-07/0"
   batch_size: 10
   sequence_length: 16

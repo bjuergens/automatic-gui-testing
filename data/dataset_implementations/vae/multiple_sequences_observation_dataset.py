@@ -3,7 +3,7 @@ import os
 from PIL import Image
 from torch.utils.data import Dataset
 
-from data.dataset_implementations import POSSIBLE_SPLITS, get_start_and_end_indices_from_split
+from data.dataset_implementations.possible_splits import POSSIBLE_SPLITS, get_start_and_end_indices_from_split
 
 
 class GUIMultipleSequencesObservationDataset(Dataset):

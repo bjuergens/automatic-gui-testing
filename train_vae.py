@@ -271,8 +271,9 @@ def main(config_path: str, load_path: str):
         #     print("End of Training because of early stopping at epoch {}".format(epoch))
         #     break
 
-    # Ensure everything is logged to the tensorboard
-    experiment.flush()
+    if not experiment.debug:
+        # Ensure everything is logged to the tensorboard
+        experiment.flush()
 
 
 if __name__ == "__main__":
