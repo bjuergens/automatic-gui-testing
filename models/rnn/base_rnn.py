@@ -164,7 +164,7 @@ class BaseSimpleRNN(BaseRNN):
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
-        predicted_reward = torch.sigmoid(predictions[:, :, self.latent_size:])
+        predicted_reward = predictions[:, :, self.latent_size:]
 
         return predicted_latent_vector, predicted_reward
 
@@ -173,8 +173,14 @@ class BaseSimpleRNN(BaseRNN):
 
         # TODO check if reduction needs to be adapted to batch size and sequence length
         latent_loss = f.mse_loss(predicted_latent, next_latent_vector)
-        reward_loss = f.mse_loss(predicted_reward.squeeze(-1), reward)
 
-        loss = latent_loss + reward_loss
+        # Computes sigmoid followed by BCELoss. Is numerically more stable than doing the two steps separately, see
+        # https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
+        reward_loss = f.binary_cross_entropy_with_logits(predicted_reward, reward.greater(0).float().unsqueeze(-1))
+
+        # Scale is calculated as latent size + 1 (for the reward). This was done in the implementation this repository
+        # is based on
+        scale = next_latent_vector.size(2) + 1
+        loss = (latent_loss + reward_loss) / scale
 
         return loss, (latent_loss.item(), reward_loss.item())
