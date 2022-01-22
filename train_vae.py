@@ -12,6 +12,7 @@ from data.dataset_implementations import get_vae_dataloader
 from models import select_vae_model
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
+from utils.training_utils.average_meter import AverageMeter
 
 
 # from utils.misc import LSIZE, RED_SIZE
@@ -21,11 +22,12 @@ from utils.training_utils import save_checkpoint, vae_transformation_functions, 
 # from data.loaders import RolloutObservationDataset
 
 
-def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs):
-    """ One training epoch """
+def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, global_train_log_steps):
     model.train()
-    # dataset_train.load_next_buffer()
-    train_loss = 0
+
+    total_loss_meter = AverageMeter("Loss", ":.4f")
+    mse_loss_meter = AverageMeter("MSELoss", ":.4f")
+    kld_loss_meter = AverageMeter("KLDLoss", ":.4f")
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Train")
@@ -38,42 +40,41 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
         recon_batch, mu, log_var = model(data)
         loss, mse_loss, kld_loss = model.loss_function(data, recon_batch, mu, log_var, current_epoch, max_epochs)
         loss.backward()
-        train_loss += loss.item() * data.size(0)
+
+        batch_size = data.size(0)
+        total_loss_meter.update(loss.item(), batch_size)
+        mse_loss_meter.update(mse_loss, batch_size)
+        kld_loss_meter.update(kld_loss, batch_size)
+
         optimizer.step()
 
-        # if batch_idx % 20 == 0:
-        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #         current_epoch, batch_idx * len(data), len(train_loader.dataset),
-        #         100. * batch_idx / len(train_loader),
-        #         loss.item() / len(data)))
-
-        loss_float = loss.item()
-        progress_bar.set_postfix_str(
-            f"loss={loss_float:.4f} mse={mse_loss:.4f} kld={kld_loss:.4f}"
-        )
-
-        if batch_idx % log_interval == 0:
+        if batch_idx % log_interval == 0 or batch_idx == (len(train_loader) - 1):
+            progress_bar.set_postfix_str(
+                f"loss={total_loss_meter.avg:.4f} mse={mse_loss_meter.avg:.4f} kld={kld_loss_meter.avg:.4e}"
+            )
             experiment.log({
-                "loss": loss_float,
-                "reconstruction_loss": mse_loss,
-                "kld": kld_loss
-            })
+                "loss": total_loss_meter.avg,
+                "reconstruction_loss": mse_loss_meter.avg,
+                "kld": kld_loss_meter.avg
+            }, global_step=global_train_log_steps)
 
-    # print('====> Epoch: {} Average loss: {:.4f}'.format(
-    #     current_epoch, train_loss / len(train_loader.dataset)))
+            global_train_log_steps += 1
 
     progress_bar.close()
 
     experiment.log({
-        "epoch_train_loss": train_loss / len(train_loader.dataset)
-    })
+        "epoch_train_loss": total_loss_meter.avg
+    }, global_step=current_epoch)
+
+    return global_train_log_steps
 
 
-def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs):
-    """ One test epoch """
+def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs, global_val_log_steps):
     model.eval()
 
-    val_loss_sum = 0
+    val_total_loss_meter = AverageMeter("Val_Loss", ":.4f")
+    val_mse_loss_meter = AverageMeter("Val_MSELoss", ":.4f")
+    val_kld_loss_meter = AverageMeter("Val_KLDLoss", ":.4e")
 
     logged_one_batch = False
 
@@ -91,35 +92,36 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
                 data, recon_batch, mu, log_var, current_epoch, max_epochs
             )
 
-        val_loss_float = val_loss.item()
-
-        progress_bar.set_postfix_str(
-            f"val_loss={val_loss_float:.4f} val_mse={val_mse_loss:.4f} val_kld={val_kld_loss:.4f}"
-        )
-
-        val_loss_sum += val_loss_float * data.size(0)
+        batch_size = data.size(0)
+        val_total_loss_meter.update(val_loss.item(), batch_size)
+        val_mse_loss_meter.update(val_mse_loss, batch_size)
+        val_kld_loss_meter.update(val_kld_loss, batch_size)
 
         if not logged_one_batch and not experiment.debug:
             experiment.add_images("originals", data, global_step=current_epoch)
             experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
             logged_one_batch = True
 
-        if batch_idx % log_interval == 0:
+        if batch_idx % log_interval == 0 or batch_idx == (len(val_loader) - 1):
+            progress_bar.set_postfix_str(
+                f"val_loss={val_total_loss_meter.avg:.4f} val_mse={val_mse_loss_meter.avg:.4f} "
+                f"val_kld={val_kld_loss_meter.avg:.4e}"
+            )
             experiment.log({
-                "val_loss": val_loss_float,
-                "val_reconstruction_loss": val_mse_loss,
-                "val_kld": val_kld_loss
-            })
+                "val_loss": val_total_loss_meter.avg,
+                "val_reconstruction_loss": val_mse_loss_meter.avg,
+                "val_kld": val_kld_loss_meter.avg
+            }, global_step=global_val_log_steps)
+
+            global_val_log_steps += 1
 
     progress_bar.close()
 
-    val_loss_sum /= len(val_loader.dataset)
-
     experiment.log({
-        "epoch_val_loss": val_loss_sum
-    })
+        "epoch_val_loss": val_total_loss_meter.avg
+    }, global_step=current_epoch)
 
-    return val_loss_sum
+    return val_total_loss_meter.avg, global_val_log_steps
 
 
 @click.command()
@@ -155,7 +157,7 @@ def main(config_path: str, load_path: str):
 
     transformation_functions = vae_transformation_functions(img_size)
 
-    additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True}
+    additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True, "drop_last": True}
 
     train_loader = get_vae_dataloader(
         dataset_name=dataset_name,
@@ -197,6 +199,8 @@ def main(config_path: str, load_path: str):
 
     # Use a subfolder in the log for every dataset
     save_dir = os.path.join(config["logging_parameters"]["save_dir"], config["experiment_parameters"]["dataset"])
+    global_train_log_steps = 0
+    global_val_log_steps = 0
 
     experiment = Experiment(
         save_dir=save_dir,
@@ -244,8 +248,8 @@ def main(config_path: str, load_path: str):
         logging.info(f"Started VAE training version_{training_version} for {max_epochs} epochs")
 
     for current_epoch in range(0, max_epochs):
-        train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs)
-        validation_loss = validate(model, experiment, val_loader, device, current_epoch, max_epochs)
+        global_train_log_steps = train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, global_train_log_steps)
+        validation_loss, global_val_log_steps = validate(model, experiment, val_loader, device, current_epoch, max_epochs, global_val_log_steps)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
 
