@@ -13,7 +13,7 @@ from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
-
+from utils.training_utils.average_meter import AverageMeter
 
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
 # from utils.learning import EarlyStopping
@@ -21,45 +21,8 @@ from utils.training_utils import load_vae_architecture, save_checkpoint, vae_tra
 # from utils.learning import ReduceLROnPlateau
 
 
-def to_latent(obs, next_obs, vae, latent_size):
-    """ Transform observations to latent space.
-
-    :args obs: 5D torch tensor (BSIZE, SEQ_LEN, ASIZE, SIZE, SIZE)
-    :args next_obs: 5D torch tensor (BSIZE, SEQ_LEN, ASIZE, SIZE, SIZE)
-
-    :returns: (latent_obs, latent_next_obs)
-        - latent_obs: 4D torch tensor (BSIZE, SEQ_LEN, LSIZE)
-        - next_latent_obs: 4D torch tensor (BSIZE, SEQ_LEN, LSIZE)
-    """
-    with torch.no_grad():
-        # obs, next_obs = [
-        #     f.upsample(x.view(-1, 3, SIZE, SIZE), size=RED_SIZE,
-        #                mode='bilinear', align_corners=True)
-        #     for x in (obs, next_obs)]
-        batch_size = obs.size(0)
-        sequence_length = obs.size(1)
-
-        obs = obs.view(-1, 3, obs.size(3), obs.size(4))
-        next_obs = next_obs.view(-1, 3, next_obs.size(3), next_obs.size(4))
-
-        obs_mu, obs_log_var = vae(obs)[1:]
-        next_obs_mu, next_obs_log_var = vae(next_obs)[1:]
-
-        latent_obs = torch.randn_like(obs_mu).mul(torch.exp(0.5 * obs_log_var)).add_(obs_mu)
-        latent_next_obs = torch.randn_like(next_obs_mu).mul(torch.exp(0.5 * next_obs_log_var)).add_(next_obs_mu)
-
-        latent_obs = latent_obs.view(batch_size, sequence_length, latent_size)
-        latent_next_obs = latent_next_obs.view(batch_size, sequence_length, latent_size)
-
-        # latent_obs, latent_next_obs = [
-        #     (x_mu + x_logsigma.exp() * torch.randn_like(x_mu)).view(batch_size, sequence_length, latent_size)
-        #     for x_mu, x_logsigma in
-        #     [(obs_mu, obs_logsigma), (next_obs_mu, next_obs_logsigma)]]
-    return latent_obs, latent_next_obs
-
-
-def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoader, latent_size, device: torch.device,
-              current_epoch: int, train: bool):
+def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoader, device: torch.device,
+              current_epoch: int, global_log_step: int, train: bool):
     if train:
         model.train()
         loss_key = "loss"
@@ -71,16 +34,17 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
         latent_loss_key = "val_latent_loss"
         reward_loss_key = "val_reward_loss"
 
-    loss_sum = 0
-    latent_loss_sum = 0
-    reward_loss_sum = 0
+    total_loss_meter = AverageMeter(loss_key, ":.4f")
+    latent_loss_meter = AverageMeter(latent_loss_key, ":.4f")
+    reward_loss_meter = AverageMeter(reward_loss_key, ":.4f")
 
     old_dataset_index = None
 
     log_interval = 20
 
-    pbar = tqdm(total=len(data_loader.dataset), desc="Epoch {}".format(current_epoch))
-    for i, data in enumerate(data_loader):
+    progress_bar = tqdm(enumerate(data_loader), total=len(data_loader), unit="batch", desc=f"Epoch {current_epoch}")
+
+    for i, data in progress_bar:
         mus, next_mus, log_vars, next_log_vars, rewards, actions = [d.to(device) for d in data[0]]
         dataset_indices: torch.Tensor = data[1]
         current_dataset_index = dataset_indices[0]
@@ -107,33 +71,29 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
                 loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs,
                                                                        reward=rewards, model_output=model_output)
 
-        loss_sum += loss.item() * batch_size
-        latent_loss_sum += latent_loss * batch_size
-        reward_loss_sum += reward_loss * batch_size
+        total_loss_meter.update(loss.item(), batch_size)
+        latent_loss_meter.update(latent_loss, batch_size)
+        reward_loss_meter.update(reward_loss, batch_size)
 
-        # TODO gmm divide by latent_size correct? Was done by previous authors
-        pbar.set_postfix_str("loss={loss:10.6f} "
-                             "gmm={gmm:10.6f} mse={mse:10.6f}".format(
-            loss=loss_sum / ((i + 1) * batch_size),
-            gmm=latent_loss_sum / latent_size / ((i + 1) * batch_size), mse=reward_loss_sum / ((i + 1) * batch_size)))
-        pbar.update(batch_size)
+        if i % log_interval == 0 or i == (len(data_loader) - 1):
+            progress_bar.set_postfix_str(f"loss={total_loss_meter.avg:.4f} latent={latent_loss_meter.avg:.4f} "
+                                         f"reward={reward_loss_meter.avg:.4f}")
 
-        if i % log_interval == 0:
             experiment.log({
-                loss_key: loss.item(),
-                latent_loss_key: latent_loss,
-                reward_loss_key: reward_loss
-            })
+                loss_key: total_loss_meter.avg,
+                latent_loss_key: latent_loss_meter.avg,
+                reward_loss_key: reward_loss_meter.avg
+            }, global_step=global_log_step)
 
-    pbar.close()
+            global_log_step += 1
+
+    progress_bar.close()
 
     experiment.log({
-        f"epoch_{loss_key}": loss_sum / len(data_loader.dataset),
-        f"epoch_{latent_loss_key}": latent_loss_sum / len(data_loader.dataset),
-        f"epoch_{reward_loss_key}": reward_loss_sum / len(data_loader.dataset),
-    })
+        f"epoch_{loss_key}": total_loss_meter.avg
+    }, global_step=current_epoch)
 
-    return latent_loss_sum * batch_size / len(data_loader.dataset)
+    return total_loss_meter.avg, global_log_step
 
 
 @click.command()
@@ -219,6 +179,8 @@ def main(config_path: str):
     )
 
     save_dir = os.path.join(base_save_dir, dataset_name)
+    global_train_log_steps = 0
+    global_val_log_steps = 0
 
     experiment = Experiment(
         save_dir=save_dir,
@@ -246,10 +208,11 @@ def main(config_path: str):
 
     current_best = None
     for current_epoch in range(max_epochs):
-        data_pass(model, vae, experiment, optimizer, train_dataloader, latent_size, device, current_epoch, train=True)
+        _, global_train_log_steps = data_pass(model, vae, experiment, optimizer, train_dataloader, device,
+                                              current_epoch, global_train_log_steps, train=True)
 
-        val_loss = data_pass(model, vae, experiment, optimizer, val_dataloader, latent_size, device, current_epoch,
-                             train=False)
+        val_loss, global_val_log_steps = data_pass(model, vae, experiment, optimizer, val_dataloader, device,
+                                                   current_epoch, global_val_log_steps, train=False)
 
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
