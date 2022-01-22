@@ -8,7 +8,8 @@ POSSIBLE_SPLITS = ["train", "val", "test"]
 # detail.
 IMPLEMENTED_SPLITS = {
     16: [10, 12, 16],  # e.g. 16 sequences, 0-10 for training, 10-12 for validation, 12-16 for testing
-    10: [7, 8, 10]  # sequences# : 7 training, 1 validation, 2 testing
+    10: [7, 8, 10],  # sequences# : 7 training, 1 validation, 2 testing
+    100: [65, 80, 100]
 }
 
 
