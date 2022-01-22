@@ -46,8 +46,7 @@ class BaseVAE(abc.ABC, nn.Module):
     def loss_function(self, x: torch.Tensor, reconstruction_x: torch.Tensor, mu: torch.Tensor, log_var: torch.Tensor,
                       current_epoch: int, max_epochs: int) -> Tuple[torch.Tensor, float, float]:
         # MSE
-        batch_dim = x.size(0)
-        reconstruction_loss = f.mse_loss(x, reconstruction_x, reduction="sum") / batch_dim
+        reconstruction_loss = f.mse_loss(x, reconstruction_x, reduction="mean")
 
         # KLD
         # see Appendix B from VAE paper:
