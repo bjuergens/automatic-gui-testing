@@ -34,3 +34,9 @@ class GUISequenceBatchSampler(Sampler):
         # here for future reference and clarity.
         if len(batch) > 0 and not self.drop_last:
             yield batch
+
+    def __len__(self) -> int:
+        if self.drop_last:
+            return len(self.sampler) // self.batch_size
+        else:
+            return (len(self.sampler) + self.batch_size - 1) // self.batch_size
