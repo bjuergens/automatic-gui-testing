@@ -66,6 +66,6 @@ class BaseVAE(abc.ABC, nn.Module):
 
         # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
         reconstruction_loss_float = reconstruction_loss.item()
-        kld_loss_float = kld_loss.item()
+        kld_loss_float = kld_loss_term.item()
 
         return loss, reconstruction_loss_float, kld_loss_float
