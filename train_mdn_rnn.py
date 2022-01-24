@@ -1,9 +1,10 @@
+import json
 import logging
 import os
+from typing import Optional
 
 import click
 import torch
-from test_tube import Experiment
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -11,6 +12,7 @@ from data.dataset_implementations import get_rnn_dataloader
 from models import select_rnn_model
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae
+from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
 from utils.training_utils.average_meter import AverageMeter
@@ -21,8 +23,8 @@ from utils.training_utils.average_meter import AverageMeter
 # from utils.learning import ReduceLROnPlateau
 
 
-def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoader, device: torch.device,
-              current_epoch: int, global_log_step: int, train: bool):
+def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWriter], optimizer, data_loader: DataLoader,
+              device: torch.device, current_epoch: int, global_log_step: int, train: bool, debug: bool):
     if train:
         model.train()
         loss_key = "loss"
@@ -79,19 +81,17 @@ def data_pass(model: BaseRNN, vae, experiment, optimizer, data_loader: DataLoade
             progress_bar.set_postfix_str(f"loss={total_loss_meter.avg:.4f} latent={latent_loss_meter.avg:.4f} "
                                          f"reward={reward_loss_meter.avg:.4f}")
 
-            experiment.log({
-                loss_key: total_loss_meter.avg,
-                latent_loss_key: latent_loss_meter.avg,
-                reward_loss_key: reward_loss_meter.avg
-            }, global_step=global_log_step)
+            if not debug:
+                summary_writer.add_scalar(loss_key, total_loss_meter.avg, global_step=global_log_step)
+                summary_writer.add_scalar(latent_loss_key, latent_loss_meter.avg, global_step=global_log_step)
+                summary_writer.add_scalar(reward_loss_key, reward_loss_meter.avg, global_step=global_log_step)
 
-            global_log_step += 1
+                global_log_step += 1
 
     progress_bar.close()
 
-    experiment.log({
-        f"epoch_{loss_key}": total_loss_meter.avg
-    }, global_step=current_epoch)
+    if not debug:
+        summary_writer.add_scalar(f"epoch_{loss_key}", total_loss_meter.avg, global_step=current_epoch)
 
     return total_loss_meter.avg, global_log_step
 
@@ -123,6 +123,7 @@ def main(config_path: str):
 
     base_save_dir = config["logging_parameters"]["base_save_dir"]
     model_name = config["model_parameters"]["name"]
+    debug = config["logging_parameters"]["debug"]
 
     vae_directory = config["vae_parameters"]["directory"]
     vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
@@ -178,45 +179,41 @@ def main(config_path: str):
         **additional_dataloader_kwargs
     )
 
-    save_dir = os.path.join(base_save_dir, dataset_name)
     global_train_log_steps = 0
     global_val_log_steps = 0
 
-    experiment = Experiment(
-        save_dir=save_dir,
-        name=model_name,
-        debug=config["logging_parameters"]["debug"],  # Turns off logging if True
-        create_git_tag=False,
-        autosave=True
-    )
+    if not debug:
+        save_dir = os.path.join(base_save_dir, dataset_name)
+        summary_writer = ImprovedSummaryWriter(
+            log_dir=save_dir,
+            name=model_name
+        )
 
-    experiment.tag(config)
+        summary_writer.add_text(tag="Hyperparameter", text_string=json.dumps(config))
 
-    if not experiment.debug:
-        log_dir = experiment.get_logdir().split("tf")[0]
+        log_dir = summary_writer.get_logdir().split("tf")[0]
         best_model_filename = os.path.join(log_dir, "best.pt")
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
         save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
+
+        logging.info(f"Started MDN-RNN training version_{summary_writer.version_number} for {max_epochs} epochs")
     else:
+        summary_writer = None
         # Enables debugging of the gradient calculation, shows where errors/NaN etc. occur
         torch.autograd.set_detect_anomaly(True)
 
-    training_version = experiment.version
-    if training_version is not None:
-        logging.info(f"Started MDN-RNN training version_{training_version} for {max_epochs} epochs")
-
     current_best = None
     for current_epoch in range(max_epochs):
-        _, global_train_log_steps = data_pass(model, vae, experiment, optimizer, train_dataloader, device,
-                                              current_epoch, global_train_log_steps, train=True)
+        _, global_train_log_steps = data_pass(model, vae, summary_writer, optimizer, train_dataloader, device,
+                                              current_epoch, global_train_log_steps, train=True, debug=debug)
 
-        val_loss, global_val_log_steps = data_pass(model, vae, experiment, optimizer, val_dataloader, device,
-                                                   current_epoch, global_val_log_steps, train=False)
+        val_loss, global_val_log_steps = data_pass(model, vae, summary_writer, optimizer, val_dataloader, device,
+                                                   current_epoch, global_val_log_steps, train=False, debug=debug)
 
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
-        if not experiment.debug:
+        if not debug:
             is_best = not current_best or val_loss < current_best
 
             if is_best:
@@ -235,9 +232,9 @@ def main(config_path: str):
         #     print("End of Training because of early stopping at epoch {}".format(e))
         #     break
 
-    if not experiment.debug:
+    if not debug:
         # Ensure everything is logged to the tensorboard
-        experiment.flush()
+        summary_writer.flush()
 
 
 if __name__ == "__main__":
