@@ -191,7 +191,7 @@ def main(config_path: str):
 
         summary_writer.add_text(tag="Hyperparameter", text_string=json.dumps(config))
 
-        log_dir = summary_writer.get_logdir().split("tf")[0]
+        log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
         checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 

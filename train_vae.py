@@ -1,15 +1,16 @@
+import json
 import logging
 import os
 
 import click
 import torch
 import torch.utils.data
-from test_tube import Experiment
 from torch import optim
 from tqdm import tqdm
 
 from data.dataset_implementations import get_vae_dataloader
 from models import select_vae_model
+from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
 from utils.training_utils.average_meter import AverageMeter
@@ -22,7 +23,8 @@ from utils.training_utils.average_meter import AverageMeter
 # from data.loaders import RolloutObservationDataset
 
 
-def train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, global_train_log_steps):
+def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer, device, current_epoch, max_epochs,
+          global_train_log_steps, debug: bool):
     model.train()
 
     total_loss_meter = AverageMeter("Loss", ":.4f")
@@ -52,24 +54,24 @@ def train(model, experiment, train_loader, optimizer, device, current_epoch, max
             progress_bar.set_postfix_str(
                 f"loss={total_loss_meter.avg:.4f} mse={mse_loss_meter.avg:.4f} kld={kld_loss_meter.avg:.4e}"
             )
-            experiment.log({
-                "loss": total_loss_meter.avg,
-                "reconstruction_loss": mse_loss_meter.avg,
-                "kld": kld_loss_meter.avg
-            }, global_step=global_train_log_steps)
 
-            global_train_log_steps += 1
+            if not debug:
+                summary_writer.add_scalar("loss", total_loss_meter.avg, global_step=global_train_log_steps)
+                summary_writer.add_scalar("reconstruction_loss", mse_loss_meter.avg, global_step=global_train_log_steps)
+                summary_writer.add_scalar("kld", kld_loss_meter.avg, global_step=global_train_log_steps)
+
+                global_train_log_steps += 1
 
     progress_bar.close()
 
-    experiment.log({
-        "epoch_train_loss": total_loss_meter.avg
-    }, global_step=current_epoch)
+    if not debug:
+        summary_writer.add_scalar("epoch_train_loss", total_loss_meter.avg, global_step=current_epoch)
 
     return global_train_log_steps
 
 
-def validate(model, experiment: Experiment, val_loader, device, current_epoch, max_epochs, global_val_log_steps):
+def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, current_epoch, max_epochs,
+             global_val_log_steps, debug: bool):
     model.eval()
 
     val_total_loss_meter = AverageMeter("Val_Loss", ":.4f")
@@ -97,9 +99,9 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
         val_mse_loss_meter.update(val_mse_loss, batch_size)
         val_kld_loss_meter.update(val_kld_loss, batch_size)
 
-        if not logged_one_batch and not experiment.debug:
-            experiment.add_images("originals", data, global_step=current_epoch)
-            experiment.add_images("reconstructions", recon_batch, global_step=current_epoch)
+        if not logged_one_batch and not debug:
+            summary_writer.add_images("originals", data, global_step=current_epoch)
+            summary_writer.add_images("reconstructions", recon_batch, global_step=current_epoch)
             logged_one_batch = True
 
         if batch_idx % log_interval == 0 or batch_idx == (len(val_loader) - 1):
@@ -107,19 +109,19 @@ def validate(model, experiment: Experiment, val_loader, device, current_epoch, m
                 f"val_loss={val_total_loss_meter.avg:.4f} val_mse={val_mse_loss_meter.avg:.4f} "
                 f"val_kld={val_kld_loss_meter.avg:.4e}"
             )
-            experiment.log({
-                "val_loss": val_total_loss_meter.avg,
-                "val_reconstruction_loss": val_mse_loss_meter.avg,
-                "val_kld": val_kld_loss_meter.avg
-            }, global_step=global_val_log_steps)
 
-            global_val_log_steps += 1
+            if not debug:
+                summary_writer.add_scalar("val_loss", val_total_loss_meter.avg, global_step=global_val_log_steps)
+                summary_writer.add_scalar("val_reconstruction_loss", val_mse_loss_meter.avg,
+                                          global_step=global_val_log_steps)
+                summary_writer.add_scalar("val_kld", val_kld_loss_meter.avg, global_step=global_val_log_steps)
+
+                global_val_log_steps += 1
 
     progress_bar.close()
 
-    experiment.log({
-        "epoch_val_loss": val_total_loss_meter.avg
-    }, global_step=current_epoch)
+    if not debug:
+        summary_writer.add_scalar("epoch_val_loss", val_total_loss_meter.avg, global_step=current_epoch)
 
     return val_total_loss_meter.avg, global_val_log_steps
 
@@ -151,6 +153,9 @@ def main(config_path: str, load_path: str):
 
     # VAE configuration
     vae_name = config["model_parameters"]["name"]
+
+    max_epochs = config["experiment_parameters"]["max_epochs"]
+    debug = config["logging_parameters"]["debug"]
 
     set_seeds(manual_seed)
     device = get_device(gpu_id)
@@ -202,16 +207,26 @@ def main(config_path: str, load_path: str):
     global_train_log_steps = 0
     global_val_log_steps = 0
 
-    experiment = Experiment(
-        save_dir=save_dir,
-        name=config["model_parameters"]["name"],
-        debug=config["logging_parameters"]["debug"],  # Turns off logging if True
-        create_git_tag=False,
-        autosave=True
-    )
+    if not debug:
+        summary_writer = ImprovedSummaryWriter(
+            log_dir=save_dir,
+            name=vae_name
+        )
 
-    # Log hyperparameters to the tensorboard
-    experiment.tag(config)
+        # Log hyperparameters to the tensorboard
+        summary_writer.add_text("Hyperparameters", json.dumps(config))
+
+        log_dir = summary_writer.get_logdir()
+        best_model_filename = os.path.join(log_dir, "best.pt")
+        checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
+
+        save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
+
+        logging.info(f"Started VAE training version_{summary_writer.version_number} for {max_epochs} epochs")
+    else:
+        summary_writer = None
+        # Enables debugging of the gradient calculation, shows where errors/NaN etc. occur
+        torch.autograd.set_detect_anomaly(True)
 
     # vae_dir = join(args.logdir, 'vae')
     # if not exists(vae_dir):
@@ -231,30 +246,17 @@ def main(config_path: str, load_path: str):
     #     earlystopping.load_state_dict(state['earlystopping'])
 
     current_best = None
-    max_epochs = config["experiment_parameters"]["max_epochs"]
-
-    if not experiment.debug:
-        log_dir = experiment.get_logdir().split("tf")[0]
-        best_model_filename = os.path.join(log_dir, "best.pt")
-        checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
-
-        save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
-    else:
-        # Enables debugging of the gradient calculation, shows where errors/NaN etc. occur
-        torch.autograd.set_detect_anomaly(True)
-
-    training_version = experiment.version
-    if training_version is not None:
-        logging.info(f"Started VAE training version_{training_version} for {max_epochs} epochs")
 
     for current_epoch in range(0, max_epochs):
-        global_train_log_steps = train(model, experiment, train_loader, optimizer, device, current_epoch, max_epochs, global_train_log_steps)
-        validation_loss, global_val_log_steps = validate(model, experiment, val_loader, device, current_epoch, max_epochs, global_val_log_steps)
+        global_train_log_steps = train(model, summary_writer, train_loader, optimizer, device, current_epoch,
+                                       max_epochs, global_train_log_steps, debug)
+        validation_loss, global_val_log_steps = validate(model, summary_writer, val_loader, device, current_epoch,
+                                                         max_epochs, global_val_log_steps, debug)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
 
         # checkpointing
-        if not experiment.debug:
+        if not debug:
             is_best = not current_best or validation_loss < current_best
             if is_best:
                 current_best = validation_loss
@@ -269,15 +271,15 @@ def main(config_path: str, load_path: str):
 
             with torch.no_grad():
                 sample_reconstructions = model.sample(batch_size, device).cpu()
-                experiment.add_images("samples", sample_reconstructions, global_step=current_epoch)
+                summary_writer.add_images("samples", sample_reconstructions, global_step=current_epoch)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(epoch))
         #     break
 
-    if not experiment.debug:
+    if not debug:
         # Ensure everything is logged to the tensorboard
-        experiment.flush()
+        summary_writer.flush()
 
 
 if __name__ == "__main__":
