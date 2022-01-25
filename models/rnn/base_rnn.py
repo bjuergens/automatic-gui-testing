@@ -10,6 +10,9 @@ import torch.nn.functional as f
 ONE_OVER_SQRT_2PI = 1.0 / math.sqrt(2 * math.pi)
 LOG2PI = math.log(2 * math.pi)
 
+LOSS_SCALE_OPTION_MUL = "multiplication"
+LOSS_SCALE_OPTION_DIV = "division"
+
 
 class BaseRNN(abc.ABC, nn.Module):
 
@@ -20,6 +23,7 @@ class BaseRNN(abc.ABC, nn.Module):
         self.number_of_hidden_layers = model_parameters["hidden_layers"]
         self.action_size = model_parameters["action_size"]
         self.latent_size = latent_size
+        self.loss_scale_option = model_parameters["loss_scale_option"]  # Can also be none
 
         self.batch_size = batch_size
         self.device = device
@@ -44,6 +48,22 @@ class BaseRNN(abc.ABC, nn.Module):
         self.hidden_state, self.cell_state = new_hidden_state.detach(), new_cell_state.detach()
 
         return outputs, (self.hidden_state, self.cell_state)
+
+    def combine_latent_and_reward_loss(self, latent_loss, reward_loss):
+        if self.loss_scale_option is None:
+            loss = latent_loss + reward_loss
+        elif self.loss_scale_option == LOSS_SCALE_OPTION_MUL:
+            # Scale is calculated as latent size + 1 (for the reward). This was done in the implementation this
+            # repository is based on
+            scale = self.latent_size
+            loss = latent_loss + (reward_loss * scale)
+        elif self.loss_scale_option == LOSS_SCALE_OPTION_DIV:
+            scale = self.latent_size + 1
+            loss = (latent_loss + reward_loss) / scale
+        else:
+            raise RuntimeError(f"Loss scale option '{self.loss_scale_option}' unknown")
+
+        return loss
 
     @abc.abstractmethod
     def predict(self, model_output, latents) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -142,7 +162,7 @@ class BaseMDNRNN(BaseRNN):
         gmm = self.gmm_loss(next_latent_vector, mus, sigmas, log_pi)
         mse = f.mse_loss(predicted_reward, reward)
 
-        loss = gmm + mse
+        loss = self.combine_latent_and_reward_loss(latent_loss=gmm, reward_loss=mse)
 
         return loss, (gmm.item(), mse.item())
 
@@ -164,7 +184,7 @@ class BaseSimpleRNN(BaseRNN):
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
-        predicted_reward = predictions[:, :, self.latent_size:]
+        predicted_reward = torch.sigmoid(predictions[:, :, self.latent_size:])
 
         return predicted_latent_vector, predicted_reward
 
@@ -173,14 +193,8 @@ class BaseSimpleRNN(BaseRNN):
 
         # TODO check if reduction needs to be adapted to batch size and sequence length
         latent_loss = f.mse_loss(predicted_latent, next_latent_vector)
+        reward_loss = f.mse_loss(predicted_reward, reward.unsqueeze(-1))
 
-        # Computes sigmoid followed by BCELoss. Is numerically more stable than doing the two steps separately, see
-        # https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
-        reward_loss = f.binary_cross_entropy_with_logits(predicted_reward, reward.greater(0).float().unsqueeze(-1))
-
-        # Scale is calculated as latent size + 1 (for the reward). This was done in the implementation this repository
-        # is based on
-        scale = next_latent_vector.size(2) + 1
-        loss = (latent_loss + reward_loss) / scale
+        loss = self.combine_latent_and_reward_loss(latent_loss=latent_loss, reward_loss=reward_loss)
 
         return loss, (latent_loss.item(), reward_loss.item())
