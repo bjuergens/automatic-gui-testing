@@ -7,6 +7,8 @@ numpy
 click
 Pillow
 pyyaml
-test_tube
 h5py
+fiftyone
+torchinfo
+matplotlib
 git+https://github.com/neuroevolution-ai/GymGuiEnvironments.git#egg=gym_gui_environments
