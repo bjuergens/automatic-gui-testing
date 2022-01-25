@@ -11,4 +11,5 @@ h5py
 fiftyone
 torchinfo
 matplotlib
+tensorboard
 git+https://github.com/neuroevolution-ai/GymGuiEnvironments.git#egg=gym_gui_environments
