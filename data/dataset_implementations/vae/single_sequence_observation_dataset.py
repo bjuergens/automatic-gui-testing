@@ -20,33 +20,28 @@ class GUISingleSequenceObservationDataset(Dataset):
 
         assert split in POSSIBLE_SPLITS, "Chosen split '{}' is not valid".format(split)
 
-        self.train_index = round(len(os.listdir(self.root_dir)) * self.train_split)
-        self.val_index = round(len(os.listdir(self.root_dir)) * self.val_split)
+        root_dir_content = os.listdir(self.root_dir)
+        root_dir_content.sort()
 
-        self.train_length = len(os.listdir(self.root_dir)[:self.train_index])
-        self.val_length = len(os.listdir(self.root_dir)[self.train_index:self.train_index + self.val_index])
-        self.test_length = len(os.listdir(self.root_dir)[self.train_index + self.val_index:])
+        root_dir_len = len(root_dir_content)
+
+        self.train_index = round(root_dir_len * self.train_split)
+        self.val_index = round(root_dir_len * self.val_split)
+
+        if self.split == "train":
+            self.image_paths = [os.path.join(self.root_dir, x) for x in root_dir_content[:self.train_index]]
+        elif self.split == "val":
+            self.image_paths = [os.path.join(self.root_dir, x) for x in root_dir_content[self.train_index:self.train_index + self.val_index]]
+        else:
+            self.image_paths = [os.path.join(self.root_dir, x) for x in root_dir_content[self.train_index + self.val_index:]]
+
+        self.number_of_images = len(self.image_paths)
 
     def __len__(self):
-        if self.split == "train":
-            return self.train_length
-        elif self.split == "val":
-            return self.val_length
-        else:
-            return self.test_length
+        return self.number_of_images
 
     def __getitem__(self, index):
-        if self.split == "train":
-            image_path = os.path.join(self.root_dir, os.listdir(self.root_dir)[index])
-        elif self.split == "val":
-            image_path = os.path.join(self.root_dir, os.listdir(self.root_dir)[self.train_index + index])
-        else:
-            image_path = os.path.join(
-                self.root_dir,
-                os.listdir(self.root_dir)[self.train_index + self.val_index + index]
-            )
-
-        img = Image.open(image_path)
+        img = Image.open(self.image_paths[index])
         img = self.transform(img)
 
         return img
