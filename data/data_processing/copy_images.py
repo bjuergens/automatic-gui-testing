@@ -2,6 +2,7 @@ import os
 import shutil
 
 import click
+from tqdm import tqdm
 
 MIXED_FOLDER_NAME = "mixed"
 
@@ -11,7 +12,7 @@ def copy_observations_in_one_folder(root_dir: str, mixed_dir: str):
         current_dir = os.path.join(root_dir, sequence_dir)
         observations_dir = os.path.join(current_dir, "observations")
 
-        for file in os.listdir(observations_dir):
+        for file in tqdm(os.listdir(observations_dir)):
             shutil.copy(
                 os.path.join(observations_dir, file),
                 f"{mixed_dir}/{os.path.basename(root_dir)}-{sequence_dir}-{file}"
