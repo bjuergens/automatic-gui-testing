@@ -1,12 +1,13 @@
 from typing import Union
 
-from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels
+from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels, EvenLargerVAESmallKernels
 from models.rnn import BaseRNN, StandardMDNRNN, LSTMWithBCE, LSTMWithMSE
 
 vae_models = {
     "vae_half_input_size": VAEHalfInputSize,
     "vae_full_input_size": VAEFullInputSize,
-    "large_vae_small_kernel": LargeVAESmallKernels
+    "large_vae_small_kernel": LargeVAESmallKernels,
+    "even_larger_vae_small_kernel": EvenLargerVAESmallKernels
 }
 
 rnn_models = {
