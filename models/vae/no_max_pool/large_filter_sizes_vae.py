@@ -33,10 +33,10 @@ class LargeFilterSizesVAE(BaseVAE):
             self.conv_layer_5 = nn.Sequential(conv_5, self.activation_function())
 
         # Bottleneck Size: 6x6
-        self.fc_mu = nn.Linear(6*6*self.hidden_dimensions[4], self.latent_size)
-        self.fc_log_var = nn.Linear(6*6*self.hidden_dimensions[4], self.latent_size)
+        self.fc_mu = nn.Linear(6 * 6 * self.hidden_dimensions[4], self.latent_size)
+        self.fc_log_var = nn.Linear(6 * 6 * self.hidden_dimensions[4], self.latent_size)
 
-        self.fc_decoder = nn.Linear(self.latent_size, 6*6*self.hidden_dimensions[4])
+        self.fc_decoder = nn.Linear(self.latent_size, 6 * 6 * self.hidden_dimensions[4])
 
         transposed_conv_1 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[4], out_channels=self.hidden_dimensions[3], kernel_size=11, stride=2, padding=1, output_padding=1)
         transposed_conv_2 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[3], out_channels=self.hidden_dimensions[2], kernel_size=11, stride=2, padding=1, output_padding=1)
