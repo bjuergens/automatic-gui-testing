@@ -8,14 +8,28 @@ from torch.nn import functional as f
 
 class BaseVAE(abc.ABC, nn.Module):
 
-    def __init__(self, model_parameters: dict, use_kld_warmup: bool, kld_weight: float = 1.0):
+    def __init__(self, model_parameters: dict):
         super().__init__()
 
         self.input_channels = model_parameters["input_channels"]
         self.latent_size = model_parameters["latent_size"]
+        self.hidden_dimensions = model_parameters["hidden_dimensions"]
 
-        self.use_kld_warmup = use_kld_warmup
-        self.kld_weight = kld_weight
+        activation_function = model_parameters["activation_function"]
+
+        if activation_function == "relu":
+            self.activation_function = nn.ReLU
+        elif activation_function == "leaky_relu":
+            self.activation_function = nn.LeakyReLU
+        else:
+            raise RuntimeError(f"Activation function {activation_function} unknown")
+
+        self.output_activation_function = nn.Sigmoid
+
+        self.use_batch_norm = model_parameters["batch_norm"]
+
+        self.use_kld_warmup = model_parameters["kld_warmup"]
+        self.kld_weight = model_parameters["kld_weight"]
 
     @abc.abstractmethod
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
