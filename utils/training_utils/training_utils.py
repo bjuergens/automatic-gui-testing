@@ -29,11 +29,8 @@ def load_vae_architecture(vae_directory: str, device: torch.device, load_best: b
     vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     vae_name = vae_config["model_parameters"]["name"]
 
-    use_kld_warmup = vae_config["experiment_parameters"]["kld_warmup"]
-    kld_weight = vae_config["experiment_parameters"]["kld_weight"]
-
     vae_model = select_vae_model(vae_name)
-    vae = vae_model(vae_config["model_parameters"], use_kld_warmup, kld_weight).to(device)
+    vae = vae_model(vae_config["model_parameters"]).to(device)
 
     if load_best:
         state_dict_file_name = "best.pt"

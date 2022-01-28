@@ -31,6 +31,10 @@ class BaseVAE(abc.ABC, nn.Module):
         self.use_kld_warmup = model_parameters["kld_warmup"]
         self.kld_weight = model_parameters["kld_weight"]
 
+        if self.use_kld_warmup is None and self.kld_weight is None:
+            raise RuntimeError(f"kld_warmup and kld_weight parameters not in config, maybe you are using an older "
+                               "model architecture.")
+
     @abc.abstractmethod
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         pass

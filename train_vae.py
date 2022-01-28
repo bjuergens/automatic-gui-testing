@@ -136,8 +136,6 @@ def main(config_path: str, load_path: str):
 
     config = load_yaml_config(config_path)
 
-    use_kld_warmup = config["experiment_parameters"]["kld_warmup"]
-    kld_weight = config["experiment_parameters"]["kld_weight"]
     batch_size = config["experiment_parameters"]["batch_size"]
     manual_seed = config["experiment_parameters"]["manual_seed"]
 
@@ -190,7 +188,7 @@ def main(config_path: str, load_path: str):
                                                                         load_optimizer=True)
     else:
         model_type = select_vae_model(vae_name)
-        model = model_type(config["model_parameters"], use_kld_warmup, kld_weight).to(device)
+        model = model_type(config["model_parameters"]).to(device)
         optimizer_state_dict = None
 
     optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
