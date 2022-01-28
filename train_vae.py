@@ -11,7 +11,7 @@ from tqdm import tqdm
 from data.dataset_implementations import get_vae_dataloader
 from models import select_vae_model
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
-from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
+from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config, pretty_json
 from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
 from utils.training_utils.average_meter import AverageMeter
 
@@ -213,7 +213,7 @@ def main(config_path: str, load_path: str):
         )
 
         # Log hyperparameters to the tensorboard
-        summary_writer.add_text("Hyperparameters", json.dumps(config))
+        summary_writer.add_text("Hyperparameters", pretty_json(config), global_step=0)
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")

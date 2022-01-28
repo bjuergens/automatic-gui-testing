@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 
@@ -21,6 +22,12 @@ def load_yaml_config(config_file_path: str) -> dict:
         config = yaml.safe_load(file)
 
     return config
+
+
+def pretty_json(dict_like_object: dict):
+    """Taken from https://www.tensorflow.org/tensorboard/text_summaries"""
+    json_dict = json.dumps(dict_like_object, indent=2)
+    return "".join("\t" + line for line in json_dict.splitlines(True))
 
 
 def save_yaml_config(save_file_path: str, yaml_config: dict):
