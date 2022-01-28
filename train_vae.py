@@ -143,6 +143,7 @@ def main(config_path: str, load_path: str):
     dataset_path = config["experiment_parameters"]["dataset_path"]
 
     img_size = config["experiment_parameters"]["img_size"]
+    learning_rate = config["experiment_parameters"]["learning_rate"]
 
     number_of_workers = config["trainer_parameters"]["num_workers"]
     gpu_id = config["trainer_parameters"]["gpu"]
@@ -191,7 +192,7 @@ def main(config_path: str, load_path: str):
         model = model_type(config["model_parameters"]).to(device)
         optimizer_state_dict = None
 
-    optimizer = optim.Adam(model.parameters(), lr=config["experiment_parameters"]["learning_rate"])
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     if optimizer_state_dict is not None:
         optimizer.load_state_dict(optimizer_state_dict)
@@ -245,6 +246,7 @@ def main(config_path: str, load_path: str):
     #     earlystopping.load_state_dict(state['earlystopping'])
 
     current_best = None
+    validation_loss = None
 
     for current_epoch in range(0, max_epochs):
         global_train_log_steps = train(model, summary_writer, train_loader, optimizer, device, current_epoch,
@@ -280,6 +282,23 @@ def main(config_path: str, load_path: str):
         #     break
 
     if not debug:
+        # Use prefix m for model_parameters to avoid possible reassignment of a hparam when combining with
+        # experiment_parameters
+        model_params = {f"m_{k}": v for k, v in config["model_parameters"].items()}
+
+        for k, v in model_params.items():
+            if isinstance(v, list):
+                model_params[k] = ", ".join(str(x) for x in v)
+
+        exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
+
+        hparams = {**model_params, **exp_params}
+
+        summary_writer.add_hparams(
+            hparams,
+            {"hparams/val_loss": validation_loss, "hparams/best_val_loss": current_best},
+            run_name=f"hparams"  # Since we use one folder per vae training run we can use a fix name here
+        )
         # Ensure everything is logged to the tensorboard
         summary_writer.flush()
 
