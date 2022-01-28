@@ -1,0 +1,3 @@
+from models.vae.no_max_pool.large_filter_sizes_vae import LargeFilterSizesVAE
+from models.vae.no_max_pool.small_filter_sizes_vae import SmallFilterSizesVAE
+from models.vae.no_max_pool.decreasing_filter_sizes_vae import DecreasingFilterSizesVAE
