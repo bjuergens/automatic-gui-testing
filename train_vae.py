@@ -24,7 +24,7 @@ from utils.training_utils.average_meter import AverageMeter
 
 
 def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer, device, current_epoch, max_epochs,
-          global_train_log_steps, debug: bool):
+          global_train_log_steps, debug: bool, scalar_log_frequency):
     model.train()
 
     total_loss_meter = AverageMeter("Loss", ":.4f")
@@ -33,8 +33,6 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Train")
-
-    log_interval = 20
 
     for batch_idx, data in progress_bar:
         data = data.to(device)
@@ -50,7 +48,7 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
 
         optimizer.step()
 
-        if batch_idx % log_interval == 0 or batch_idx == (len(train_loader) - 1):
+        if batch_idx % scalar_log_frequency == 0 or batch_idx == (len(train_loader) - 1):
             progress_bar.set_postfix_str(
                 f"loss={total_loss_meter.avg:.4f} mse={mse_loss_meter.avg:.4f} kld={kld_loss_meter.avg:.4e}"
             )
@@ -71,7 +69,7 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
 
 
 def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, current_epoch, max_epochs,
-             global_val_log_steps, debug: bool):
+             global_val_log_steps, debug: bool, scalar_log_frequency, image_epoch_log_frequency):
     model.eval()
 
     val_total_loss_meter = AverageMeter("Val_Loss", ":.4f")
@@ -82,8 +80,6 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
 
     progress_bar = tqdm(enumerate(val_loader), total=len(val_loader), unit="batch",
                         desc=f"Epoch {current_epoch} - Validation")
-
-    log_interval = 20
 
     for batch_idx, data in progress_bar:
         data = data.to(device)
@@ -99,12 +95,14 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
         val_mse_loss_meter.update(val_mse_loss, batch_size)
         val_kld_loss_meter.update(val_kld_loss, batch_size)
 
-        if not logged_one_batch and not debug:
+        if (not logged_one_batch
+                and not debug
+                and (current_epoch % image_epoch_log_frequency == 0 or current_epoch == (max_epochs - 1))):
             summary_writer.add_images("originals", data, global_step=current_epoch)
             summary_writer.add_images("reconstructions", recon_batch, global_step=current_epoch)
             logged_one_batch = True
 
-        if batch_idx % log_interval == 0 or batch_idx == (len(val_loader) - 1):
+        if batch_idx % scalar_log_frequency == 0 or batch_idx == (len(val_loader) - 1):
             progress_bar.set_postfix_str(
                 f"val_loss={val_total_loss_meter.avg:.4f} val_mse={val_mse_loss_meter.avg:.4f} "
                 f"val_kld={val_kld_loss_meter.avg:.4e}"
@@ -156,6 +154,9 @@ def main(config_path: str, load_path: str):
 
     max_epochs = config["experiment_parameters"]["max_epochs"]
     debug = config["logging_parameters"]["debug"]
+
+    scalar_log_frequency = config["logging_parameters"]["scalar_log_frequency"]
+    image_epoch_log_frequency = config["logging_parameters"]["image_epoch_log_frequency"]
 
     set_seeds(manual_seed)
     device = get_device(gpu_id)
@@ -249,9 +250,10 @@ def main(config_path: str, load_path: str):
 
     for current_epoch in range(0, max_epochs):
         global_train_log_steps = train(model, summary_writer, train_loader, optimizer, device, current_epoch,
-                                       max_epochs, global_train_log_steps, debug)
+                                       max_epochs, global_train_log_steps, debug, scalar_log_frequency)
         validation_loss, global_val_log_steps = validate(model, summary_writer, val_loader, device, current_epoch,
-                                                         max_epochs, global_val_log_steps, debug)
+                                                         max_epochs, global_val_log_steps, debug, scalar_log_frequency,
+                                                         image_epoch_log_frequency)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
 
@@ -269,9 +271,11 @@ def main(config_path: str, load_path: str):
                 # 'earlystopping': earlystopping.state_dict()
             }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
-            with torch.no_grad():
-                sample_reconstructions = model.sample(batch_size, device).cpu()
-                summary_writer.add_images("samples", sample_reconstructions, global_step=current_epoch)
+            if current_epoch % scalar_log_frequency == 0 or current_epoch == (max_epochs - 1):
+                model.eval()
+                with torch.no_grad():
+                    sample_reconstructions = model.sample(batch_size, device).cpu()
+                    summary_writer.add_images("samples", sample_reconstructions, global_step=current_epoch)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(epoch))

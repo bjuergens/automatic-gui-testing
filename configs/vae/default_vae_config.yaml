@@ -23,4 +23,6 @@ trainer_parameters:
 
 logging_parameters:
   debug: False
+  scalar_log_frequency: 20
+  image_epoch_log_frequency: 5
   save_dir: "logs/vae/"
