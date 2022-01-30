@@ -38,7 +38,7 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, log_var = model(data)
-        loss, mse_loss, kld_loss = model.loss_function(data, recon_batch, mu, log_var, current_epoch, max_epochs)
+        loss, mse_loss, kld_loss = model.loss_function(data, recon_batch, mu, log_var)
         loss.backward()
 
         batch_size = data.size(0)
@@ -87,7 +87,7 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
         with torch.no_grad():
             recon_batch, mu, log_var = model(data)
             val_loss, val_mse_loss, val_kld_loss = model.loss_function(
-                data, recon_batch, mu, log_var, current_epoch, max_epochs
+                data, recon_batch, mu, log_var, train=False
             )
 
         batch_size = data.size(0)

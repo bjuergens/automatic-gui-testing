@@ -7,6 +7,7 @@ model_parameters:
   batch_norm: True
   kld_weight: 1.0
   kld_warmup: True
+  kld_warmup_batch_count: 4000
 
 experiment_parameters:
   dataset: "gui_env_image_dataset"
