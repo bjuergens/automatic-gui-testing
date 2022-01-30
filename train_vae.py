@@ -209,8 +209,7 @@ def main(config_path: str, load_path: str):
 
     if not debug:
         summary_writer = ImprovedSummaryWriter(
-            log_dir=save_dir,
-            name=vae_name
+            log_dir=save_dir
         )
 
         # Log hyperparameters to the tensorboard

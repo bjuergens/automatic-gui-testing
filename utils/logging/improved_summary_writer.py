@@ -1,13 +1,17 @@
 import os
+from typing import Optional
 
 from torch.utils.tensorboard import SummaryWriter
 
 
 class ImprovedSummaryWriter(SummaryWriter):
 
-    def __init__(self, log_dir: str, name: str, **kwargs):
+    def __init__(self, log_dir: str, name: Optional[str] = None, **kwargs):
 
-        root_save_dir = os.path.join(log_dir, name)
+        if name is not None:
+            root_save_dir = os.path.join(log_dir, name)
+        else:
+            root_save_dir = log_dir
 
         if not os.path.exists(root_save_dir):
             os.makedirs(root_save_dir)
@@ -20,7 +24,6 @@ class ImprovedSummaryWriter(SummaryWriter):
         else:
             self.version_number = 0
 
-        self.version_number = len(os.listdir(root_save_dir))
         save_dir = os.path.join(root_save_dir, f"version_{self.version_number}")
         os.makedirs(save_dir)
 
