@@ -1,13 +1,16 @@
 from torch.utils.data import DataLoader
 
-from data.dataset_implementations.vae import GUISingleSequenceObservationDataset, GUIMultipleSequencesObservationDataset
+from data.dataset_implementations.vae import (
+    GUISingleSequenceObservationDataset,GUIMultipleSequencesObservationDataset, GUIEnvImageDataset
+)
 from data.dataset_implementations.rnn import (
     GUISingleSequenceDataset, GUIMultipleSequencesIdenticalLengthDataset, GUISequenceBatchSampler
 )
 
 vae_datasets = {
     "single_sequence_vae": GUISingleSequenceObservationDataset,
-    "multiple_sequences_vae": GUIMultipleSequencesObservationDataset
+    "multiple_sequences_vae": GUIMultipleSequencesObservationDataset,
+    "gui_env_image_dataset": GUIEnvImageDataset
 }
 
 rnn_datasets = {
