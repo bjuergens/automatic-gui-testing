@@ -3,7 +3,9 @@ from typing import Union
 from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels, EvenLargerVAESmallKernels
 from models.vae import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE)
-from models.vae import LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE
+from models.vae import (
+    LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
+    SmallFilterSizesSmallBottleneckMaxPoolVAE)
 from models.rnn import BaseRNN, StandardMDNRNN, LSTMWithBCE, LSTMWithMSE
 
 vae_models = {
@@ -17,6 +19,7 @@ vae_models = {
     "decreasing_filter_sizes": DecreasingFilterSizesVAE,
     "large_filter_sizes_maxpool": LargeFilterSizesMaxPoolVAE,
     "small_filter_sizes_maxpool": SmallFilterSizesMaxPoolVAE,
+    "small_filter_sizes_small_bottleneck_maxpool": SmallFilterSizesSmallBottleneckMaxPoolVAE,
     "decreasing_filter_sizes_maxpool": DecreasingFilterSizesMaxPoolVAE,
 }
 
