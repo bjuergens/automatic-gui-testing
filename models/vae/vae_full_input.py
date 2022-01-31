@@ -6,8 +6,10 @@ from models.vae.base_vae import BaseVAE
 
 class VAEFullInputSize(BaseVAE):
 
-    def __init__(self, model_parameters: dict, use_kld_warmup: bool, kld_weight: float = 1.0):
-        super().__init__(model_parameters, use_kld_warmup, kld_weight)
+    def __init__(self, model_parameters: dict):
+        super().__init__(model_parameters)
+
+        assert self.hidden_dimensions == [32, 64, 128, 256], "For this VAE the hidden dimensions are fixed"
 
         # Encoder
         self.conv_1 = nn.Sequential(
