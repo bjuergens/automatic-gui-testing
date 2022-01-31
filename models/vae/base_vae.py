@@ -31,6 +31,7 @@ class BaseVAE(abc.ABC, nn.Module):
         self.use_kld_warmup = model_parameters["kld_warmup"]
         self.kld_weight = model_parameters["kld_weight"]
         self.kld_warmup_batch_count = model_parameters["kld_warmup_batch_count"]
+        self.kld_warmup_skip_batches = model_parameters["kld_warmup_skip_batches"]
         self.current_batch_count = 0
 
         if self.use_kld_warmup is None and self.kld_weight is None:
@@ -77,10 +78,13 @@ class BaseVAE(abc.ABC, nn.Module):
         kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1), dim=0)
 
         if self.use_kld_warmup and train:
-            kld_warmup_term = self.current_batch_count / self.kld_warmup_batch_count
+            if self.current_batch_count < self.kld_warmup_skip_batches:
+                kld_warmup_term = 0.0
+            else:
+                kld_warmup_term = self.current_batch_count / self.kld_warmup_batch_count
 
-            if kld_warmup_term > 1.0:
-                kld_warmup_term = 1.0
+                if kld_warmup_term > 1.0:
+                    kld_warmup_term = 1.0
 
             kld_loss_term = self.kld_weight * kld_warmup_term * kld_loss
 
