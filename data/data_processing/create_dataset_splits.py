@@ -46,7 +46,9 @@ def main(root_dir: str):
 
     logging.info("Creating dataset splits")
 
-    original_dataset_length = len(os.listdir(root_dir))
+    # original_dataset_length = len(os.listdir(root_dir))
+    # Use only 500k images -> note this also a bit down when copying the files
+    original_dataset_length = 500000
 
     splits_dir = f"{root_dir}-{SPLIT_FOLDER_NAME}"
 
@@ -64,15 +66,15 @@ def main(root_dir: str):
     os.makedirs(all_images_dir)
 
     logging.info(f"Copying image files to new directory '{all_images_dir}'")
-    for file_path in tqdm(os.listdir(root_dir)):
+    for file_path in tqdm(os.listdir(root_dir)[:500000]):
         shutil.copy(os.path.join(root_dir, file_path), os.path.join(all_images_dir, file_path))
     logging.info("Finished copying image files")
 
     splits_dir_content = os.listdir(all_images_dir)
 
-    train_split_percentage = 0.98
-    val_split_percentage = 0.01
-    test_split_percentage = 0.01
+    train_split_percentage = 0.94
+    val_split_percentage = 0.03
+    test_split_percentage = 0.03
 
     number_of_train_images = round(len(splits_dir_content) * train_split_percentage)
     number_of_val_images = round(len(splits_dir_content) * val_split_percentage)
