@@ -23,6 +23,9 @@ from utils.training_utils.average_meter import AverageMeter
 # from data.loaders import RolloutObservationDataset
 
 
+NUMBER_OF_IMAGES_TO_LOG = 16
+
+
 def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer, device, current_epoch, max_epochs,
           global_train_log_steps, debug: bool, scalar_log_frequency):
     model.train()
@@ -98,8 +101,11 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
         if (not logged_one_batch
                 and not debug
                 and (current_epoch % image_epoch_log_frequency == 0 or current_epoch == (max_epochs - 1))):
-            summary_writer.add_images("originals", data, global_step=current_epoch)
-            summary_writer.add_images("reconstructions", recon_batch, global_step=current_epoch)
+
+            number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
+
+            summary_writer.add_images("originals", data[:number_of_images], global_step=current_epoch)
+            summary_writer.add_images("reconstructions", recon_batch[:number_of_images], global_step=current_epoch)
             logged_one_batch = True
 
         if batch_idx % scalar_log_frequency == 0 or batch_idx == (len(val_loader) - 1):
@@ -271,9 +277,10 @@ def main(config_path: str, load_path: str):
             }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
             if current_epoch % scalar_log_frequency == 0 or current_epoch == (max_epochs - 1):
+                number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
                 model.eval()
                 with torch.no_grad():
-                    sample_reconstructions = model.sample(batch_size, device).cpu()
+                    sample_reconstructions = model.sample(number_of_images, device).cpu()
                     summary_writer.add_images("samples", sample_reconstructions, global_step=current_epoch)
 
         # if earlystopping.stop:

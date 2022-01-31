@@ -87,12 +87,13 @@ def main():
 
     model = LargeFilterSizesVAE({
         "input_channels": 3,
-        "latent_size": 32,
+        "latent_size": 200,
         "hidden_dimensions": [8, 16, 32, 64, 128],
         "activation_function": "leaky_relu",
         "batch_norm": True,
         "kld_warmup": True,
-        "kld_weight": 1.0
+        "kld_weight": 1.0,
+        "kld_warmup_batch_count": 0
     })
     summary(model, input_size=(1, 3, 448, 448))
 
