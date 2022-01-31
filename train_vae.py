@@ -276,7 +276,7 @@ def main(config_path: str, load_path: str):
                 # 'earlystopping': earlystopping.state_dict()
             }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
-            if current_epoch % scalar_log_frequency == 0 or current_epoch == (max_epochs - 1):
+            if current_epoch % image_epoch_log_frequency == 0 or current_epoch == (max_epochs - 1):
                 number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
                 model.eval()
                 with torch.no_grad():
