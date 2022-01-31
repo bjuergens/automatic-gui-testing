@@ -10,6 +10,7 @@ class VAEFullInputSize(BaseVAE):
         super().__init__(model_parameters)
 
         assert self.hidden_dimensions == [32, 64, 128, 256], "For this VAE the hidden dimensions are fixed"
+        assert self.activation_function == nn.LeakyReLU
 
         # Encoder
         self.conv_1 = nn.Sequential(
