@@ -36,6 +36,8 @@ class GUIEnvImageDataset(Dataset):
 
     def __getitem__(self, index):
         img = Image.open(self.image_paths[index])
-        img = self.transform(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
 
         return img
