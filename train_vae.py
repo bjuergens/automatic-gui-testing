@@ -21,7 +21,7 @@ from utils.training_utils.average_meter import AverageMeter
 # from utils.learning import EarlyStopping
 # from utils.learning import ReduceLROnPlateau
 # from data.loaders import RolloutObservationDataset
-
+from utils.training_utils.training_utils import get_dataset_mean_std
 
 NUMBER_OF_IMAGES_TO_LOG = 16
 
@@ -72,7 +72,8 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
 
 
 def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, current_epoch, max_epochs,
-             global_val_log_steps, debug: bool, scalar_log_frequency, image_epoch_log_frequency):
+             global_val_log_steps, debug: bool, scalar_log_frequency, image_epoch_log_frequency, denormalize_necessary,
+             dataset_mean, dataset_std):
     model.eval()
 
     val_total_loss_meter = AverageMeter("Val_Loss", ":.4f")
@@ -104,7 +105,11 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
 
             number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
 
-            summary_writer.add_images("originals", data[:number_of_images], global_step=current_epoch)
+            if denormalize_necessary:
+                summary_writer.add_images("originals", (data[:number_of_images] * dataset_std) + dataset_mean,
+                                          global_step=current_epoch)
+            else:
+                summary_writer.add_images("originals", data[:number_of_images], global_step=current_epoch)
             summary_writer.add_images("reconstructions", recon_batch[:number_of_images], global_step=current_epoch)
             logged_one_batch = True
 
@@ -166,7 +171,15 @@ def main(config_path: str, load_path: str):
     set_seeds(manual_seed)
     device = get_device(gpu_id)
 
-    transformation_functions = vae_transformation_functions(img_size)
+    transformation_functions = vae_transformation_functions(img_size, dataset_name)
+    dataset_mean, dataset_std = get_dataset_mean_std(dataset_name)
+
+    if dataset_mean is not None and dataset_std is not None:
+        denormalize_necessary = True
+        dataset_mean = torch.tensor(dataset_mean).view(1, len(dataset_mean), 1, 1).to(device)
+        dataset_std = torch.tensor(dataset_std).view(1, len(dataset_std), 1, 1).to(device)
+    else:
+        denormalize_necessary = False
 
     additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True, "drop_last": True}
 
@@ -191,8 +204,9 @@ def main(config_path: str, load_path: str):
     )
 
     if load_path is not None:
-        model, model_name, optimizer_state_dict = load_vae_architecture(load_path, device, load_best=False,
-                                                                        load_optimizer=True)
+        raise RuntimeError("Do not use the --load option it is not working properly (config mismatch etc.)")
+        # model, model_name, optimizer_state_dict = load_vae_architecture(load_path, device, load_best=False,
+        #                                                                 load_optimizer=True)
     else:
         model_type = select_vae_model(vae_name)
         model = model_type(config["model_parameters"]).to(device)
@@ -258,7 +272,8 @@ def main(config_path: str, load_path: str):
                                        max_epochs, global_train_log_steps, debug, scalar_log_frequency)
         validation_loss, global_val_log_steps = validate(model, summary_writer, val_loader, device, current_epoch,
                                                          max_epochs, global_val_log_steps, debug, scalar_log_frequency,
-                                                         image_epoch_log_frequency)
+                                                         image_epoch_log_frequency, denormalize_necessary, dataset_mean,
+                                                         dataset_std)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
 

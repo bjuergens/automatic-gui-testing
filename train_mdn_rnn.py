@@ -131,6 +131,7 @@ def main(config_path: str):
     vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     latent_size = vae_config["model_parameters"]["latent_size"]
     img_size = vae_config["experiment_parameters"]["img_size"]
+    vae_dataset_name = vae_config["experiment_parameters"]["dataset"]
 
     model_type = select_rnn_model(model_name)
     model = model_type(config["model_parameters"], latent_size, batch_size, device).to(device)
@@ -151,11 +152,10 @@ def main(config_path: str):
     #     scheduler.load_state_dict(state['scheduler'])
     #     earlystopping.load_state_dict(state['earlystopping'])
 
-    transformation_functions = vae_transformation_functions(img_size)
-
     vae_output_file_name = preprocess_observations_with_vae(dataset_path, vae, vae_name=vae_name,
                                                             vae_version=vae_directory.split("version_")[-1],
-                                                            img_size=img_size, device=device, force=False)
+                                                            img_size=img_size, vae_dataset_name=vae_dataset_name,
+                                                            device=device, force=False)
 
     additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 

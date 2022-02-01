@@ -10,7 +10,8 @@ from data.dataset_implementations.rnn import (
 vae_datasets = {
     "single_sequence_vae": GUISingleSequenceObservationDataset,
     "multiple_sequences_vae": GUIMultipleSequencesObservationDataset,
-    "gui_env_image_dataset": GUIEnvImageDataset
+    "gui_env_image_dataset": GUIEnvImageDataset,
+    "gui_env_image_dataset_500k_normalize": GUIEnvImageDataset
 }
 
 rnn_datasets = {

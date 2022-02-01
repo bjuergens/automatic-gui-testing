@@ -28,9 +28,9 @@ class PreprocessVAEDataset(Dataset):
         return img
 
 
-def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_output_file_name: str,
-                        device: torch.device):
-    dataset = PreprocessVAEDataset(dataset_root_dir, vae_transformation_functions(img_size))
+def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_dataset_name: str,
+                        vae_output_file_name: str, device: torch.device):
+    dataset = PreprocessVAEDataset(dataset_root_dir, vae_transformation_functions(img_size, vae_dataset_name))
     dataloader = DataLoader(dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     vae.eval()
 
@@ -53,7 +53,7 @@ def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_
 
 
 def preprocess_observations_with_vae(dataset_path: str, vae: BaseVAE, vae_name: str, vae_version: int, img_size: int,
-                                     device: torch.device, force: bool = False) -> str:
+                                     vae_dataset_name, device: torch.device, force: bool = False) -> str:
     dataset_path_content = os.listdir(dataset_path)
     dataset_path_content.sort()
 
@@ -62,11 +62,11 @@ def preprocess_observations_with_vae(dataset_path: str, vae: BaseVAE, vae_name: 
     if "observations" in dataset_path_content:
         # Single sequence folder given
         if vae_output_file_name not in dataset_path_content or force:
-            generate_vae_output(dataset_path, vae, img_size, vae_output_file_name, device)
+            generate_vae_output(dataset_path, vae, img_size, vae_dataset_name, vae_output_file_name, device)
     else:
         for sequence in dataset_path_content:
             current_folder = os.path.join(dataset_path, sequence)
             if vae_output_file_name not in os.listdir(current_folder) or force:
-                generate_vae_output(current_folder, vae, img_size, vae_output_file_name, device)
+                generate_vae_output(current_folder, vae, img_size, vae_dataset_name, vae_output_file_name, device)
 
     return vae_output_file_name
