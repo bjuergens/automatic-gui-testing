@@ -7,4 +7,4 @@ from models.vae.no_max_pool import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE)
 from models.vae.with_max_pool import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
-    SmallFilterSizesSmallBottleneckMaxPoolVAE)
+    SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2)

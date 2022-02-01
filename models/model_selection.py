@@ -5,7 +5,7 @@ from models.vae import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE)
 from models.vae import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
-    SmallFilterSizesSmallBottleneckMaxPoolVAE)
+    SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2)
 from models.rnn import BaseRNN, StandardMDNRNN, LSTMWithBCE, LSTMWithMSE
 
 vae_models = {
@@ -20,6 +20,7 @@ vae_models = {
     "large_filter_sizes_maxpool": LargeFilterSizesMaxPoolVAE,
     "small_filter_sizes_maxpool": SmallFilterSizesMaxPoolVAE,
     "small_filter_sizes_small_bottleneck_maxpool": SmallFilterSizesSmallBottleneckMaxPoolVAE,
+    "small_filter_sizes_small_bottleneck_maxpool_2": SmallFilterSizesSmallBottleneckMaxPoolVAE2,
     "decreasing_filter_sizes_maxpool": DecreasingFilterSizesMaxPoolVAE,
 }
 

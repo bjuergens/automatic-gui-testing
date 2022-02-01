@@ -6,7 +6,7 @@ from torch import nn
 from models.vae import BaseVAE
 
 
-class SmallFilterSizesSmallBottleneckMaxPoolVAE(BaseVAE):
+class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
 
     def __init__(self, model_parameters: dict):
         super().__init__(model_parameters)
@@ -35,14 +35,14 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE(BaseVAE):
             self.conv_layer_3 = nn.Sequential(conv_3, self.activation_function(), nn.MaxPool2d(2, 2))
             self.conv_layer_4 = nn.Sequential(conv_4, self.activation_function(), nn.MaxPool2d(2, 2))
             self.conv_layer_5 = nn.Sequential(conv_5, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, self.activation_function(), nn.MaxPool2d(3, 2))
-            self.conv_layer_7 = nn.Sequential(conv_7, self.activation_function(), nn.MaxPool2d(3, 2))
+            self.conv_layer_6 = nn.Sequential(conv_6, self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_7 = nn.Sequential(conv_7, self.activation_function(), nn.MaxPool2d(2, 2))
 
         # Bottleneck 6x6 when using MaxPool(2, 2) and at the last MaxPool a filter size of 3
-        self.fc_mu = nn.Linear(2 * 2 * self.hidden_dimensions[6], self.latent_size)
-        self.fc_log_var = nn.Linear(2 * 2 * self.hidden_dimensions[6], self.latent_size)
+        self.fc_mu = nn.Linear(3 * 3 * self.hidden_dimensions[6], self.latent_size)
+        self.fc_log_var = nn.Linear(3 * 3 * self.hidden_dimensions[6], self.latent_size)
 
-        self.fc_decoder = nn.Linear(self.latent_size, 2 * 2 * self.hidden_dimensions[6])
+        self.fc_decoder = nn.Linear(self.latent_size, 3 * 3 * self.hidden_dimensions[6])
 
         transposed_conv_0 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[6], out_channels=self.hidden_dimensions[5], kernel_size=3, stride=2, padding=0, output_padding=1)
         transposed_conv_1 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[5], out_channels=self.hidden_dimensions[4], kernel_size=3, stride=2, padding=0, output_padding=1)
@@ -86,7 +86,7 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE(BaseVAE):
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
         x = self.fc_decoder(z)
-        x = x.view(-1, self.hidden_dimensions[6], 2, 2)
+        x = x.view(-1, self.hidden_dimensions[6], 3, 3)
         x = self.transposed_conv_layer_0(x)
         x = self.transposed_conv_layer_1(x)
         x = self.transposed_conv_layer_2(x)

@@ -106,10 +106,11 @@ def main():
         "latent_size": 32,
         "hidden_dimensions": [8, 16, 32, 64, 128, 256, 512],
         "activation_function": "leaky_relu",
-        "batch_norm": True,
+        "batch_norm": False,
         "kld_warmup": True,
         "kld_weight": 1.0,
-        "kld_warmup_batch_count": 0
+        "kld_warmup_batch_count": 0,
+        "kld_warmup_skip_batches": 0
     })
     summary(model, input_size=(2, 3, 448, 448))
 

@@ -4,3 +4,5 @@ from models.vae.with_max_pool.decreasing_filter_sizes_maxpool_vae import Decreas
 
 from models.vae.with_max_pool.small_filter_sizes_small_bottleneck_maxpool_vae import (
     SmallFilterSizesSmallBottleneckMaxPoolVAE)
+from models.vae.with_max_pool.small_filter_sizes_small_bottleneck_maxpool_vae_2 import (
+    SmallFilterSizesSmallBottleneckMaxPoolVAE2)
