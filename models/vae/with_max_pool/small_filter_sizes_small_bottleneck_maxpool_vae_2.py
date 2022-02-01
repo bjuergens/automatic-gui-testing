@@ -44,8 +44,8 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
 
         self.fc_decoder = nn.Linear(self.latent_size, 3 * 3 * self.hidden_dimensions[6])
 
-        transposed_conv_0 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[6], out_channels=self.hidden_dimensions[5], kernel_size=3, stride=2, padding=0, output_padding=1)
-        transposed_conv_1 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[5], out_channels=self.hidden_dimensions[4], kernel_size=3, stride=2, padding=0, output_padding=1)
+        transposed_conv_0 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[6], out_channels=self.hidden_dimensions[5], kernel_size=3, stride=2, padding=0, output_padding=0)
+        transposed_conv_1 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[5], out_channels=self.hidden_dimensions[4], kernel_size=3, stride=2, padding=1, output_padding=1)
         transposed_conv_2 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[4], out_channels=self.hidden_dimensions[3], kernel_size=3, stride=2, padding=1, output_padding=1)
         transposed_conv_3 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[3], out_channels=self.hidden_dimensions[2], kernel_size=3, stride=2, padding=1, output_padding=1)
         transposed_conv_4 = nn.ConvTranspose2d(in_channels=self.hidden_dimensions[2], out_channels=self.hidden_dimensions[1], kernel_size=3, stride=2, padding=1, output_padding=1)
@@ -101,7 +101,7 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
 def main():
     from torchinfo import summary
 
-    model = SmallFilterSizesSmallBottleneckMaxPoolVAE({
+    model = SmallFilterSizesSmallBottleneckMaxPoolVAE2({
         "input_channels": 3,
         "latent_size": 32,
         "hidden_dimensions": [8, 16, 32, 64, 128, 256, 512],
