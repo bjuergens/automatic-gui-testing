@@ -31,13 +31,19 @@ def main(root_dir: str):
     squared_sum_per_channel = torch.zeros(3, dtype=torch.float64)
     number_of_data_points = 0
 
-    for batch_id, data in tqdm(enumerate(dataloader)):
+    progress_bar = tqdm(enumerate(dataloader), total=len(dataloader), unit="batch")
+
+    for batch_id, data in progress_bar:
         sum_per_channel += data.sum((0, 2, 3))
         squared_sum_per_channel += data.pow(2).sum((0, 2, 3))
         number_of_data_points += (data.size(0) * data.size(2) * data.size(3))
 
         if batch_id % 250 == 0:
             print(f"Current sum_per_channel: {sum_per_channel}")
+
+    progress_bar.close()
+
+    print("------------------")
 
     dataset_mean = sum_per_channel / number_of_data_points
     dataset_stddev = torch.sqrt((squared_sum_per_channel / number_of_data_points) - dataset_mean.pow(2))
