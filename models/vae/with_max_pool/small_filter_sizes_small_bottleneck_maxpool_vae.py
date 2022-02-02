@@ -11,7 +11,7 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE(BaseVAE):
     def __init__(self, model_parameters: dict):
         super().__init__(model_parameters)
 
-        assert len(self.hidden_dimensions) == 7, "For the chosen VAE architecture, 6 hidden dimensions are needed"
+        assert len(self.hidden_dimensions) == 7, "For the chosen VAE architecture, 7 hidden dimensions are needed"
 
         conv_1 = nn.Conv2d(in_channels=self.input_channels, out_channels=self.hidden_dimensions[0], kernel_size=3, stride=1, padding=1)
         conv_2 = nn.Conv2d(in_channels=self.hidden_dimensions[0], out_channels=self.hidden_dimensions[1], kernel_size=3, stride=1, padding=1)
