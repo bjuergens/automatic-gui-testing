@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -12,10 +11,8 @@ from data.dataset_implementations import get_vae_dataloader
 from models import select_vae_model
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config, pretty_json
-from utils.training_utils import save_checkpoint, vae_transformation_functions, load_vae_architecture
+from utils.training_utils import save_checkpoint, vae_transformation_functions
 from utils.training_utils.average_meter import AverageMeter
-
-
 # from utils.misc import LSIZE, RED_SIZE
 # WARNING : THIS SHOULD BE REPLACE WITH PYTORCH 0.5
 # from utils.learning import EarlyStopping
@@ -26,7 +23,7 @@ from utils.training_utils.training_utils import get_dataset_mean_std
 NUMBER_OF_IMAGES_TO_LOG = 16
 
 
-def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer, device, current_epoch, max_epochs,
+def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer, device, current_epoch,
           global_train_log_steps, debug: bool, scalar_log_frequency):
     model.train()
 
@@ -275,7 +272,7 @@ def main(config_path: str, load_path: str):
 
     for current_epoch in range(0, max_epochs):
         global_train_log_steps = train(model, summary_writer, train_loader, optimizer, device, current_epoch,
-                                       max_epochs, global_train_log_steps, debug, scalar_log_frequency)
+                                       global_train_log_steps, debug, scalar_log_frequency)
         validation_loss, global_val_log_steps = validate(model, summary_writer, val_loader, device, current_epoch,
                                                          max_epochs, global_val_log_steps, debug, scalar_log_frequency,
                                                          image_epoch_log_frequency,
