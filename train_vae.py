@@ -72,8 +72,8 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
 
 
 def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, current_epoch, max_epochs,
-             global_val_log_steps, debug: bool, scalar_log_frequency, image_epoch_log_frequency, denormalize_necessary,
-             dataset_mean, dataset_std):
+             global_val_log_steps, debug: bool, scalar_log_frequency, image_epoch_log_frequency,
+             denormalize_with_mean_and_std_necessary, dataset_mean, dataset_std):
     model.eval()
 
     val_total_loss_meter = AverageMeter("Val_Loss", ":.4f")
@@ -105,12 +105,17 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
 
             number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
 
-            if denormalize_necessary:
+            if denormalize_with_mean_and_std_necessary:
                 summary_writer.add_images("originals", (data[:number_of_images] * dataset_std) + dataset_mean,
                                           global_step=current_epoch)
+                summary_writer.add_images("reconstructions",
+                                          (recon_batch[:number_of_images] * dataset_std) + dataset_mean,
+                                          global_step=current_epoch)
             else:
-                summary_writer.add_images("originals", data[:number_of_images], global_step=current_epoch)
-            summary_writer.add_images("reconstructions", recon_batch[:number_of_images], global_step=current_epoch)
+                summary_writer.add_images("originals", model.denormalize(data[:number_of_images]),
+                                          global_step=current_epoch)
+                summary_writer.add_images("reconstructions", model.denormalize(recon_batch[:number_of_images]),
+                                          global_step=current_epoch)
             logged_one_batch = True
 
         if batch_idx % scalar_log_frequency == 0 or batch_idx == (len(val_loader) - 1):
@@ -171,17 +176,18 @@ def main(config_path: str, load_path: str):
     set_seeds(manual_seed)
     device = get_device(gpu_id)
 
-    transformation_functions = vae_transformation_functions(img_size, dataset_name)
+    transformation_functions = vae_transformation_functions(img_size, dataset_name,
+                                                            config["model_parameters"]["output_activation_function"])
     dataset_mean, dataset_std = get_dataset_mean_std(dataset_name)
 
     if dataset_mean is not None and dataset_std is not None:
-        denormalize_necessary = True
+        denormalize_with_mean_and_std_necessary = True
         dataset_mean = torch.tensor(dataset_mean).view(1, len(dataset_mean), 1, 1).to(device)
         dataset_std = torch.tensor(dataset_std).view(1, len(dataset_std), 1, 1).to(device)
     else:
-        denormalize_necessary = False
+        denormalize_with_mean_and_std_necessary = False
 
-    additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True, "drop_last": True}
+    additional_dataloader_kwargs = {"num_workers": number_of_workers, "pin_memory": True, "drop_last": False}
 
     train_loader = get_vae_dataloader(
         dataset_name=dataset_name,
@@ -272,7 +278,8 @@ def main(config_path: str, load_path: str):
                                        max_epochs, global_train_log_steps, debug, scalar_log_frequency)
         validation_loss, global_val_log_steps = validate(model, summary_writer, val_loader, device, current_epoch,
                                                          max_epochs, global_val_log_steps, debug, scalar_log_frequency,
-                                                         image_epoch_log_frequency, denormalize_necessary, dataset_mean,
+                                                         image_epoch_log_frequency,
+                                                         denormalize_with_mean_and_std_necessary, dataset_mean,
                                                          dataset_std)
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
@@ -296,7 +303,13 @@ def main(config_path: str, load_path: str):
                 model.eval()
                 with torch.no_grad():
                     sample_reconstructions = model.sample(number_of_images, device).cpu()
-                    summary_writer.add_images("samples", sample_reconstructions, global_step=current_epoch)
+
+                    if denormalize_with_mean_and_std_necessary:
+                        summary_writer.add_images("samples", (sample_reconstructions * dataset_std) + dataset_mean,
+                                                  global_step=current_epoch)
+                    else:
+                        summary_writer.add_images("samples", model.denormalize(sample_reconstructions),
+                                                  global_step=current_epoch)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(epoch))

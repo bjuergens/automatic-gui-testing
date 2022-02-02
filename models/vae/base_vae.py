@@ -24,7 +24,16 @@ class BaseVAE(abc.ABC, nn.Module):
         else:
             raise RuntimeError(f"Activation function {activation_function} unknown")
 
-        self.output_activation_function = nn.Sigmoid
+        output_activation_function = model_parameters["output_activation_function"]
+
+        if output_activation_function == "sigmoid":
+            self.output_activation_function = nn.Sigmoid
+            self.denormalize = lambda x: x
+        elif output_activation_function == "tanh":
+            self.output_activation_function = nn.Tanh
+            self.denormalize = lambda x: (x + 1.0) / 2.0
+        else:
+            raise RuntimeError(f"Output activation function {output_activation_function} unknown")
 
         self.use_batch_norm = model_parameters["batch_norm"]
 
