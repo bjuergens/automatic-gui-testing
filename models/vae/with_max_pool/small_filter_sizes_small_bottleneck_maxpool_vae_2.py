@@ -27,8 +27,8 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
             self.conv_layer_3 = nn.Sequential(conv_3, nn.BatchNorm2d(self.hidden_dimensions[2]), self.activation_function(), nn.MaxPool2d(2, 2))
             self.conv_layer_4 = nn.Sequential(conv_4, nn.BatchNorm2d(self.hidden_dimensions[3]), self.activation_function(), nn.MaxPool2d(2, 2))
             self.conv_layer_5 = nn.Sequential(conv_5, nn.BatchNorm2d(self.hidden_dimensions[4]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), self.activation_function(), nn.MaxPool2d(3, 2))
-            self.conv_layer_7 = nn.Sequential(conv_7, nn.BatchNorm2d(self.hidden_dimensions[6]), self.activation_function(), nn.MaxPool2d(3, 2))
+            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_7 = nn.Sequential(conv_7, nn.BatchNorm2d(self.hidden_dimensions[6]), self.activation_function(), nn.MaxPool2d(2, 2))
         else:
             self.conv_layer_1 = nn.Sequential(conv_1, self.activation_function(), nn.MaxPool2d(2, 2))
             self.conv_layer_2 = nn.Sequential(conv_2, self.activation_function(), nn.MaxPool2d(2, 2))
@@ -106,11 +106,11 @@ def main():
         "latent_size": 32,
         "hidden_dimensions": [8, 16, 32, 64, 128, 256, 512],
         "activation_function": "leaky_relu",
-        "batch_norm": False,
+        "batch_norm": True,
         "kld_warmup": True,
         "kld_weight": 1.0,
-        "kld_warmup_batch_count": 0,
-        "kld_warmup_skip_batches": 0
+        "kld_warmup_batch_count": 20,
+        "kld_warmup_skip_batches": 20
     })
     summary(model, input_size=(1, 3, 448, 448))
 
