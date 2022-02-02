@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import click
 import torch
@@ -57,6 +58,11 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
                 summary_writer.add_scalar("loss", total_loss_meter.avg, global_step=global_train_log_steps)
                 summary_writer.add_scalar("reconstruction_loss", mse_loss_meter.avg, global_step=global_train_log_steps)
                 summary_writer.add_scalar("kld", kld_loss_meter.avg, global_step=global_train_log_steps)
+
+            # Occasionally check if NaN are produced in training, if so stop it
+            if torch.isnan(loss).any():
+                summary_writer.flush()
+                sys.exit("During VAE training a NaN was produced, stopping training now")
 
         global_train_log_steps += 1
 
