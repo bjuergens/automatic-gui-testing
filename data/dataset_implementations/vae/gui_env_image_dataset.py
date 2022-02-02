@@ -41,3 +41,29 @@ class GUIEnvImageDataset(Dataset):
             img = self.transform(img)
 
         return img
+
+
+class GUIEnvImageDataset500k(GUIEnvImageDataset):
+
+    def __init__(self, root_dir, split: str, transform):
+        super().__init__(root_dir, split, transform)
+
+        if self.split == "train":
+            assert self.number_of_images == 470000
+        elif self.split == "val":
+            assert self.number_of_images == 15000
+        else:
+            assert self.number_of_images == 15000
+
+
+class GUIEnvImageDataset300k(GUIEnvImageDataset):
+
+    def __init__(self, root_dir, split: str, transform):
+        super().__init__(root_dir, split, transform)
+
+        if self.split == "train":
+            assert self.number_of_images == 224606
+        elif self.split == "val":
+            assert self.number_of_images == 28076
+        else:
+            assert self.number_of_images == 28076
