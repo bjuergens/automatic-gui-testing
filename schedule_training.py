@@ -36,29 +36,31 @@ def main():
 
     original_config = {
         'model_parameters': {
-            'name': 'small_filter_sizes_maxpool',
+            'name': 'small_filter_sizes_small_bottleneck_maxpool_2',
             'activation_function': 'relu',
-            'hidden_dimensions': [[2, 4, 4, 4, 4, 8]],
+            "output_activation_function": "tanh",
+            'hidden_dimensions': [[8, 16, 32, 64, 128, 256, 512]],
             'latent_size': 16,
             'input_channels': 3,
             'batch_norm': True,
-            'kld_weight': 1.0,
-            'kld_warmup': True},
+            'kld_weight': 0.00025,
+            'kld_warmup': True,
+            "kld_warmup_batch_count": 15000,
+            "kld_warmup_skip_batches": 5000
+        },
         'experiment_parameters': {
-            'dataset': 'single_sequence_vae',
-            'dataset_path': 'datasets/gui_env/random-widgets/2021-12-29_19-02-29-mixed',
+            'dataset': 'gui_env_image_dataset',
+            'dataset_path': "datasets/gui_env/random-widgets/2021-12-29_19-02-29-mixed-splits",
             'img_size': 448,
             'batch_size': 2,
             'learning_rate': 0.0005,
-            'kld_weight': 1.0,
-            'kld_warmup': False,
             'max_epochs': 1,
             'manual_seed': 1010},
         'trainer_parameters': {
             'gpu': -1,
             'num_workers': 0},
         'logging_parameters': {
-            'debug': False,
+            'debug': True,
             'scalar_log_frequency': 20,
             'image_epoch_log_frequency': 5,
             'save_dir': 'logs/vae/'}
