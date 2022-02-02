@@ -4,3 +4,7 @@ from models.vae.no_max_pool.decreasing_filter_sizes_vae import DecreasingFilterS
 
 from models.vae.no_max_pool.small_filter_sizes_small_bottleneck_vae import SmallFilterSizesSmallBottleneckVAE
 from models.vae.no_max_pool.small_filter_sizes_small_bottleneck_vae_2 import SmallFilterSizesSmallBottleneckVAE2
+
+from models.vae.no_max_pool.half_input_small_filter_sizes_small_bottleneck_vae import (
+    HalfInputSmallFilterSizesSmallBottleneckVAE
+)

@@ -9,6 +9,7 @@ class VAEFullInputSize(BaseVAE):
     def __init__(self, model_parameters: dict):
         super().__init__(model_parameters)
 
+        assert not self.use_batch_norm, "For this VAE, batch norm is not implemented"
         assert self.hidden_dimensions == [32, 64, 128, 256], "For this VAE the hidden dimensions are fixed"
         assert self.activation_function == nn.LeakyReLU
 

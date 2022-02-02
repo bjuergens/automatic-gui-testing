@@ -3,10 +3,12 @@ from typing import Union
 from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels, EvenLargerVAESmallKernels
 from models.vae import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE,
-    SmallFilterSizesSmallBottleneckVAE2)
+    SmallFilterSizesSmallBottleneckVAE2, HalfInputSmallFilterSizesSmallBottleneckVAE)
 from models.vae import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
-    SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2)
+    SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2,
+    HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE, HalfInputSmallFilterSizesWithStrideMaxPoolVAE
+)
 from models.rnn import BaseRNN, StandardMDNRNN, LSTMWithBCE, LSTMWithMSE
 
 vae_models = {
@@ -24,6 +26,9 @@ vae_models = {
     "small_filter_sizes_small_bottleneck_maxpool": SmallFilterSizesSmallBottleneckMaxPoolVAE,
     "small_filter_sizes_small_bottleneck_maxpool_2": SmallFilterSizesSmallBottleneckMaxPoolVAE2,
     "decreasing_filter_sizes_maxpool": DecreasingFilterSizesMaxPoolVAE,
+    "half_input_small_filter_sizes_small_bottleneck": HalfInputSmallFilterSizesSmallBottleneckVAE,
+    "half_input_small_filter_sizes_small_bottleneck_maxpool": HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE,
+    "half_input_small_filter_sizes_with_stride_maxpool": HalfInputSmallFilterSizesWithStrideMaxPoolVAE,
 }
 
 rnn_models = {

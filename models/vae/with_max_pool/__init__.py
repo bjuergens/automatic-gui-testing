@@ -6,3 +6,11 @@ from models.vae.with_max_pool.small_filter_sizes_small_bottleneck_maxpool_vae im
     SmallFilterSizesSmallBottleneckMaxPoolVAE)
 from models.vae.with_max_pool.small_filter_sizes_small_bottleneck_maxpool_vae_2 import (
     SmallFilterSizesSmallBottleneckMaxPoolVAE2)
+
+from models.vae.with_max_pool.half_input_small_filter_sizes_small_bottleneck_maxpool_vae import (
+    HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE
+)
+
+from models.vae.with_max_pool.half_input_small_filter_sizes_with_stride_maxpool_vae import (
+    HalfInputSmallFilterSizesWithStrideMaxPoolVAE
+)
