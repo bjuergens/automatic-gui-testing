@@ -61,7 +61,7 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
                 summary_writer.add_scalar("reconstruction_loss", mse_loss_meter.avg, global_step=global_train_log_steps)
                 summary_writer.add_scalar("kld", kld_loss_meter.avg, global_step=global_train_log_steps)
 
-                global_train_log_steps += 1
+        global_train_log_steps += 1
 
     progress_bar.close()
 
@@ -130,7 +130,7 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
                                           global_step=global_val_log_steps)
                 summary_writer.add_scalar("val_kld", val_kld_loss_meter.avg, global_step=global_val_log_steps)
 
-                global_val_log_steps += 1
+        global_val_log_steps += 1
 
     progress_bar.close()
 
