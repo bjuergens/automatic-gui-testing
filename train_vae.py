@@ -175,6 +175,7 @@ def main(config_path: str, load_path: str):
 
     scalar_log_frequency = config["logging_parameters"]["scalar_log_frequency"]
     image_epoch_log_frequency = config["logging_parameters"]["image_epoch_log_frequency"]
+    save_model_checkpoints = config["logging_parameters"]["save_model_checkpoints"]
 
     set_seeds(manual_seed)
     device = get_device(gpu_id)
@@ -293,13 +294,14 @@ def main(config_path: str, load_path: str):
             if is_best:
                 current_best = validation_loss
 
-            save_checkpoint({
-                "epoch": current_epoch,
-                "state_dict": model.state_dict(),
-                "optimizer": optimizer.state_dict()
-                # 'scheduler': scheduler.state_dict(),
-                # 'earlystopping': earlystopping.state_dict()
-            }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
+            if save_model_checkpoints:
+                save_checkpoint({
+                    "epoch": current_epoch,
+                    "state_dict": model.state_dict(),
+                    "optimizer": optimizer.state_dict()
+                    # 'scheduler': scheduler.state_dict(),
+                    # 'earlystopping': earlystopping.state_dict()
+                }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
             if current_epoch % image_epoch_log_frequency == 0 or current_epoch == (max_epochs - 1):
                 number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG

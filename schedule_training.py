@@ -61,6 +61,7 @@ def main():
             'num_workers': 0},
         'logging_parameters': {
             'debug': True,
+            'save_model_checkpoints': False,
             'scalar_log_frequency': 20,
             'image_epoch_log_frequency': 5,
             'save_dir': 'logs/vae/'}
