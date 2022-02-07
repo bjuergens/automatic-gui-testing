@@ -106,8 +106,9 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
 
 
 class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
-    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str):
-        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path)
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
+                 use_shifted_data: bool):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data)
 
         if self.split == "train":
             assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:70]])
