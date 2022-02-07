@@ -13,7 +13,7 @@ from models import select_rnn_model
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae, get_vae_preprocessed_data_path_name
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
-from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
+from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config, pretty_json
 from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
 from utils.training_utils.average_meter import AverageMeter
 
@@ -24,7 +24,8 @@ from utils.training_utils.average_meter import AverageMeter
 
 
 def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWriter], optimizer, data_loader: DataLoader,
-              device: torch.device, current_epoch: int, global_log_step: int, train: bool, debug: bool):
+              device: torch.device, current_epoch: int, global_log_step: int, scalar_log_frequency: int,
+              train: bool, debug: bool):
     if train:
         model.train()
         loss_key = "loss"
@@ -41,8 +42,6 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
     reward_loss_meter = AverageMeter(reward_loss_key, ":.4f")
 
     old_dataset_index = None
-
-    log_interval = 20
 
     progress_bar = tqdm(enumerate(data_loader), total=len(data_loader), unit="batch", desc=f"Epoch {current_epoch}")
 
@@ -77,7 +76,7 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
         latent_loss_meter.update(latent_loss, batch_size)
         reward_loss_meter.update(reward_loss, batch_size)
 
-        if i % log_interval == 0 or i == (len(data_loader) - 1):
+        if i % scalar_log_frequency == 0 or i == (len(data_loader) - 1):
             progress_bar.set_postfix_str(f"loss={total_loss_meter.avg:.4f} latent={latent_loss_meter.avg:.4f} "
                                          f"reward={reward_loss_meter.avg:.4f}")
 
@@ -86,7 +85,7 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
                 summary_writer.add_scalar(latent_loss_key, latent_loss_meter.avg, global_step=global_log_step)
                 summary_writer.add_scalar(reward_loss_key, reward_loss_meter.avg, global_step=global_log_step)
 
-                global_log_step += 1
+        global_log_step += 1
 
     progress_bar.close()
 
@@ -125,6 +124,8 @@ def main(config_path: str):
     base_save_dir = config["logging_parameters"]["base_save_dir"]
     model_name = config["model_parameters"]["name"]
     debug = config["logging_parameters"]["debug"]
+    save_model_checkpoints = config["logging_parameters"]["save_model_checkpoints"]
+    scalar_log_frequency = config["logging_parameters"]["scalar_log_frequency"]
 
     vae_directory = config["vae_parameters"]["directory"]
     vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
@@ -199,11 +200,10 @@ def main(config_path: str):
     if not debug:
         save_dir = os.path.join(base_save_dir, dataset_name)
         summary_writer = ImprovedSummaryWriter(
-            log_dir=save_dir,
-            name=model_name
+            log_dir=save_dir
         )
 
-        summary_writer.add_text(tag="Hyperparameter", text_string=json.dumps(config))
+        summary_writer.add_text(tag="Hyperparameter", text_string=pretty_json(config), global_step=0)
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
@@ -218,12 +218,15 @@ def main(config_path: str):
         torch.autograd.set_detect_anomaly(True)
 
     current_best = None
+    val_loss = None
     for current_epoch in range(max_epochs):
         _, global_train_log_steps = data_pass(model, vae, summary_writer, optimizer, train_dataloader, device,
-                                              current_epoch, global_train_log_steps, train=True, debug=debug)
+                                              current_epoch, global_train_log_steps, scalar_log_frequency,
+                                              train=True, debug=debug)
 
         val_loss, global_val_log_steps = data_pass(model, vae, summary_writer, optimizer, val_dataloader, device,
-                                                   current_epoch, global_val_log_steps, train=False, debug=debug)
+                                                   current_epoch, global_val_log_steps, scalar_log_frequency,
+                                                   train=False, debug=debug)
 
         # scheduler.step(test_loss)
         # earlystopping.step(test_loss)
@@ -233,20 +236,40 @@ def main(config_path: str):
             if is_best:
                 current_best = val_loss
 
-            save_checkpoint({
-                "epoch": current_epoch,
-                "state_dict": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                # 'scheduler': scheduler.state_dict(),
-                # 'earlystopping': earlystopping.state_dict(),
-                # "precision": test_loss,
-            }, is_best=is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
+            if save_model_checkpoints:
+                save_checkpoint({
+                    "epoch": current_epoch,
+                    "state_dict": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    # 'scheduler': scheduler.state_dict(),
+                    # 'earlystopping': earlystopping.state_dict(),
+                    # "precision": test_loss,
+                }, is_best=is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
 
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(e))
         #     break
 
     if not debug:
+        # Use prefix m for model_parameters to avoid possible reassignment of a hparam when combining with
+        # experiment_parameters
+        model_params = {f"m_{k}": v for k, v in config["model_parameters"].items()}
+
+        for k, v in model_params.items():
+            if isinstance(v, list):
+                model_params[k] = ", ".join(str(x) for x in v)
+
+        exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
+        vae_params = {f"v_{k}": v for k, v in config["vae_parameters"].items()}
+
+        hparams = {**model_params, **exp_params, **vae_params}
+
+        summary_writer.add_hparams(
+            hparams,
+            {"hparams/val_loss": val_loss, "hparams/best_val_loss": current_best},
+            run_name=f"hparams"  # Since we use one folder per vae training run we can use a fix name here
+        )
+
         # Ensure everything is logged to the tensorboard
         summary_writer.flush()
 

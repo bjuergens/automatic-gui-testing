@@ -7,7 +7,7 @@ model_parameters:
   loss_scale_option: None
 
 experiment_parameters:
-  dataset: multiple_sequences_identical_length_rnn
+  dataset: "multiple_sequences_identical_length_rnn"
   data_path: "datasets/gui_env/random-widgets/2021-12-27_22-10-07/0"
   use_shifted_data: False
   batch_size: 10
@@ -25,4 +25,6 @@ trainer_parameters:
 
 logging_parameters:
   debug: False
+  save_model_checkpoints: False
+  scalar_log_frequency: 50
   base_save_dir: "logs/mdn-rnn/"
