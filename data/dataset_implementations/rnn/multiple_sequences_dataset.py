@@ -5,8 +5,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from data.dataset_implementations.possible_splits import get_start_and_end_indices_from_split
-from data.dataset_implementations.rnn import GUISingleSequenceDataset
-from data.dataset_implementations.rnn.single_sequence_dataset import GUISingleSequenceShiftedDataset
+from data.dataset_implementations.rnn import GUISingleSequenceDataset, GUISingleSequenceShiftedDataset
 
 
 class GUIMultipleSequencesIdenticalLengthDataset(Dataset):
@@ -54,7 +53,8 @@ class GUIMultipleSequencesIdenticalLengthDataset(Dataset):
 
 
 class GUIMultipleSequencesVaryingLengths(Dataset):
-    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
+                 use_shifted_data: bool):
         self.root_dir = root_dir
 
         assert split in ["train", "val", "test"]
@@ -62,6 +62,12 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
 
         self.sequence_length = sequence_length
         self.vae_preprocessed_data_path = vae_preprocessed_data_path
+        self.use_shifted_data = use_shifted_data
+
+        if self.use_shifted_data:
+            single_sequence_dataset_type = GUISingleSequenceShiftedDataset
+        else:
+            single_sequence_dataset_type = GUISingleSequenceDataset
 
         self.sequence_datasets = []
         images_dir = os.path.join(self.root_dir, self.split)
@@ -77,8 +83,8 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
             for sequence_dir in current_sub_dir_content:
                 hdf5_data_group_path = f"/{self.split}/{sub_dir_sequence_length}/{sequence_dir}"
                 self.sequence_datasets.append(
-                    GUISingleSequenceShiftedDataset(os.path.join(current_sub_dir, sequence_dir), self.sequence_length,
-                                                    self.vae_preprocessed_data_path, hdf5_data_group_path)
+                    single_sequence_dataset_type(os.path.join(current_sub_dir, sequence_dir), self.sequence_length,
+                                                 self.vae_preprocessed_data_path, hdf5_data_group_path)
                 )
 
         self.lengths_of_sequences = [seq_dataset.__len__() for seq_dataset in self.sequence_datasets]

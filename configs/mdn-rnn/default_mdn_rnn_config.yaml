@@ -9,6 +9,7 @@ model_parameters:
 experiment_parameters:
   dataset: multiple_sequences_identical_length_rnn
   data_path: "datasets/gui_env/random-widgets/2021-12-27_22-10-07/0"
+  use_shifted_data: False
   batch_size: 10
   sequence_length: 16
   learning_rate: 0.0001

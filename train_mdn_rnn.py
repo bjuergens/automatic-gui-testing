@@ -112,6 +112,7 @@ def main(config_path: str):
 
     dataset_name = config["experiment_parameters"]["dataset"]
     dataset_path = config["experiment_parameters"]["data_path"]
+    use_shifted_data = config["experiment_parameters"]["use_shifted_data"]
 
     num_workers = config["trainer_parameters"]["num_workers"]
     gpu_id = config["trainer_parameters"]["gpu"]
@@ -175,6 +176,7 @@ def main(config_path: str):
         sequence_length=sequence_length,
         batch_size=batch_size,
         vae_preprocessed_data_path=vae_preprocessed_data_path,
+        use_shifted_data=use_shifted_data,
         shuffle=True,
         **additional_dataloader_kwargs
     )
@@ -186,6 +188,7 @@ def main(config_path: str):
         sequence_length=sequence_length,
         batch_size=batch_size,
         vae_preprocessed_data_path=vae_preprocessed_data_path,
+        use_shifted_data=use_shifted_data,
         shuffle=False,
         **additional_dataloader_kwargs
     )

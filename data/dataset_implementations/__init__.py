@@ -67,15 +67,16 @@ def get_vae_dataloader(dataset_name: str, dataset_path: str, split: str, transfo
 
 
 def get_rnn_dataloader(dataset_name: str, dataset_path: str, split: str,
-                       sequence_length: int, batch_size: int, vae_preprocessed_data_path: str, shuffle: bool = False,
-                       **additional_dataloader_kwargs):
+                       sequence_length: int, batch_size: int, vae_preprocessed_data_path: str, use_shifted_data: bool,
+                       shuffle: bool = False, **additional_dataloader_kwargs):
     dataset_type = select_rnn_dataset(dataset_name)
 
     dataset = dataset_type(
         dataset_path,
         split,
         sequence_length,
-        vae_preprocessed_data_path
+        vae_preprocessed_data_path,
+        use_shifted_data
     )
 
     batch_sampler = GUISequenceBatchSampler(
