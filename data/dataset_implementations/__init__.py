@@ -5,7 +5,8 @@ from data.dataset_implementations.vae import (
     GUIEnvImageDataset500k, GUIEnvImageDataset300k
 )
 from data.dataset_implementations.rnn import (
-    GUISingleSequenceDataset, GUIMultipleSequencesIdenticalLengthDataset, GUISequenceBatchSampler
+    GUISingleSequenceDataset, GUIMultipleSequencesIdenticalLengthDataset, GUIEnvSequencesDatasetRandomWidget500k,
+    GUISequenceBatchSampler
 )
 
 vae_datasets = {
@@ -17,7 +18,8 @@ vae_datasets = {
 }
 
 rnn_datasets = {
-    "multiple_sequences_identical_length_rnn": GUIMultipleSequencesIdenticalLengthDataset
+    "multiple_sequences_identical_length_rnn": GUIMultipleSequencesIdenticalLengthDataset,
+    "gui_env_sequences_dataset_random_widget_500k": GUIEnvSequencesDatasetRandomWidget500k
 }
 
 
@@ -64,20 +66,22 @@ def get_vae_dataloader(dataset_name: str, dataset_path: str, split: str, transfo
     return dataloader
 
 
-def get_rnn_dataloader(dataset_name: str, dataset_path: str, split: str, vae_output_file_name: str,
-                       sequence_length: int, batch_size: int, **additional_dataloader_kwargs):
+def get_rnn_dataloader(dataset_name: str, dataset_path: str, split: str,
+                       sequence_length: int, batch_size: int, vae_preprocessed_data_path: str, shuffle: bool = False,
+                       **additional_dataloader_kwargs):
     dataset_type = select_rnn_dataset(dataset_name)
 
     dataset = dataset_type(
         dataset_path,
         split,
-        vae_output_file_name,
-        sequence_length
+        sequence_length,
+        vae_preprocessed_data_path
     )
 
     batch_sampler = GUISequenceBatchSampler(
         dataset,
-        batch_size=batch_size
+        batch_size=batch_size,
+        shuffle=shuffle
     )
 
     dataloader = DataLoader(

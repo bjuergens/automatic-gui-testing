@@ -1,15 +1,19 @@
 import os
 from bisect import bisect
 
+import numpy as np
 from torch.utils.data import Dataset
 
 from data.dataset_implementations.possible_splits import get_start_and_end_indices_from_split
 from data.dataset_implementations.rnn import GUISingleSequenceDataset
+from data.dataset_implementations.rnn.single_sequence_dataset import GUISingleSequenceShiftedDataset
 
 
 class GUIMultipleSequencesIdenticalLengthDataset(Dataset):
 
     def __init__(self, root_dir, split: str, vae_output_file_name: str, sequence_length: int):
+        raise RuntimeError("Current implementation of this dataset is broken, try using the one with varying "
+                           "sequence lengths this should also support identical sequence lengths")
         self.root_dir = root_dir
         self.split = split
         self.vae_output_file_name = vae_output_file_name
@@ -47,3 +51,69 @@ class GUIMultipleSequencesIdenticalLengthDataset(Dataset):
         dataset = self.sequence_datasets[dataset_index]
 
         return dataset[index % self.individual_sequence_length], dataset_index
+
+
+class GUIMultipleSequencesVaryingLengths(Dataset):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str):
+        self.root_dir = root_dir
+
+        assert split in ["train", "val", "test"]
+        self.split = split
+
+        self.sequence_length = sequence_length
+        self.vae_preprocessed_data_path = vae_preprocessed_data_path
+
+        self.sequence_datasets = []
+        images_dir = os.path.join(self.root_dir, self.split)
+
+        images_dir_content = os.listdir(images_dir)
+        images_dir_content.sort()
+
+        for sub_dir_sequence_length in images_dir_content:
+            current_sub_dir = os.path.join(images_dir, sub_dir_sequence_length)
+            current_sub_dir_content = os.listdir(current_sub_dir)
+            current_sub_dir_content.sort()
+
+            for sequence_dir in current_sub_dir_content:
+                hdf5_data_group_path = f"/{self.split}/{sub_dir_sequence_length}/{sequence_dir}"
+                self.sequence_datasets.append(
+                    GUISingleSequenceShiftedDataset(os.path.join(current_sub_dir, sequence_dir), self.sequence_length,
+                                                    self.vae_preprocessed_data_path, hdf5_data_group_path)
+                )
+
+        self.lengths_of_sequences = [seq_dataset.__len__() for seq_dataset in self.sequence_datasets]
+        self.cumulated_sizes = np.cumsum(np.hstack([0, self.lengths_of_sequences]))
+
+        self.number_of_sequences = len(self.sequence_datasets)
+
+    def get_sequence(self, sequence_index: int) -> GUISingleSequenceShiftedDataset:
+        return self.sequence_datasets[sequence_index]
+
+    def __len__(self):
+        return self.number_of_sequences
+
+    def __getitem__(self, index: int):
+        sequence_dataset_index = bisect(self.cumulated_sizes, index) - 1
+        sequence_dataset = self.sequence_datasets[sequence_dataset_index]
+
+        return sequence_dataset[index % sequence_dataset.__len__()], sequence_dataset_index
+
+
+class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path)
+
+        if self.split == "train":
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:70]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[70:110]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[110:140]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[140:160]])
+
+            assert len(self.sequence_datasets) == 160
+        else:
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:2]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[2:4]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[4:6]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
+
+            assert len(self.sequence_datasets) == 8

@@ -11,7 +11,7 @@ from tqdm import tqdm
 from data.dataset_implementations import get_rnn_dataloader
 from models import select_rnn_model
 from models.rnn import BaseRNN
-from utils.data_processing_utils import preprocess_observations_with_vae
+from utils.data_processing_utils import preprocess_observations_with_vae, get_vae_preprocessed_data_path_name
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config
 from utils.training_utils import load_vae_architecture, save_checkpoint, vae_transformation_functions
@@ -153,12 +153,18 @@ def main(config_path: str):
     #     scheduler.load_state_dict(state['scheduler'])
     #     earlystopping.load_state_dict(state['earlystopping'])
 
-    vae_output_file_name = preprocess_observations_with_vae(dataset_path, vae, vae_name=vae_name,
-                                                            vae_version=vae_directory.split("version_")[-1],
-                                                            img_size=img_size,
-                                                            output_activation_function=output_activation_function,
-                                                            vae_dataset_name=vae_dataset_name, device=device,
-                                                            force=False)
+    vae_preprocessed_data_path = get_vae_preprocessed_data_path_name(vae_directory, dataset_name)
+
+    if not os.path.exists(vae_preprocessed_data_path):
+        preprocess_observations_with_vae(
+            rnn_dataset_path=dataset_path,
+            vae=vae,
+            img_size=img_size,
+            output_activation_function=output_activation_function,
+            vae_dataset_name=vae_dataset_name,
+            device=device,
+            vae_preprocessed_data_path=vae_preprocessed_data_path
+        )
 
     additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 
@@ -166,9 +172,10 @@ def main(config_path: str):
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="train",
-        vae_output_file_name=vae_output_file_name,
         sequence_length=sequence_length,
         batch_size=batch_size,
+        vae_preprocessed_data_path=vae_preprocessed_data_path,
+        shuffle=True,
         **additional_dataloader_kwargs
     )
 
@@ -176,9 +183,10 @@ def main(config_path: str):
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="val",
-        vae_output_file_name=vae_output_file_name,
         sequence_length=sequence_length,
         batch_size=batch_size,
+        vae_preprocessed_data_path=vae_preprocessed_data_path,
+        shuffle=False,
         **additional_dataloader_kwargs
     )
 
