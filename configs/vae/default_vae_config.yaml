@@ -6,6 +6,7 @@ model_parameters:
   latent_size: 256
   input_channels: 3
   batch_norm: True
+  disable_kld: False
   kld_weight: 1.0
   kld_warmup: True
   kld_warmup_batch_count: 4000

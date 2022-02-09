@@ -37,6 +37,11 @@ class BaseVAE(abc.ABC, nn.Module):
 
         self.use_batch_norm = model_parameters["batch_norm"]
 
+        try:
+            self.disable_kld = model_parameters["disable_kld"]
+        except KeyError:
+            self.disable_kld = False
+
         self.use_kld_warmup = model_parameters["kld_warmup"]
         self.kld_weight = model_parameters["kld_weight"]
         self.kld_warmup_batch_count = model_parameters["kld_warmup_batch_count"]
@@ -81,31 +86,36 @@ class BaseVAE(abc.ABC, nn.Module):
         # MSE
         reconstruction_loss = f.mse_loss(x, reconstruction_x, reduction="mean")
 
-        # KLD
-        # see Appendix B from VAE paper:
-        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-        # https://arxiv.org/abs/1312.6114
-        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        # Take also the mean over the batch_dim (outermost function call)
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1), dim=0)
+        if not self.disable_kld:
+            # KLD
+            # see Appendix B from VAE paper:
+            # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+            # https://arxiv.org/abs/1312.6114
+            # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+            # Take also the mean over the batch_dim (outermost function call)
+            kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1), dim=0)
 
-        if self.use_kld_warmup and train:
-            if self.current_batch_count < self.kld_warmup_skip_batches:
-                kld_warmup_term = 0.0
+            if self.use_kld_warmup and train:
+                if self.current_batch_count < self.kld_warmup_skip_batches:
+                    kld_warmup_term = 0.0
+                else:
+                    kld_warmup_term = self.current_batch_count / self.kld_warmup_batch_count
+
+                    if kld_warmup_term > 1.0:
+                        kld_warmup_term = 1.0
+
+                kld_loss_term = self.kld_weight * kld_warmup_term * kld_loss
+
+                self.current_batch_count += 1
             else:
-                kld_warmup_term = self.current_batch_count / self.kld_warmup_batch_count
+                kld_loss_term = self.kld_weight * kld_loss
 
-                if kld_warmup_term > 1.0:
-                    kld_warmup_term = 1.0
-
-            kld_loss_term = self.kld_weight * kld_warmup_term * kld_loss
-
-            self.current_batch_count += 1
+            loss = reconstruction_loss + kld_loss_term
+            kld_loss_float = kld_loss.item()
         else:
-            kld_loss_term = self.kld_weight * kld_loss
-
-        loss = reconstruction_loss + kld_loss_term
+            loss = reconstruction_loss
+            kld_loss_float = 0.0
 
         # .item() is important as it extracts a float, otherwise the tensors would be held in memory and never freed
         # Log actual KLD loss and not the kld_loss_term which is what is used to calculate the whole loss function
-        return loss, reconstruction_loss.item(), kld_loss.item()
+        return loss, reconstruction_loss.item(), kld_loss_float
