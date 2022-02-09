@@ -124,3 +124,43 @@ class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths)
             assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
 
             assert len(self.sequence_datasets) == 8
+
+
+class GUIEnvSequencesDatasetMixed3600k(GUIMultipleSequencesVaryingLengths):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
+                 use_shifted_data: bool):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data)
+
+        if self.split == "train":
+            # First Random Widget Run's
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:70]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[70:110]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[110:140]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[140:160]])
+
+            # Random Click Run's
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[160:230]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[230:270]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[270:300]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[300:320]])
+
+            # Second Random Widget Run's
+            assert all([seq.rewards.size(0) == 30000 for seq in self.sequence_datasets[320:340]])
+            assert all([seq.rewards.size(0) == 40000 for seq in self.sequence_datasets[340:360]])
+            assert all([seq.rewards.size(0) == 50000 for seq in self.sequence_datasets[360:380]])
+
+            assert len(self.sequence_datasets) == 380
+        else:
+            # First Random Widget Run's
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:2]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[2:4]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[4:6]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
+
+            # Random Click Run's
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[8:10]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[10:12]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[12:14]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[14:16]])
+
+            assert len(self.sequence_datasets) == 16

@@ -6,7 +6,7 @@ from data.dataset_implementations.vae import (
 )
 from data.dataset_implementations.rnn import (
     GUISingleSequenceDataset, GUIMultipleSequencesIdenticalLengthDataset, GUIEnvSequencesDatasetRandomWidget500k,
-    GUISequenceBatchSampler
+    GUIEnvSequencesDatasetMixed3600k, GUISequenceBatchSampler
 )
 
 vae_datasets = {
@@ -19,7 +19,8 @@ vae_datasets = {
 
 rnn_datasets = {
     "multiple_sequences_identical_length_rnn": GUIMultipleSequencesIdenticalLengthDataset,
-    "gui_env_sequences_dataset_random_widget_500k": GUIEnvSequencesDatasetRandomWidget500k
+    "gui_env_sequences_dataset_random_widget_500k": GUIEnvSequencesDatasetRandomWidget500k,
+    "gui_env_sequences_dataset_mixed_3600k": GUIEnvSequencesDatasetMixed3600k
 }
 
 
