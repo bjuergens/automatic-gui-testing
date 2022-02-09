@@ -1,5 +1,6 @@
 import os.path
 import subprocess
+import time
 from datetime import datetime
 
 import click
@@ -34,7 +35,7 @@ def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
     if not html_report:
         python_commands.append(f"--no-html-report")
 
-    xvfb_command = ["xvfb-run", "-s", "-screen 0 448x448x24"]
+    xvfb_command = ["xvfb-run", "-a", "-s", "-screen 0 448x448x24"]
 
     base_dir = os.path.join(root_dir, monkey_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
@@ -44,8 +45,7 @@ def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
         current_python_command = python_commands
         current_python_command.append(f"--directory={current_dir}")
 
-        current_xvfb_command = xvfb_command + [f"--server-num={99 + i}"]
-        command = current_xvfb_command + current_python_command
+        command = xvfb_command + current_python_command
 
         commands.append(command)
 
@@ -57,6 +57,8 @@ def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
                 print(f"Finished process {i}")
                 processes.remove(p)
 
+        # Sleep a bit before starting a new process, to avoid getting a duplicate server number
+        time.sleep(0.25)
         p = subprocess.Popen(command)
         processes.append(p)
         print(f"Started {p_id}")
