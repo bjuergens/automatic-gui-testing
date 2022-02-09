@@ -19,13 +19,17 @@ class LSTM(BaseSimpleRNN):
 
 class LSTMWithBCE(LSTM):
 
-    def __init(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, model_parameters: dict, latent_size: int, batch_size: int, device: torch.device):
+        super().__init__(model_parameters, latent_size, batch_size, device)
+
+        assert model_parameters["reward_output_activation_function"] == "sigmoid", ("For this RNN the output "
+                                                                                    "activation function has to be the "
+                                                                                    "sigmoid function")
 
     def predict(self, model_output, latents=None):
-        # This function mostly exists for mixture density network as the actual calculation of the next latent state
-        # is not required for training, just the calculation of the predicted probability distribution.
-        # But since we want to use the same interface, just return the prediction here
+        # Apply sigmoid here to reward instead of self.reward_output_activation_function, because we don't apply that
+        # function in forward(), instead it is fused into the loss function for the reward. Still for the prediction
+        # we want values in [0, 1] range for the reward
         return model_output[0], torch.sigmoid(model_output[1])
 
     def forward(self, latents: torch.Tensor, actions: torch.Tensor):
@@ -34,6 +38,8 @@ class LSTMWithBCE(LSTM):
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
+        # Don't use self.reward_output_activation_function here, because we use BCEWithLogitsLoss which applies a
+        # sigmoid internally (see a bit below for more information)
         predicted_reward = predictions[:, :, self.latent_size:]
 
         return predicted_latent_vector, predicted_reward
@@ -46,10 +52,13 @@ class LSTMWithBCE(LSTM):
 
         # Computes sigmoid followed by BCELoss. Is numerically more stable than doing the two steps separately, see
         # https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
-        reward_loss = f.binary_cross_entropy_with_logits(predicted_reward, reward.greater(0).float().unsqueeze(-1))
+        reward_loss = f.binary_cross_entropy_with_logits(predicted_reward, reward)
         loss = self.combine_latent_and_reward_loss(latent_loss=latent_loss, reward_loss=reward_loss)
 
         return loss, (latent_loss.item(), reward_loss.item())
+
+    def get_reward_output_mode(self) -> str:
+        return "bce"
 
 
 class LSTMWithMSE(LSTM):

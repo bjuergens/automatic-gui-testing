@@ -5,6 +5,7 @@ model_parameters:
   action_size: 2
   number_of_gaussians: 5
   loss_scale_option: None
+  reward_output_activation_function: "tanh"
 
 experiment_parameters:
   dataset: "multiple_sequences_identical_length_rnn"

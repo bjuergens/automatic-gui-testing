@@ -21,6 +21,7 @@ from utils.training_utils.average_meter import AverageMeter
 # from utils.learning import EarlyStopping
 ## WARNING : THIS SHOULD BE REPLACED WITH PYTORCH 0.5
 # from utils.learning import ReduceLROnPlateau
+from utils.training_utils.training_utils import rnn_transformation_functions
 
 
 def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWriter], optimizer, data_loader: DataLoader,
@@ -127,6 +128,8 @@ def main(config_path: str):
     save_model_checkpoints = config["logging_parameters"]["save_model_checkpoints"]
     scalar_log_frequency = config["logging_parameters"]["scalar_log_frequency"]
 
+    reward_output_activation_function = config["model_parameters"]["reward_output_activation_function"]
+
     vae_directory = config["vae_parameters"]["directory"]
     vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
 
@@ -170,12 +173,19 @@ def main(config_path: str):
 
     additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 
+    actions_transformation_function, reward_transformation_function = rnn_transformation_functions(
+        reward_output_mode=model.get_reward_output_mode(),
+        reward_output_activation_function=reward_output_activation_function
+    )
+
     train_dataloader = get_rnn_dataloader(
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="train",
         sequence_length=sequence_length,
         batch_size=batch_size,
+        actions_transformation_function=actions_transformation_function,
+        reward_transformation_function=reward_transformation_function,
         vae_preprocessed_data_path=vae_preprocessed_data_path,
         use_shifted_data=use_shifted_data,
         shuffle=True,
@@ -188,6 +198,8 @@ def main(config_path: str):
         split="val",
         sequence_length=sequence_length,
         batch_size=batch_size,
+        actions_transformation_function=actions_transformation_function,
+        reward_transformation_function=reward_transformation_function,
         vae_preprocessed_data_path=vae_preprocessed_data_path,
         use_shifted_data=use_shifted_data,
         shuffle=False,

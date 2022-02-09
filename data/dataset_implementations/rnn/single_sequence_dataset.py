@@ -8,14 +8,17 @@ from torch.utils.data import Dataset
 
 class GUISingleSequenceDataset(Dataset):
 
-    def __init__(self, root_dir: str, sequence_length: int, vae_preprocessed_data_path: str, hdf5_data_group_path: str):
+    def __init__(self, root_dir: str, sequence_length: int, vae_preprocessed_data_path: str, hdf5_data_group_path: str,
+                 actions_transformation_function=None, rewards_transformation_function=None):
         self.root_dir = root_dir
         self.sequence_length = sequence_length
         self.vae_preprocessed_data_path = vae_preprocessed_data_path
         self.hdf5_data_group_path = hdf5_data_group_path
+        self.actions_transformation_function = actions_transformation_function
+        self.rewards_transformation_function = rewards_transformation_function
 
         with np.load(os.path.join(self.root_dir, "data.npz")) as data:
-            self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
+            self.rewards: torch.Tensor = torch.from_numpy(data["rewards"]).unsqueeze(-1)
             self.actions: torch.Tensor = torch.from_numpy(data["actions"])
 
         self.vae_preprocessed_data = h5py.File(vae_preprocessed_data_path, "r")
@@ -44,16 +47,25 @@ class GUISingleSequenceDataset(Dataset):
         rewards = self.rewards[index:index + self.sequence_length]
         actions = self.actions[index:index + self.sequence_length]
 
+        if self.rewards_transformation_function is not None:
+            rewards = self.rewards_transformation_function(rewards)
+
+        if self.actions_transformation_function is not None:
+            actions = self.actions_transformation_function(actions)
+
         return mus, next_mus, log_vars, next_log_vars, rewards, actions
 
 
 class GUISingleSequenceShiftedDataset(Dataset):
 
-    def __init__(self, root_dir: str, sequence_length: int, vae_preprocessed_data_path: str, hdf5_data_group_path: str):
+    def __init__(self, root_dir: str, sequence_length: int, vae_preprocessed_data_path: str, hdf5_data_group_path: str,
+                 actions_transformation_function=None, rewards_transformation_function=None):
         self.root_dir = root_dir
         self.sequence_length = sequence_length
         self.vae_preprocessed_data_path = vae_preprocessed_data_path
         self.hdf5_data_group_path = hdf5_data_group_path
+        self.actions_transformation_function = actions_transformation_function
+        self.rewards_transformation_function = rewards_transformation_function
 
         with np.load(os.path.join(self.root_dir, "data.npz")) as data:
             self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
@@ -85,5 +97,11 @@ class GUISingleSequenceShiftedDataset(Dataset):
 
         rewards = self.rewards[index_start_point:index_start_point + self.sequence_length]
         actions = self.actions[index_start_point:index_start_point + self.sequence_length]
+
+        if self.rewards_transformation_function is not None:
+            rewards = self.rewards_transformation_function(rewards)
+
+        if self.actions_transformation_function is not None:
+            actions = self.actions_transformation_function(actions)
 
         return mus, next_mus, log_vars, next_log_vars, rewards, actions

@@ -54,7 +54,7 @@ class GUIMultipleSequencesIdenticalLengthDataset(Dataset):
 
 class GUIMultipleSequencesVaryingLengths(Dataset):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
-                 use_shifted_data: bool):
+                 use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
         self.root_dir = root_dir
 
         assert split in ["train", "val", "test"]
@@ -63,6 +63,8 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
         self.sequence_length = sequence_length
         self.vae_preprocessed_data_path = vae_preprocessed_data_path
         self.use_shifted_data = use_shifted_data
+        self.actions_transformation_function = actions_transformation_function
+        self.rewards_transformation_function = rewards_transformation_function
 
         if self.use_shifted_data:
             single_sequence_dataset_type = GUISingleSequenceShiftedDataset
@@ -84,7 +86,9 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
                 hdf5_data_group_path = f"/{self.split}/{sub_dir_sequence_length}/{sequence_dir}"
                 self.sequence_datasets.append(
                     single_sequence_dataset_type(os.path.join(current_sub_dir, sequence_dir), self.sequence_length,
-                                                 self.vae_preprocessed_data_path, hdf5_data_group_path)
+                                                 self.vae_preprocessed_data_path, hdf5_data_group_path,
+                                                 self.actions_transformation_function,
+                                                 self.rewards_transformation_function)
                 )
 
         self.lengths_of_sequences = [seq_dataset.__len__() for seq_dataset in self.sequence_datasets]
@@ -107,9 +111,9 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
 
 class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
-                 use_shifted_data: bool):
-        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data)
-
+                 use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data,
+                         actions_transformation_function, rewards_transformation_function)
         if self.split == "train":
             assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:70]])
             assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[70:110]])
@@ -128,8 +132,9 @@ class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths)
 
 class GUIEnvSequencesDatasetMixed3600k(GUIMultipleSequencesVaryingLengths):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
-                 use_shifted_data: bool):
-        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data)
+                 use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data,
+                         actions_transformation_function, rewards_transformation_function)
 
         if self.split == "train":
             # First Random Widget Run's

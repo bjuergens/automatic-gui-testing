@@ -25,6 +25,17 @@ class BaseRNN(abc.ABC, nn.Module):
         self.latent_size = latent_size
         self.loss_scale_option = model_parameters["loss_scale_option"]  # Can also be none
 
+        reward_output_activation_function_type = model_parameters["reward_output_activation_function"]
+
+        if reward_output_activation_function_type == "sigmoid":
+            self.reward_output_activation_function = nn.Sigmoid()
+            self.denormalize_reward = lambda x: x
+        elif reward_output_activation_function_type == "tanh":
+            self.reward_output_activation_function = nn.Tanh()
+            self.denormalize_reward = lambda x: (x + 1.0) / 2.0
+        else:
+            raise RuntimeError(f"Output activation function {reward_output_activation_function_type} unknown")
+
         self.batch_size = batch_size
         self.device = device
 
@@ -77,6 +88,10 @@ class BaseRNN(abc.ABC, nn.Module):
     def loss_function(self, next_latent_vector: torch.Tensor, reward: torch.Tensor, model_output: Tuple):
         pass
 
+    @abc.abstractmethod
+    def get_reward_output_mode(self) -> str:
+        pass
+
 
 class BaseMDNRNN(BaseRNN):
 
@@ -103,7 +118,7 @@ class BaseMDNRNN(BaseRNN):
         latent_prediction = torch.sum(prob * pi, dim=2)
 
         # Result: (BATCH_SIZE, SEQ_LEN, L_SIZE)
-        return latent_prediction, rewards
+        return latent_prediction, self.denormalize_reward(rewards)
 
     def forward(self, latents: torch.Tensor, actions: torch.Tensor):
         sequence_length = latents.size(1)
@@ -114,18 +129,18 @@ class BaseMDNRNN(BaseRNN):
         stride = self.number_of_gaussians * self.latent_size
 
         mus = gmm_outputs[:, :, :stride]
-        mus = mus.view(self.batch_size, sequence_length, self.gaussians, self.latents)
+        mus = mus.view(self.batch_size, sequence_length, self.number_of_gaussians, self.latent_size)
 
         sigmas = gmm_outputs[:, :, stride:2 * stride]
-        sigmas = sigmas.view(self.batch_size, sequence_length, self.gaussians, self.latents)
+        sigmas = sigmas.view(self.batch_size, sequence_length, self.number_of_gaussians, self.latent_size)
         sigmas = torch.exp(sigmas)
 
-        pi = gmm_outputs[:, :, 2 * stride: 2 * stride + self.gaussians]
-        pi = pi.view(self.batch_size, sequence_length, self.gaussians)
+        pi = gmm_outputs[:, :, 2 * stride: 2 * stride + self.number_of_gaussians]
+        pi = pi.view(self.batch_size, sequence_length, self.number_of_gaussians)
         log_pi = f.log_softmax(pi, dim=-1)
 
         rewards = gmm_outputs[:, :, -1]
-        rewards = torch.sigmoid(rewards)
+        rewards = self.reward_output_activation_function(rewards).unsqueeze(-1)
 
         return mus, sigmas, log_pi, rewards
 
@@ -166,6 +181,9 @@ class BaseMDNRNN(BaseRNN):
 
         return loss, (gmm.item(), mse.item())
 
+    def get_reward_output_mode(self) -> str:
+        return "mse"
+
 
 class BaseSimpleRNN(BaseRNN):
 
@@ -176,7 +194,7 @@ class BaseSimpleRNN(BaseRNN):
         # This function mostly exists for mixture density network as the actual calculation of the next latent state
         # is not required for training, just the calculation of the predicted probability distribution.
         # But since we want to use the same interface, just return the prediction here
-        return model_output[0], model_output[1]
+        return model_output[0], self.denormalize_reward(model_output[1])
 
     def forward(self, latents: torch.Tensor, actions: torch.Tensor):
         outputs, _ = self.rnn_forward(latents, actions)
@@ -184,7 +202,7 @@ class BaseSimpleRNN(BaseRNN):
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
-        predicted_reward = torch.sigmoid(predictions[:, :, self.latent_size:])
+        predicted_reward = self.reward_output_activation_function(predictions[:, :, self.latent_size:])
 
         return predicted_latent_vector, predicted_reward
 
@@ -193,8 +211,11 @@ class BaseSimpleRNN(BaseRNN):
 
         # TODO check if reduction needs to be adapted to batch size and sequence length
         latent_loss = f.mse_loss(predicted_latent, next_latent_vector)
-        reward_loss = f.mse_loss(predicted_reward, reward.unsqueeze(-1))
+        reward_loss = f.mse_loss(predicted_reward, reward)
 
         loss = self.combine_latent_and_reward_loss(latent_loss=latent_loss, reward_loss=reward_loss)
 
         return loss, (latent_loss.item(), reward_loss.item())
+
+    def get_reward_output_mode(self) -> str:
+        return "mse"

@@ -38,6 +38,31 @@ def vae_transformation_functions(img_size: int, dataset: str, output_activation_
     return transformation_functions
 
 
+def rnn_transformation_functions(reward_output_mode: str, reward_output_activation_function: str):
+    """
+    Reward output mode mse: -> Use [0, 1] or [-1, 1] range depending on output activation function
+    Reward output mode bce: -> Only use discrete 0 or 1 reward
+    """
+
+    actions_transformation_function = transforms.Lambda(lambda x: ((2.0 * x) / 447.0) - 1.0)
+
+    if reward_output_mode == "mse":
+        if reward_output_activation_function == "sigmoid":
+            # Rewards are already in [0, 1] range coming from data generation
+            rewards_transformation_function = None
+        elif reward_output_activation_function == "tanh":
+            rewards_transformation_function = transforms.Lambda(lambda x: 2.0 * x - 1.0)
+        else:
+            raise RuntimeError(f"Reward output activation function '{reward_output_activation_function}' unknown")
+    elif reward_output_mode == "bce":
+        # Convert rewards > 0 to 1 and rewards equal to 0 remain 0
+        rewards_transformation_function = transforms.Lambda(lambda x: x.greater(0).float())
+    else:
+        raise RuntimeError(f"Reward output mode '{reward_output_mode}' unknown")
+
+    return actions_transformation_function, rewards_transformation_function
+
+
 def get_dataset_mean_std(dataset: str):
     if dataset == "gui_env_image_dataset_500k_normalize":
         return [0.9338, 0.9313, 0.9288], [0.1275, 0.1329, 0.141]
