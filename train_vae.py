@@ -3,6 +3,8 @@ import os
 import sys
 
 import click
+# noinspection PyUnresolvedReferences
+import comet_ml  # Needs to be imported __before__ torch
 import torch
 import torch.utils.data
 from torch import optim
@@ -149,7 +151,9 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
 @click.option("-l", "--load", "load_path", type=str,
               help=("Path to a previous training, from which training shall continue (will create a new experiment "
                     "directory)"))
-def main(config_path: str, load_path: str):
+@click.option("--disable-comet/--no-disable-comet", type=bool, default=False,
+              help="Disable logging to Comet (automatically disabled when API key is not provided in home folder)")
+def main(config_path: str, load_path: str, disable_comet: bool):
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -239,11 +243,20 @@ def main(config_path: str, load_path: str):
 
     if not debug:
         summary_writer = ImprovedSummaryWriter(
-            log_dir=save_dir
+            log_dir=save_dir,
+            comet_config={
+                "project_name": "world-models/vae",
+                "disabled": disable_comet
+            }
         )
 
         # Log hyperparameters to the tensorboard
         summary_writer.add_text("Hyperparameters", pretty_json(config), global_step=0)
+
+        # Unfortunately tensorboardX does not expose this functionality and name cannot be set in constructor
+        if not disable_comet:
+            # noinspection PyProtectedMember
+            summary_writer._get_comet_logger()._experiment.set_name(f"version_{summary_writer.version_number}")
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
@@ -336,7 +349,7 @@ def main(config_path: str, load_path: str):
         summary_writer.add_hparams(
             hparams,
             {"hparams/val_loss": validation_loss, "hparams/best_val_loss": current_best},
-            run_name=f"hparams"  # Since we use one folder per vae training run we can use a fix name here
+            name="hparams"
         )
         # Ensure everything is logged to the tensorboard
         summary_writer.flush()

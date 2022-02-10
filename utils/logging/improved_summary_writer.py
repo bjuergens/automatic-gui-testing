@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 
 
 class ImprovedSummaryWriter(SummaryWriter):
@@ -25,3 +25,6 @@ class ImprovedSummaryWriter(SummaryWriter):
         os.makedirs(save_dir)
 
         super().__init__(log_dir=save_dir, **kwargs)
+
+    def get_logdir(self):
+        return self.logdir

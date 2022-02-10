@@ -1,9 +1,10 @@
-import json
 import logging
 import os
 from typing import Optional
 
 import click
+# noinspection PyUnresolvedReferences
+import comet_ml  # Needs to be imported __before__ torch
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -99,7 +100,9 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
 @click.command()
 @click.option("-c", "--config", "config_path", type=str, required=True,
               help="Path to a YAML configuration containing training options")
-def main(config_path: str):
+@click.option("--disable-comet/--no-disable-comet", type=bool, default=False,
+              help="Disable logging to Comet (automatically disabled when API key is not provided in home folder)")
+def main(config_path: str, disable_comet: bool):
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -212,10 +215,18 @@ def main(config_path: str):
     if not debug:
         save_dir = os.path.join(base_save_dir, dataset_name)
         summary_writer = ImprovedSummaryWriter(
-            log_dir=save_dir
+            log_dir=save_dir,
+            comet_config={
+                "project_name": "world-models/rnn",
+                "disabled": disable_comet
+            }
         )
 
         summary_writer.add_text(tag="Hyperparameter", text_string=pretty_json(config), global_step=0)
+
+        if not disable_comet:
+            # noinspection PyProtectedMember
+            summary_writer._get_comet_logger()._experiment.set_name(f"version_{summary_writer.version_number}")
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
@@ -279,7 +290,7 @@ def main(config_path: str):
         summary_writer.add_hparams(
             hparams,
             {"hparams/val_loss": val_loss, "hparams/best_val_loss": current_best},
-            run_name=f"hparams"  # Since we use one folder per vae training run we can use a fix name here
+            name="hparams"  # Since we use one folder per vae training run we can use a fix name here
         )
 
         # Ensure everything is logged to the tensorboard
