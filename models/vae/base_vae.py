@@ -1,6 +1,7 @@
 import abc
 from typing import Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as f
@@ -48,6 +49,11 @@ class BaseVAE(abc.ABC, nn.Module):
         self.kld_warmup_skip_batches = model_parameters["kld_warmup_skip_batches"]
         self.current_batch_count = 0
 
+        try:
+            self.reduce_kld_weight_after_batch_count = model_parameters["reduce_kld_weight_after_batch_count"]
+        except KeyError:
+            self.reduce_kld_weight_after_batch_count = np.inf
+
         if self.use_kld_warmup is None and self.kld_weight is None:
             raise RuntimeError(f"kld_warmup and kld_weight parameters not in config, maybe you are using an older "
                                "model architecture.")
@@ -87,6 +93,10 @@ class BaseVAE(abc.ABC, nn.Module):
         reconstruction_loss = f.mse_loss(x, reconstruction_x, reduction="mean")
 
         if not self.disable_kld:
+
+            if self.current_batch_count > self.reduce_kld_weight_after_batch_count:
+                self.kld_weight = 0.00001
+
             # KLD
             # see Appendix B from VAE paper:
             # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
