@@ -68,7 +68,7 @@ class GUISingleSequenceShiftedDataset(Dataset):
         self.rewards_transformation_function = rewards_transformation_function
 
         with np.load(os.path.join(self.root_dir, "data.npz")) as data:
-            self.rewards: torch.Tensor = torch.from_numpy(data["rewards"])
+            self.rewards: torch.Tensor = torch.from_numpy(data["rewards"]).unsqueeze(-1)
             self.actions: torch.Tensor = torch.from_numpy(data["actions"])
 
         self.vae_preprocessed_data = h5py.File(vae_preprocessed_data_path, "r")
