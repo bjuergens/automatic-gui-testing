@@ -168,6 +168,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     img_size = config["experiment_parameters"]["img_size"]
     learning_rate = config["experiment_parameters"]["learning_rate"]
 
+    try:
+        use_lr_scheduler = config["experiment_parameters"]["use_lr_scheduler"]
+    except KeyError:
+        use_lr_scheduler = False
+
     number_of_workers = config["trainer_parameters"]["num_workers"]
     gpu_id = config["trainer_parameters"]["gpu"]
 
@@ -231,7 +236,22 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     if optimizer_state_dict is not None:
         optimizer.load_state_dict(optimizer_state_dict)
 
-    # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
+    if use_lr_scheduler:
+        lr_scheduler_params = {
+            "mode": "min",
+            "factor": 0.1,  # Old implementation used factor=0.5
+            "patience": 5,
+            "threshold": 0.0001
+        }
+
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer=optimizer,
+            **lr_scheduler_params
+        )
+    else:
+        lr_scheduler_params = None
+        scheduler = None
+
     # earlystopping = EarlyStopping('min', patience=30)
 
     # Check if VAE dir exists, if not, create it
@@ -298,7 +318,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                                                          image_epoch_log_frequency,
                                                          denormalize_with_mean_and_std_necessary, dataset_mean,
                                                          dataset_std)
-        # scheduler.step(test_loss)
+
+        if use_lr_scheduler:
+            scheduler.step(validation_loss)
+
         # earlystopping.step(test_loss)
 
         # checkpointing
@@ -308,13 +331,24 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 current_best = validation_loss
 
             if save_model_checkpoints:
-                save_checkpoint({
+
+                state_dicts = {
                     "epoch": current_epoch,
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict()
-                    # 'scheduler': scheduler.state_dict(),
                     # 'earlystopping': earlystopping.state_dict()
-                }, is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
+                }
+
+                if use_lr_scheduler:
+                    state_dicts["scheduler"] = scheduler.state_dict()
+
+                # noinspection PyUnboundLocalVariable
+                save_checkpoint(
+                    state_dicts,
+                    is_best,
+                    checkpoint_filename=checkpoint_filename,
+                    best_filename=best_model_filename
+                )
 
             if current_epoch % image_epoch_log_frequency == 0 or current_epoch == (max_epochs - 1):
                 number_of_images = batch_size if batch_size < NUMBER_OF_IMAGES_TO_LOG else NUMBER_OF_IMAGES_TO_LOG
@@ -344,7 +378,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
 
-        hparams = {**model_params, **exp_params}
+        if lr_scheduler_params is not None:
+            scheduler_params = {f"lr_{k}": v for k, v in lr_scheduler_params.items()}
+            hparams = {**model_params, **exp_params, **scheduler_params}
+        else:
+            hparams = {**model_params, **exp_params}
 
         summary_writer.add_hparams(
             hparams,
