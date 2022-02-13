@@ -169,8 +169,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     learning_rate = config["experiment_parameters"]["learning_rate"]
 
     try:
-        use_lr_scheduler = config["experiment_parameters"]["use_lr_scheduler"]
+        lr_scheduler_dict = config["lr_scheduler"]
+        use_lr_scheduler = lr_scheduler_dict["use_lr_scheduler"]
     except KeyError:
+        lr_scheduler_dict = None
         use_lr_scheduler = False
 
     number_of_workers = config["trainer_parameters"]["num_workers"]
@@ -237,19 +239,19 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         optimizer.load_state_dict(optimizer_state_dict)
 
     if use_lr_scheduler:
-        lr_scheduler_params = {
-            "mode": "min",
-            "factor": 0.1,  # Old implementation used factor=0.5
-            "patience": 5,
-            "threshold": 0.0001
+        scheduler_params = {
+            "mode": lr_scheduler_dict["mode"],
+            "patience": lr_scheduler_dict["patience"],
+            "factor": lr_scheduler_dict["factor"],
+            "threshold": lr_scheduler_dict["threshold"],
         }
 
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer=optimizer,
-            **lr_scheduler_params
+            **scheduler_params
         )
     else:
-        lr_scheduler_params = None
+        scheduler_params = None
         scheduler = None
 
     # earlystopping = EarlyStopping('min', patience=30)
@@ -378,9 +380,9 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
 
-        if lr_scheduler_params is not None:
-            scheduler_params = {f"lr_{k}": v for k, v in lr_scheduler_params.items()}
-            hparams = {**model_params, **exp_params, **scheduler_params}
+        if use_lr_scheduler:
+            modified_scheduler_params = {f"lr_{k}": v for k, v in scheduler_params.items()}
+            hparams = {**model_params, **exp_params, **modified_scheduler_params}
         else:
             hparams = {**model_params, **exp_params}
 

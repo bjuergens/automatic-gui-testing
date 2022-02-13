@@ -20,7 +20,13 @@ experiment_parameters:
   learning_rate: 0.005
   max_epochs: 5
   manual_seed: 1010
+
+lr_scheduler:
   use_lr_scheduler: True
+  mode: "min"
+  patience: 5
+  factor: 0.25
+  threshold: 0.001
 
 trainer_parameters:
   gpu: -1
