@@ -27,6 +27,7 @@ lr_scheduler:
   patience: 5
   factor: 0.25
   threshold: 0.001
+  threshold_mode: "abs"
 
 trainer_parameters:
   gpu: -1

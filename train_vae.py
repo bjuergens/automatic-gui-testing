@@ -244,6 +244,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
             "patience": lr_scheduler_dict["patience"],
             "factor": lr_scheduler_dict["factor"],
             "threshold": lr_scheduler_dict["threshold"],
+            "threshold_mode": lr_scheduler_dict["threshold_mode"],
         }
 
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
