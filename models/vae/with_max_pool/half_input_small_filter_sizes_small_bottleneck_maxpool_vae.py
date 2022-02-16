@@ -21,19 +21,19 @@ class HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE(BaseVAE):
         conv_6 = nn.Conv2d(in_channels=self.hidden_dimensions[4], out_channels=self.hidden_dimensions[5], kernel_size=3, stride=1, padding=1)
 
         if self.use_batch_norm:
-            self.conv_layer_1 = nn.Sequential(conv_1, nn.BatchNorm2d(self.hidden_dimensions[0]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_2 = nn.Sequential(conv_2, nn.BatchNorm2d(self.hidden_dimensions[1]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_3 = nn.Sequential(conv_3, nn.BatchNorm2d(self.hidden_dimensions[2]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_4 = nn.Sequential(conv_4, nn.BatchNorm2d(self.hidden_dimensions[3]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_5 = nn.Sequential(conv_5, nn.BatchNorm2d(self.hidden_dimensions[4]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_1 = nn.Sequential(conv_1, nn.BatchNorm2d(self.hidden_dimensions[0]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_2 = nn.Sequential(conv_2, nn.BatchNorm2d(self.hidden_dimensions[1]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_3 = nn.Sequential(conv_3, nn.BatchNorm2d(self.hidden_dimensions[2]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_4 = nn.Sequential(conv_4, nn.BatchNorm2d(self.hidden_dimensions[3]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_5 = nn.Sequential(conv_5, nn.BatchNorm2d(self.hidden_dimensions[4]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), nn.MaxPool2d(2, 2), self.activation_function())
         else:
-            self.conv_layer_1 = nn.Sequential(conv_1, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_2 = nn.Sequential(conv_2, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_3 = nn.Sequential(conv_3, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_4 = nn.Sequential(conv_4, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_5 = nn.Sequential(conv_5, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_1 = nn.Sequential(conv_1, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_2 = nn.Sequential(conv_2, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_3 = nn.Sequential(conv_3, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_4 = nn.Sequential(conv_4, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_5 = nn.Sequential(conv_5, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_6 = nn.Sequential(conv_6, nn.MaxPool2d(2, 2), self.activation_function())
 
         # Bottleneck 6x6 when using MaxPool(2, 2) and at the last MaxPool a filter size of 3
         self.fc_mu = nn.Linear(3 * 3 * self.hidden_dimensions[5], self.latent_size)
