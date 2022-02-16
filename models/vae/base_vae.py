@@ -43,6 +43,11 @@ class BaseVAE(abc.ABC, nn.Module):
         except KeyError:
             self.disable_kld = False
 
+        try:
+            self.apply_value_range_when_kld_disabled = model_parameters["apply_value_range_when_kld_disabled"]
+        except KeyError:
+            self.apply_value_range_when_kld_disabled = False
+
         self.use_kld_warmup = model_parameters["kld_warmup"]
         self.kld_weight = model_parameters["kld_weight"]
         self.kld_warmup_batch_count = model_parameters["kld_warmup_batch_count"]
@@ -82,6 +87,12 @@ class BaseVAE(abc.ABC, nn.Module):
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mu, log_var = self.encode(x)
+
+        if self.disable_kld and self.apply_value_range_when_kld_disabled:
+            # Move mu, log_var to this range
+            mu = torch.tanh(mu)
+            log_var = torch.tanh(log_var)
+
         z = self.reparameterize(mu, log_var)
         reconstruction = self.decode(z)
 
