@@ -8,3 +8,6 @@ from models.vae.no_max_pool.small_filter_sizes_small_bottleneck_vae_2 import Sma
 from models.vae.no_max_pool.half_input_small_filter_sizes_small_bottleneck_vae import (
     HalfInputSmallFilterSizesSmallBottleneckVAE
 )
+from models.vae.no_max_pool.half_input_small_filter_sizes_small_bottleneck_vae_2 import (
+    HalfInputSmallFilterSizesSmallBottleneckVAE2
+)

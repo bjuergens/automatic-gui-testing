@@ -3,7 +3,9 @@ from typing import Union
 from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels, EvenLargerVAESmallKernels
 from models.vae import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE,
-    SmallFilterSizesSmallBottleneckVAE2, HalfInputSmallFilterSizesSmallBottleneckVAE)
+    SmallFilterSizesSmallBottleneckVAE2, HalfInputSmallFilterSizesSmallBottleneckVAE,
+    HalfInputSmallFilterSizesSmallBottleneckVAE2
+)
 from models.vae import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
     SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2,
@@ -27,6 +29,7 @@ vae_models = {
     "small_filter_sizes_small_bottleneck_maxpool_2": SmallFilterSizesSmallBottleneckMaxPoolVAE2,
     "decreasing_filter_sizes_maxpool": DecreasingFilterSizesMaxPoolVAE,
     "half_input_small_filter_sizes_small_bottleneck": HalfInputSmallFilterSizesSmallBottleneckVAE,
+    "half_input_small_filter_sizes_small_bottleneck_2": HalfInputSmallFilterSizesSmallBottleneckVAE2,
     "half_input_small_filter_sizes_small_bottleneck_maxpool": HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE,
     "half_input_small_filter_sizes_with_stride_maxpool": HalfInputSmallFilterSizesWithStrideMaxPoolVAE,
 }
