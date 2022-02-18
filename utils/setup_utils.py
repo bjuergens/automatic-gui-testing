@@ -1,7 +1,9 @@
 import json
 import logging
+import random
 import sys
 
+import numpy as np
 import torch
 import yaml
 
@@ -37,11 +39,14 @@ def save_yaml_config(save_file_path: str, yaml_config: dict):
 
 def set_seeds(seed: int):
     torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
     # Fix numeric divergence due to bug in Cudnn
     # Also: Seems to search for the best algorithm to use; don't use if the input size changes a lot then it hurts
     # performance
     torch.backends.cudnn.benchmark = True
+    torch.use_deterministic_algorithms(True)
 
 
 def get_device(gpu: int) -> torch.device:
