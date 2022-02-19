@@ -3,8 +3,8 @@ from typing import Union
 from models.vae import BaseVAE, VAEHalfInputSize, VAEFullInputSize, LargeVAESmallKernels, EvenLargerVAESmallKernels
 from models.vae import (
     LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE,
-    SmallFilterSizesSmallBottleneckVAE2, HalfInputSmallFilterSizesSmallBottleneckVAE,
-    HalfInputSmallFilterSizesSmallBottleneckVAE2
+    SmallFilterSizesSmallBottleneckVAE2, SmallFilterSizesSmallBottleneckVAE3,
+    HalfInputSmallFilterSizesSmallBottleneckVAE, HalfInputSmallFilterSizesSmallBottleneckVAE2
 )
 from models.vae import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
@@ -22,6 +22,7 @@ vae_models = {
     "small_filter_sizes": SmallFilterSizesVAE,
     "small_filter_sizes_small_bottleneck": SmallFilterSizesSmallBottleneckVAE,
     "small_filter_sizes_small_bottleneck_2": SmallFilterSizesSmallBottleneckVAE2,
+    "small_filter_sizes_small_bottleneck_3": SmallFilterSizesSmallBottleneckVAE3,
     "decreasing_filter_sizes": DecreasingFilterSizesVAE,
     "large_filter_sizes_maxpool": LargeFilterSizesMaxPoolVAE,
     "small_filter_sizes_maxpool": SmallFilterSizesMaxPoolVAE,
