@@ -39,7 +39,7 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE4(BaseVAE):
             self.conv_layer_5 = nn.Sequential(conv_5, nn.MaxPool2d(2, 2), self.activation_function())
             self.conv_layer_6 = nn.Sequential(conv_6, nn.MaxPool2d(2, 2), self.activation_function())
             self.conv_layer_7 = nn.Sequential(conv_7, nn.MaxPool2d(2, 2), self.activation_function())
-            self.conv_layer_8 = nn.Sequential(conv_8, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_8 = nn.Sequential(conv_8, self.activation_function())
 
         # Bottleneck 1x1
         self.fc_mu = nn.Linear(1 * 1 * self.hidden_dimensions[7], self.latent_size)
@@ -112,10 +112,10 @@ def main():
     model = SmallFilterSizesSmallBottleneckMaxPoolVAE4({
         "input_channels": 3,
         "latent_size": 32,
-        "hidden_dimensions": [4, 8, 16, 32, 64, 128, 256, 512],
+        "hidden_dimensions": [32, 64, 128, 256, 512, 512, 1024, 2048],
         "activation_function": "leaky_relu",
         "output_activation_function": "tanh",
-        "batch_norm": True,
+        "batch_norm": False,
         "kld_warmup": True,
         "kld_weight": 1.0,
         "kld_warmup_batch_count": 20,
