@@ -6,7 +6,7 @@ from torch import nn
 from models.vae import BaseVAE
 
 
-class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
+class SmallFilterSizesSmallBottleneckMaxPoolVAE3(BaseVAE):
 
     def __init__(self, model_parameters: dict):
         super().__init__(model_parameters)
@@ -22,21 +22,21 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
         conv_7 = nn.Conv2d(in_channels=self.hidden_dimensions[5], out_channels=self.hidden_dimensions[6], kernel_size=3, stride=1, padding=1)
 
         if self.use_batch_norm:
-            self.conv_layer_1 = nn.Sequential(conv_1, nn.BatchNorm2d(self.hidden_dimensions[0]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_2 = nn.Sequential(conv_2, nn.BatchNorm2d(self.hidden_dimensions[1]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_3 = nn.Sequential(conv_3, nn.BatchNorm2d(self.hidden_dimensions[2]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_4 = nn.Sequential(conv_4, nn.BatchNorm2d(self.hidden_dimensions[3]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_5 = nn.Sequential(conv_5, nn.BatchNorm2d(self.hidden_dimensions[4]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_7 = nn.Sequential(conv_7, nn.BatchNorm2d(self.hidden_dimensions[6]), self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_1 = nn.Sequential(conv_1, nn.BatchNorm2d(self.hidden_dimensions[0]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_2 = nn.Sequential(conv_2, nn.BatchNorm2d(self.hidden_dimensions[1]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_3 = nn.Sequential(conv_3, nn.BatchNorm2d(self.hidden_dimensions[2]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_4 = nn.Sequential(conv_4, nn.BatchNorm2d(self.hidden_dimensions[3]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_5 = nn.Sequential(conv_5, nn.BatchNorm2d(self.hidden_dimensions[4]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_6 = nn.Sequential(conv_6, nn.BatchNorm2d(self.hidden_dimensions[5]), nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_7 = nn.Sequential(conv_7, nn.BatchNorm2d(self.hidden_dimensions[6]), nn.MaxPool2d(2, 2), self.activation_function())
         else:
-            self.conv_layer_1 = nn.Sequential(conv_1, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_2 = nn.Sequential(conv_2, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_3 = nn.Sequential(conv_3, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_4 = nn.Sequential(conv_4, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_5 = nn.Sequential(conv_5, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_6 = nn.Sequential(conv_6, self.activation_function(), nn.MaxPool2d(2, 2))
-            self.conv_layer_7 = nn.Sequential(conv_7, self.activation_function(), nn.MaxPool2d(2, 2))
+            self.conv_layer_1 = nn.Sequential(conv_1, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_2 = nn.Sequential(conv_2, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_3 = nn.Sequential(conv_3, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_4 = nn.Sequential(conv_4, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_5 = nn.Sequential(conv_5, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_6 = nn.Sequential(conv_6, nn.MaxPool2d(2, 2), self.activation_function())
+            self.conv_layer_7 = nn.Sequential(conv_7, nn.MaxPool2d(2, 2), self.activation_function())
 
         # Bottleneck 6x6 when using MaxPool(2, 2) and at the last MaxPool a filter size of 3
         self.fc_mu = nn.Linear(3 * 3 * self.hidden_dimensions[6], self.latent_size)
@@ -101,7 +101,7 @@ class SmallFilterSizesSmallBottleneckMaxPoolVAE2(BaseVAE):
 def main():
     from torchinfo import summary
 
-    model = SmallFilterSizesSmallBottleneckMaxPoolVAE2({
+    model = SmallFilterSizesSmallBottleneckMaxPoolVAE3({
         "input_channels": 3,
         "latent_size": 32,
         "hidden_dimensions": [8, 16, 32, 64, 128, 256, 512],

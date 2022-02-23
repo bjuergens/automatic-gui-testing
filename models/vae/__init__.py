@@ -11,5 +11,6 @@ from models.vae.no_max_pool import (
 from models.vae.with_max_pool import (
     LargeFilterSizesMaxPoolVAE, SmallFilterSizesMaxPoolVAE, DecreasingFilterSizesMaxPoolVAE,
     SmallFilterSizesSmallBottleneckMaxPoolVAE, SmallFilterSizesSmallBottleneckMaxPoolVAE2,
+    SmallFilterSizesSmallBottleneckMaxPoolVAE3,
     HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE, HalfInputSmallFilterSizesWithStrideMaxPoolVAE
 )
