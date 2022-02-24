@@ -1,12 +1,16 @@
 import os
 from typing import Tuple, Union
 
+import h5py
 import torch
+from PIL import Image
 from torchvision import transforms
 
-from models import select_vae_model
+from models import select_vae_model, select_rnn_model
 from models.vae import BaseVAE
 from utils.setup_utils import load_yaml_config
+
+GUI_ENV_INITIAL_STATE_FILE_PATH = "res/gui_env_initial_state.png"
 
 
 def vae_transformation_functions(img_size: int, dataset: str, output_activation_function: str):
@@ -76,22 +80,80 @@ def save_checkpoint(state: dict, is_best: bool, checkpoint_filename: str, best_f
         torch.save(state, best_filename)
 
 
-def load_vae_architecture(vae_directory: str, device: torch.device, load_best: bool = True,
-                          load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
-    vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
-    vae_name = vae_config["model_parameters"]["name"]
+def load_architecture(model_type: str, model_dir: str, device, load_best: bool = True, load_optimizer: bool = False):
+    config = load_yaml_config(os.path.join(model_dir, "config.yaml"))
+    model_name = config["model_parameters"]["name"]
 
-    vae_model = select_vae_model(vae_name)
-    vae = vae_model(vae_config["model_parameters"]).to(device)
+    if model_type == "vae":
+        model_class = select_vae_model(model_name)
+        model = model_class(config["model_parameters"]).to(device)
+    elif model_type == "rnn":
+        batch_size = config["experiment_parameters"]["batch_size"]
+
+        vae_config = load_yaml_config(os.path.join(config["vae_parameters"]["directory"], "config.yaml"))
+        latent_size = vae_config["model_parameters"]["latent_size"]
+
+        model_class = select_rnn_model(model_name)
+        model = model_class(config["model_parameters"], latent_size, batch_size, device).to(device)
+    else:
+        raise RuntimeError(f"Model type {model_type} unknown")
 
     if load_best:
         state_dict_file_name = "best.pt"
     else:
         state_dict_file_name = "checkpoint.pt"
 
-    checkpoint = torch.load(os.path.join(vae_directory, state_dict_file_name), map_location=device)
-    vae.load_state_dict(checkpoint["state_dict"])
+    checkpoint = torch.load(os.path.join(model_dir, state_dict_file_name), map_location=device)
+    model.load_state_dict(checkpoint["state_dict"])
 
     if load_optimizer:
-        return vae, vae_name, checkpoint["optimizer"]
-    return vae, vae_name
+        return model, model_name, checkpoint["optimizer"]
+    return model, model_name
+
+
+def load_vae_architecture(vae_directory: str, device: torch.device, load_best: bool = True,
+                          load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
+    return load_architecture(
+        "vae",
+        model_dir=vae_directory,
+        device=device,
+        load_best=load_best,
+        load_optimizer=load_optimizer
+    )
+
+
+def load_rnn_architecture(rnn_directory: str, device: torch.device, load_best: bool = True,
+                          load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
+    return load_architecture(
+        "rnn",
+        model_dir=rnn_directory,
+        device=device,
+        load_best=load_best,
+        load_optimizer=load_optimizer
+    )
+
+
+def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, device, load_best: bool = True):
+    vae, _ = load_vae_architecture(vae_dir, device, load_best=load_best, load_optimizer=False)
+    vae.eval()
+
+    vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
+
+    img_size = vae_config["experiment_parameters"]["img_size"]
+    dataset = vae_config["experiment_parameters"]["dataset"]
+    output_activation_function = vae_config["model_parameters"]["output_activation_function"]
+
+    transformation_functions = vae_transformation_functions(img_size=img_size, dataset=dataset,
+                                                            output_activation_function=output_activation_function)
+
+    img = Image.open(GUI_ENV_INITIAL_STATE_FILE_PATH)
+    img = transformation_functions(img)
+    img = transforms.ToTensor()(img)
+    img = img.unsqueeze(0).to(device)  # Simulate batch dimension
+
+    with torch.no_grad():
+        mu, log_var = vae.encode(img)
+
+    with h5py.File(initial_obs_path, "w") as f:
+        f.create_dataset(f"mu", data=mu)
+        f.create_dataset(f"log_var", data=log_var)
