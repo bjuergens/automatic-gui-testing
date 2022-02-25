@@ -233,7 +233,18 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         model = model_type(config["model_parameters"]).to(device)
         optimizer_state_dict = None
 
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    try:
+        optimizer_name = config["experiment_parameters"]["optimizer"]
+    except KeyError:
+        # Default Optimizer is adam
+        optimizer_name = "adam"
+
+    if optimizer_name == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimizer_name == "adamax":
+        optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
+    else:
+        raise RuntimeError(f"Optimizer '{optimizer_name}' unknown")
 
     if optimizer_state_dict is not None:
         optimizer.load_state_dict(optimizer_state_dict)
