@@ -74,24 +74,32 @@ class BaseVAE(abc.ABC, nn.Module):
     def decode(self, z: torch.Tensor) -> torch.Tensor:
         pass
 
-    def reparameterize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def reparameterization_trick(mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
         sigma = torch.exp(0.5 * log_var)
         eps = torch.randn_like(sigma)
         z = eps.mul(sigma).add_(mu)
 
         return z
 
+    def reparameterize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
+        z = self.reparameterization_trick(mu, log_var)
+
+        if self.disable_kld and self.apply_value_range_when_kld_disabled:
+            z = torch.tanh(z)
+
+        return z
+
     def sample(self, number_of_samples: int, device: torch.device) -> torch.Tensor:
         z = torch.randn((number_of_samples, self.latent_size)).to(device)
+
+        if self.disable_kld and self.apply_value_range_when_kld_disabled:
+            z = torch.tanh(z)
+
         return self.decode(z)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mu, log_var = self.encode(x)
-
-        if self.disable_kld and self.apply_value_range_when_kld_disabled:
-            # Move mu, log_var to this range
-            mu = torch.tanh(mu)
-            log_var = torch.tanh(log_var)
 
         z = self.reparameterize(mu, log_var)
         reconstruction = self.decode(z)
