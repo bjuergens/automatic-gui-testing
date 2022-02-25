@@ -80,7 +80,8 @@ def save_checkpoint(state: dict, is_best: bool, checkpoint_filename: str, best_f
         torch.save(state, best_filename)
 
 
-def load_architecture(model_type: str, model_dir: str, device, load_best: bool = True, load_optimizer: bool = False):
+def load_architecture(model_type: str, model_dir: str, device, load_best: bool = True, load_optimizer: bool = False,
+                      rnn_batch_size=None):
     config = load_yaml_config(os.path.join(model_dir, "config.yaml"))
     model_name = config["model_parameters"]["name"]
 
@@ -88,13 +89,14 @@ def load_architecture(model_type: str, model_dir: str, device, load_best: bool =
         model_class = select_vae_model(model_name)
         model = model_class(config["model_parameters"]).to(device)
     elif model_type == "rnn":
-        batch_size = config["experiment_parameters"]["batch_size"]
+        if rnn_batch_size is None:
+            rnn_batch_size = config["experiment_parameters"]["batch_size"]
 
         vae_config = load_yaml_config(os.path.join(config["vae_parameters"]["directory"], "config.yaml"))
         latent_size = vae_config["model_parameters"]["latent_size"]
 
         model_class = select_rnn_model(model_name)
-        model = model_class(config["model_parameters"], latent_size, batch_size, device).to(device)
+        model = model_class(config["model_parameters"], latent_size, rnn_batch_size, device).to(device)
     else:
         raise RuntimeError(f"Model type {model_type} unknown")
 
@@ -122,14 +124,15 @@ def load_vae_architecture(vae_directory: str, device: torch.device, load_best: b
     )
 
 
-def load_rnn_architecture(rnn_directory: str, device: torch.device, load_best: bool = True,
+def load_rnn_architecture(rnn_directory: str, device: torch.device, batch_size=None, load_best: bool = True,
                           load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
     return load_architecture(
         "rnn",
         model_dir=rnn_directory,
         device=device,
         load_best=load_best,
-        load_optimizer=load_optimizer
+        load_optimizer=load_optimizer,
+        rnn_batch_size=batch_size
     )
 
 
@@ -148,7 +151,6 @@ def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, d
 
     img = Image.open(GUI_ENV_INITIAL_STATE_FILE_PATH)
     img = transformation_functions(img)
-    img = transforms.ToTensor()(img)
     img = img.unsqueeze(0).to(device)  # Simulate batch dimension
 
     with torch.no_grad():
