@@ -59,7 +59,7 @@ class DreamRollout:
 
         load_parameters(controller_parameters, self.controller)
 
-        total_reward = torch.zeros(1)
+        total_reward = 0
 
         for t in range(self.time_limit):
             actions = self.controller(latent_observation, self.rnn.hidden_state)
@@ -74,4 +74,5 @@ class DreamRollout:
                 break
 
         # Return minus as the CMA-ES implementation minimizes the objective function
+        # noinspection PyUnresolvedReferences
         return -total_reward.item()

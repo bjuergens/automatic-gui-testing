@@ -237,7 +237,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
 
         # Create tmp dir if non existent and clean it if existent
-        tmp_dir = join(save_dir, "tmp")
+        tmp_dir = join(log_dir, "tmp")
         if not exists(tmp_dir):
             mkdir(tmp_dir)
         else:
@@ -265,7 +265,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     if not debug:
         for p_index in range(number_of_workers):
             Process(target=slave_routine, args=(p_queue, r_queue, e_queue, p_index,
-                                                tmp_dir, save_dir, time_limit)).start()
+                                                tmp_dir, rnn_dir, time_limit)).start()
 
     ################################################################################
     #                           Launch CMA                                         #
