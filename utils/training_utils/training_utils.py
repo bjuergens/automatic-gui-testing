@@ -157,5 +157,5 @@ def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, d
         mu, log_var = vae.encode(img)
 
     with h5py.File(initial_obs_path, "w") as f:
-        f.create_dataset(f"mu", data=mu)
-        f.create_dataset(f"log_var", data=log_var)
+        f.create_dataset(f"mu", data=mu.cpu())
+        f.create_dataset(f"log_var", data=log_var.cpu())
