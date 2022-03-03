@@ -210,7 +210,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     manual_seed = config["experiment_parameters"]["manual_seed"]
     set_seeds(manual_seed)
 
+    assert max_generations > 0, f"Maximum number of generations must be greater than 0"
+
     if not debug:
+        assert number_of_workers > 0, f"Number of workers must be greater than 0"
+
         summary_writer = ImprovedSummaryWriter(
             log_dir=save_dir,
             comet_config={
@@ -229,11 +233,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
-        checkpoint_filename = os.path.join(log_dir, "checkpoint.pt")
 
         save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
 
-        # create tmp dir if non existent and clean it if existent
+        # Create tmp dir if non existent and clean it if existent
         tmp_dir = join(save_dir, "tmp")
         if not exists(tmp_dir):
             mkdir(tmp_dir)
@@ -247,7 +250,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         summary_writer = None
         tmp_dir = None
 
-    # create ctrl dir if non exitent
+    # create ctrl dir if non existent
     # ctrl_dir = join(args.logdir, 'ctrl')
     # if not exists(ctrl_dir):
     #     mkdir(ctrl_dir)
@@ -276,8 +279,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
     controller = Controller(latent_size, hidden_size, action_size)  # dummy instance
 
-    # define current best and load parameters
-    cur_best = None
+    # Define current best and load parameters
+    current_best = None
 
     # TODO use load_path
     # ctrl_file = join(save_dir, 'best.tar')
@@ -293,16 +296,16 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
     generation = 0
 
-    while not es.stop():
+    while not es.stop() and generation < max_generations:
 
-        if cur_best is not None and target_return is not None and -cur_best > target_return:
+        if current_best is not None and target_return is not None and -current_best > target_return:
             print("Already better than target, breaking...")
             break
 
-        r_list = [0] * population_size  # result list
+        r_list = [0] * population_size  # Result list
         solutions = es.ask()
 
-        # push parameters to queue
+        # Push parameters to queue
         for s_id, s in enumerate(solutions):
             for _ in range(number_of_samples):
                 p_queue.put((s_id, s))
@@ -310,26 +313,19 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         if debug:
             debug_slave_routine(p_queue, r_queue, 0, tmp_dir, rnn_dir, time_limit)
 
-        # retrieve results
-        # if args.display:
-        #     pbar = tqdm(total=population_size * number_of_samples)
-
         if display_progress_bars:
             progress_bar = tqdm(total=population_size * number_of_samples, desc=f"Generation {generation} - Rewards")
 
+        # Take results from result queue
         for _ in range(population_size * number_of_samples):
             while r_queue.empty():
                 sleep(.1)
             r_s_id, r = r_queue.get()
             r_list[r_s_id] += r / number_of_samples
 
-            # if args.display:
-            #     pbar.update(1)
             if display_progress_bars:
                 progress_bar.update(1)
 
-        # if args.display:
-        #     pbar.close()
         if display_progress_bars:
             progress_bar.close()
 
@@ -344,29 +340,52 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
             if not debug:
                 # Rewards are multiplied with (-1), therefore taking the max and then multiplying with (-1) gives the
-                # correct minimum reward
+                # correct minimum reward for example
                 summary_writer.add_scalar("min", -np.max(r_list), global_step=generation)
                 summary_writer.add_scalar("max", -np.min(r_list), global_step=generation)
                 summary_writer.add_scalar("mean", -np.mean(r_list), global_step=generation)
                 summary_writer.add_scalar("best", -best, global_step=generation)
 
-                if save_model_checkpoints and (cur_best is None or cur_best > best):
-                    cur_best = best
-                    print("Saving new best with value {}+-{}...".format(-cur_best, std_best))
+                if save_model_checkpoints and (current_best is None or best < current_best):
+                    current_best = best
+                    print("Saving new best with value {}+-{}...".format(-current_best, std_best))
                     load_parameters(best_params, controller)
+
+                    # noinspection PyUnboundLocalVariable
                     torch.save(
                         {"generation": generation,
-                         "reward": - cur_best,
+                         "reward": -current_best,
                          "state_dict": controller.state_dict()},
-                        join(save_dir, "best.tar"))
-            if target_return is not None and - best > target_return:
-                print("Terminating controller training with value {}...".format(best))
+                        best_model_filename)
+            if target_return is not None and -best > target_return:
+                print("Terminating controller training with value {}...".format(-best))
                 break
 
         generation += 1
 
     es.result_pretty()
     e_queue.put("EOP")
+
+    if not debug:
+        # Use prefix e for experiment_parameters to avoid possible reassignment of a hparam when combining with
+        # other parameters
+        exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
+        rnn_params = {f"rnn_{k}": v for k, v in config["rnn_parameters"].items()}
+        trainer_params = {f"t_{k}": v for k, v in config["trainer_parameters"].items()}
+        logging_params = {f"l_{k}": v for k, v in config["logging_parameters"].items()}
+
+        hparams = {**exp_params, **rnn_params, **trainer_params, **logging_params}
+
+        if current_best is None:
+            current_best = 0
+
+        summary_writer.add_hparams(
+            hparams,
+            {"hparams/best": -current_best},
+            name="hparams"
+        )
+        # Ensure everything is logged to the tensorboard
+        summary_writer.flush()
 
 
 if __name__ == "__main__":
