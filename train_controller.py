@@ -17,14 +17,14 @@ from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.misc import load_parameters
 from utils.misc import flatten_parameters
 from utils.rollout.dream_rollout import DreamRollout
-from utils.setup_utils import load_yaml_config, initialize_logger, pretty_json, save_yaml_config, set_seeds
+from utils.setup_utils import load_yaml_config, initialize_logger, pretty_json, save_yaml_config, set_seeds, get_device
 
 
 ################################################################################
 #                           Thread routines                                    #
 ################################################################################
-def debug_slave_routine(p_queue, r_queue, p_index,
-                        tmp_dir, log_dir, time_limit):
+def debug_slave_routine(p_queue, r_queue,
+                        log_dir, time_limit, device):
     """ Thread routine.
 
     Threads interact with p_queue, the parameters queue, r_queue, the result
@@ -46,17 +46,6 @@ def debug_slave_routine(p_queue, r_queue, p_index,
     :args e_queue: as soon as not empty, terminate
     :args p_index: the process index
     """
-    # init routine
-    if torch.cuda.is_available():
-        device = torch.device(f"cuda:{p_index % torch.cuda.device_count()}")
-    else:
-        device = torch.device("cpu")
-
-    if tmp_dir is not None:
-        # redirect streams
-        sys.stdout = open(join(tmp_dir, str(getpid()) + '.out'), 'a')
-        sys.stderr = open(join(tmp_dir, str(getpid()) + '.err'), 'a')
-
     with torch.no_grad():
         r_gen = DreamRollout(log_dir, device, time_limit, load_best_rnn=True, load_best_vae=True)
         empty_counter = 0
@@ -75,8 +64,8 @@ def debug_slave_routine(p_queue, r_queue, p_index,
 ################################################################################
 #                           Thread routines                                    #
 ################################################################################
-def slave_routine(p_queue, r_queue, e_queue, p_index,
-                  tmp_dir, rnn_dir, time_limit):
+def slave_routine(p_queue, r_queue, e_queue,
+                  tmp_dir, rnn_dir, time_limit, device):
     """ Thread routine.
 
     Threads interact with p_queue, the parameters queue, r_queue, the result
@@ -98,12 +87,6 @@ def slave_routine(p_queue, r_queue, e_queue, p_index,
     :args e_queue: as soon as not empty, terminate
     :args p_index: the process index
     """
-    # init routine
-    if torch.cuda.is_available():
-        device = torch.device(f"cuda:{p_index % torch.cuda.device_count()}")
-    else:
-        device = torch.device("cpu")
-
     if tmp_dir is not None:
         # redirect streams
         sys.stdout = open(join(tmp_dir, str(getpid()) + '.out'), 'a')
@@ -123,8 +106,8 @@ def slave_routine(p_queue, r_queue, e_queue, p_index,
 ################################################################################
 #                           Evaluation                                         #
 ################################################################################
-def evaluate(p_queue, r_queue, tmp_dir, rnn_dir, time_limit,
-             solutions, results, rollouts=100, debug=False):
+def evaluate(p_queue, r_queue, rnn_dir, time_limit,
+             solutions, results, rollouts, device, debug=False):
     """ Give current controller evaluation.
 
     Evaluation is minus the cumulated reward averaged over rollout runs.
@@ -143,7 +126,7 @@ def evaluate(p_queue, r_queue, tmp_dir, rnn_dir, time_limit,
         p_queue.put((s_id, best_guess))
 
     if debug:
-        debug_slave_routine(p_queue, r_queue, 0, tmp_dir, rnn_dir, time_limit)
+        debug_slave_routine(p_queue, r_queue, rnn_dir, time_limit, device)
 
     print("Evaluating...")
     for _ in tqdm(range(rollouts)):
@@ -192,6 +175,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     rnn_dir = config["rnn_parameters"]["rnn_dir"]
 
     number_of_workers = config["trainer_parameters"]["num_workers"]
+    gpu_id = config["trainer_parameters"]["gpu"]
 
     debug = config["logging_parameters"]["debug"]
     save_dir = config["logging_parameters"]["save_dir"]
@@ -206,11 +190,12 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     # pop_size = args.pop_size
     # num_workers = min(args.max_workers, n_samples * pop_size)
     # time_limit = 1000
+    assert max_generations > 0, f"Maximum number of generations must be greater than 0"
 
     manual_seed = config["experiment_parameters"]["manual_seed"]
     set_seeds(manual_seed)
 
-    assert max_generations > 0, f"Maximum number of generations must be greater than 0"
+    device = get_device(gpu_id)
 
     if not debug:
         assert number_of_workers > 0, f"Number of workers must be greater than 0"
@@ -264,8 +249,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
     if not debug:
         for p_index in range(number_of_workers):
-            Process(target=slave_routine, args=(p_queue, r_queue, e_queue, p_index,
-                                                tmp_dir, rnn_dir, time_limit)).start()
+            Process(target=slave_routine, args=(p_queue, r_queue, e_queue,
+                                                tmp_dir, rnn_dir, time_limit, device)).start()
 
     ################################################################################
     #                           Launch CMA                                         #
@@ -311,7 +296,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 p_queue.put((s_id, s))
 
         if debug:
-            debug_slave_routine(p_queue, r_queue, 0, tmp_dir, rnn_dir, time_limit)
+            debug_slave_routine(p_queue, r_queue, rnn_dir, time_limit, device)
 
         if display_progress_bars:
             progress_bar = tqdm(total=population_size * number_of_samples, desc=f"Generation {generation} - Rewards")
@@ -334,8 +319,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         # evaluation and saving
         if generation % scalar_log_frequency == 0 or generation == max_generations - 1:
-            best_params, best, std_best = evaluate(p_queue, r_queue, tmp_dir, rnn_dir, time_limit, solutions, r_list,
-                                                   rollouts=number_of_evaluations, debug=debug)
+            best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, time_limit, solutions, r_list,
+                                                   rollouts=number_of_evaluations, device=device, debug=debug)
             print("Current evaluation: {}".format(best))
 
             if not debug:
