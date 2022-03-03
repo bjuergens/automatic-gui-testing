@@ -1,0 +1,23 @@
+experiment_parameters:
+  population_size: 10
+  sigma: 0.1
+  number_of_samples: 5
+  number_of_evaluations: 100
+  target_return:
+  time_limit: 1000
+  max_generations: 5
+  manual_seed: 1010
+
+rnn_parameters:
+  rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_rnn/version_0"
+
+trainer_parameters:
+  gpu: -1
+  num_workers: 0
+
+logging_parameters:
+  debug: False
+  display_progress_bars: True
+  save_model_checkpoints: True
+  scalar_log_frequency: 1
+  save_dir: "logs/controller/"
