@@ -19,10 +19,12 @@ class DreamRollout:
         self.device = device
         self.time_limit = time_limit
 
+        # rnn_dir (and vae_dir inside the rnn config) must point to a valid location, if the path has to be adapted
+        # this has to be done before passing it to this constructor
         rnn_config = load_yaml_config(os.path.join(self.rnn_dir, "config.yaml"))
 
         vae_dir = rnn_config["vae_parameters"]["directory"]
-        # TODO this only works when training was done on the same machine
+
         initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
         if not os.path.exists(initial_obs_path):
             # VAE did not yet encode initial state of the GUI into a latent code, do it now
@@ -68,5 +70,8 @@ class DreamRollout:
 
             total_reward += reward.squeeze()
 
-        # TODO original implementation hat -total_reward (minus)
-        return total_reward.item()
+            if total_reward > 1.0:
+                break
+
+        # Return minus as the CMA-ES implementation minimizes the objective function
+        return -total_reward.item()
