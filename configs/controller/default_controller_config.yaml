@@ -4,6 +4,7 @@ experiment_parameters:
   number_of_samples: 5
   number_of_evaluations: 100
   target_return:
+  stop_when_total_reward_exceeded: False
   time_limit: 1000
   max_generations: 5
   manual_seed: 1010

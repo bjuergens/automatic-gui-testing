@@ -14,10 +14,11 @@ INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
 class DreamRollout:
 
     def __init__(self, rnn_dir: str, device, time_limit: int = 1000, load_best_rnn: bool = True,
-                 load_best_vae: bool = True):
+                 load_best_vae: bool = True, stop_when_total_reward_exceeded: bool = False):
         self.rnn_dir = rnn_dir
         self.device = device
         self.time_limit = time_limit
+        self.stop_when_total_reward_exceeded = stop_when_total_reward_exceeded
 
         # rnn_dir (and vae_dir inside the rnn config) must point to a valid location, if the path has to be adapted
         # this has to be done before passing it to this constructor
@@ -70,7 +71,7 @@ class DreamRollout:
 
             total_reward += reward.squeeze()
 
-            if total_reward > 1.0:
+            if self.stop_when_total_reward_exceeded and total_reward > 1.0:
                 break
 
         # Return minus as the CMA-ES implementation minimizes the objective function

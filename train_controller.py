@@ -22,31 +22,16 @@ from utils.setup_utils import load_yaml_config, initialize_logger, pretty_json, 
 ################################################################################
 #                           Thread routines                                    #
 ################################################################################
-def debug_slave_routine(p_queue, r_queue,
-                        log_dir, time_limit, device):
-    """ Thread routine.
+def debug_worker_routine(p_queue, r_queue,
+                         log_dir, time_limit, device, stop_when_total_reward_exceeded):
+    """
+    Same routine as worker_routine, but used for debugging
 
-    Threads interact with p_queue, the parameters queue, r_queue, the result
-    queue and e_queue the end queue. They pull parameters from p_queue, execute
-    the corresponding rollout, then place the result in r_queue.
-
-    Each parameter has its own unique id. Parameters are pulled as tuples
-    (s_id, params) and results are pushed as (s_id, result).  The same
-    parameter can appear multiple times in p_queue, displaying the same id
-    each time.
-
-    As soon as e_queue is non empty, the thread terminate.
-
-    When multiple gpus are involved, the assigned gpu is determined by the
-    process index p_index (gpu = p_index % n_gpus).
-
-    :args p_queue: queue containing couples (s_id, parameters) to evaluate
-    :args r_queue: where to place results (s_id, results)
-    :args e_queue: as soon as not empty, terminate
-    :args p_index: the process index
+    Debugging is difficult with subprocesses running, therefore this function can be used without subprocesses.
     """
     with torch.no_grad():
-        r_gen = DreamRollout(log_dir, device, time_limit, load_best_rnn=True, load_best_vae=True)
+        r_gen = DreamRollout(log_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
+                             stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
         empty_counter = 0
         while True:
             if p_queue.empty():
@@ -60,11 +45,9 @@ def debug_slave_routine(p_queue, r_queue,
                 r_queue.put((s_id, r_gen.rollout(params)))
                 empty_counter = 0
 
-################################################################################
-#                           Thread routines                                    #
-################################################################################
-def slave_routine(p_queue, r_queue, e_queue,
-                  tmp_dir, rnn_dir, time_limit, device):
+
+def worker_routine(p_queue, r_queue, e_queue,
+                   tmp_dir, rnn_dir, time_limit, device, stop_when_total_reward_exceeded):
     """ Thread routine.
 
     Threads interact with p_queue, the parameters queue, r_queue, the result
@@ -92,7 +75,8 @@ def slave_routine(p_queue, r_queue, e_queue,
         sys.stderr = open(os.path.join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, device, time_limit, load_best_rnn=True, load_best_vae=True)
+        r_gen = DreamRollout(rnn_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
+                             stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
 
         while e_queue.empty():
             if p_queue.empty():
@@ -106,7 +90,7 @@ def slave_routine(p_queue, r_queue, e_queue,
 #                           Evaluation                                         #
 ################################################################################
 def evaluate(p_queue, r_queue, rnn_dir, time_limit,
-             solutions, results, rollouts, device, debug=False):
+             solutions, results, rollouts, device, stop_when_total_reward_exceeded, debug=False):
     """ Give current controller evaluation.
 
     Evaluation is minus the cumulated reward averaged over rollout runs.
@@ -125,9 +109,9 @@ def evaluate(p_queue, r_queue, rnn_dir, time_limit,
         p_queue.put((s_id, best_guess))
 
     if debug:
-        debug_slave_routine(p_queue, r_queue, rnn_dir, time_limit, device)
+        debug_worker_routine(p_queue, r_queue, rnn_dir, time_limit, device, stop_when_total_reward_exceeded)
 
-    print("Evaluating...")
+    logging.info("Evaluating...")
     for _ in tqdm(range(rollouts)):
         while r_queue.empty():
             sleep(.1)
@@ -155,6 +139,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     number_of_samples = config["experiment_parameters"]["number_of_samples"]
     number_of_evaluations = config["experiment_parameters"]["number_of_evaluations"]
     target_return = config["experiment_parameters"]["target_return"]
+    stop_when_total_reward_exceeded = config["experiment_parameters"]["stop_when_total_reward_exceeded"]
     time_limit = config["experiment_parameters"]["time_limit"]
     max_generations = config["experiment_parameters"]["max_generations"]
 
@@ -224,8 +209,9 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
     if not debug:
         for p_index in range(number_of_workers):
-            Process(target=slave_routine, args=(p_queue, r_queue, e_queue,
-                                                tmp_dir, rnn_dir, time_limit, device)).start()
+            Process(target=worker_routine, args=(p_queue, r_queue, e_queue,
+                                                 tmp_dir, rnn_dir, time_limit, device,
+                                                 stop_when_total_reward_exceeded)).start()
 
     ################################################################################
     #                           Launch CMA                                         #
@@ -265,7 +251,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     while not es.stop() and generation < max_generations:
 
         if current_best is not None and target_return is not None and -current_best > target_return:
-            print("Already better than target, breaking...")
+            logging.info("Training already better than target return, stopping.")
             break
 
         r_list = [0] * population_size  # Result list
@@ -277,7 +263,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 p_queue.put((s_id, s))
 
         if debug:
-            debug_slave_routine(p_queue, r_queue, rnn_dir, time_limit, device)
+            debug_worker_routine(p_queue, r_queue, rnn_dir, time_limit, device, stop_when_total_reward_exceeded)
 
         if display_progress_bars:
             progress_bar = tqdm(total=population_size * number_of_samples, desc=f"Generation {generation} - Rewards")
@@ -301,8 +287,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         # evaluation and saving
         if generation % scalar_log_frequency == 0 or generation == max_generations - 1:
             best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, time_limit, solutions, r_list,
-                                                   rollouts=number_of_evaluations, device=device, debug=debug)
-            print("Current evaluation: {}".format(best))
+                                                   rollouts=number_of_evaluations, device=device,
+                                                   stop_when_total_reward_exceeded=stop_when_total_reward_exceeded,
+                                                   debug=debug)
+            logging.info(f"Current evaluation: {-best}")
 
             if not debug:
                 # Rewards are multiplied with (-1), therefore taking the max and then multiplying with (-1) gives the
@@ -316,7 +304,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                     # noinspection PyUnboundLocalVariable
                     if not os.path.exists(best_model_filename) or current_best is None or best < current_best:
                         current_best = best
-                        print("Saving new best with value {}+-{}...".format(-current_best, std_best))
+                        logging.info(f"Saving new best with value {-current_best}+-{std_best}...")
                         load_parameters(best_params, controller)
 
                         # noinspection PyUnboundLocalVariable
@@ -327,7 +315,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                             best_model_filename)
 
             if target_return is not None and -best > target_return:
-                print("Terminating controller training with value {}...".format(-best))
+                logging.info(f"Terminating controller training with achieved value {-best}")
                 break
 
         generation += 1
