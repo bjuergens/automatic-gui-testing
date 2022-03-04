@@ -71,7 +71,7 @@ class DreamRollout:
 
             total_reward += reward.squeeze()
 
-            if self.stop_when_total_reward_exceeded and total_reward > 1.0:
+            if self.stop_when_total_reward_exceeded and total_reward >= 1.0:
                 break
 
         # Return minus as the CMA-ES implementation minimizes the objective function
