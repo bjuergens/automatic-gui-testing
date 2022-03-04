@@ -145,19 +145,6 @@ def evaluate(p_queue, r_queue, rnn_dir, time_limit,
 @click.option("--disable-comet/--no-disable-comet", type=bool, default=False,
               help="Disable logging to Comet (automatically disabled when API key is not provided in home folder)")
 def main(config_path: str, load_path: str, disable_comet: bool):
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--logdir', type=str, help='Where everything is stored.')
-    # parser.add_argument('--n-samples', type=int, help='Number of samples used to obtain '
-    #                                                   'return estimate.')
-    # parser.add_argument('--pop-size', type=int, help='Population size.')
-    # parser.add_argument('--target-return', type=float, help='Stops once the return '
-    #                                                         'gets above target_return')
-    # parser.add_argument('--display', action='store_true', help="Use progress bars if "
-    #                                                            "specified.")
-    # parser.add_argument('--max-workers', type=int, help='Maximum number of workers.',
-    #                     default=32)
-    # args = parser.parse_args()
-
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -182,13 +169,6 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     save_model_checkpoints = config["logging_parameters"]["save_model_checkpoints"]
     display_progress_bars = config["logging_parameters"]["display_progress_bars"]
 
-    # Max number of workers. M
-
-    # multiprocessing variables
-    # n_samples = args.n_samples
-    # pop_size = args.pop_size
-    # num_workers = min(args.max_workers, n_samples * pop_size)
-    # time_limit = 1000
     assert max_generations > 0, f"Maximum number of generations must be greater than 0"
 
     manual_seed = config["experiment_parameters"]["manual_seed"]
