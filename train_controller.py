@@ -4,6 +4,8 @@ import sys
 from os import mkdir, unlink, listdir, getpid
 from time import sleep
 
+# noinspection PyUnresolvedReferences
+import comet_ml  # Needs to be imported __before__ torch
 import click
 from torch.multiprocessing import Process, Queue
 import torch
