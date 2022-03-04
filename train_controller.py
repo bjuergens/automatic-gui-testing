@@ -352,4 +352,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
 
 if __name__ == "__main__":
+    # To share CUDA tensors between subprocesses we have to use "spawn" as the starting method for the subprocesses
+    # Compare also with https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+    torch.multiprocessing.set_start_method("spawn")
     main()
