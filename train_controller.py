@@ -25,14 +25,14 @@ from utils.setup_utils import load_yaml_config, initialize_logger, pretty_json, 
 #                           Thread routines                                    #
 ################################################################################
 def debug_worker_routine(p_queue, r_queue,
-                         log_dir, time_limit, device, stop_when_total_reward_exceeded):
+                         rnn_dir, time_limit, device, stop_when_total_reward_exceeded):
     """
     Same routine as worker_routine, but used for debugging
 
     Debugging is difficult with subprocesses running, therefore this function can be used without subprocesses.
     """
     with torch.no_grad():
-        r_gen = DreamRollout(log_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
+        r_gen = DreamRollout(rnn_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
                              stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
         empty_counter = 0
         while True:
