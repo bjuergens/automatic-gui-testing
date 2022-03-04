@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from os.path import join, exists
 from os import mkdir, unlink, listdir, getpid
 from time import sleep
 
@@ -89,8 +88,8 @@ def slave_routine(p_queue, r_queue, e_queue,
     """
     if tmp_dir is not None:
         # redirect streams
-        sys.stdout = open(join(tmp_dir, str(getpid()) + '.out'), 'a')
-        sys.stderr = open(join(tmp_dir, str(getpid()) + '.err'), 'a')
+        sys.stdout = open(os.path.join(tmp_dir, str(getpid()) + '.out'), 'a')
+        sys.stderr = open(os.path.join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
         r_gen = DreamRollout(rnn_dir, device, time_limit, load_best_rnn=True, load_best_vae=True)
@@ -222,23 +221,19 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         save_yaml_config(os.path.join(log_dir, "config.yaml"), config)
 
         # Create tmp dir if non existent and clean it if existent
-        tmp_dir = join(log_dir, "tmp")
-        if not exists(tmp_dir):
+        tmp_dir = os.path.join(log_dir, "tmp")
+        if not os.path.exists(tmp_dir):
             mkdir(tmp_dir)
         else:
             for fname in listdir(tmp_dir):
-                unlink(join(tmp_dir, fname))
+                unlink(os.path.join(tmp_dir, fname))
 
         logging.info(f"Started Controller training version_{summary_writer.version_number} for {max_generations} "
                      "generations")
     else:
         summary_writer = None
+        log_dir = None
         tmp_dir = None
-
-    # create ctrl dir if non existent
-    # ctrl_dir = join(args.logdir, 'ctrl')
-    # if not exists(ctrl_dir):
-    #     mkdir(ctrl_dir)
 
     ################################################################################
     #                Define queues and start workers                               #
@@ -267,14 +262,20 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     # Define current best and load parameters
     current_best = None
 
-    # TODO use load_path
-    # ctrl_file = join(save_dir, 'best.tar')
-    # print("Attempting to load previous best...")
-    # if exists(ctrl_file):
-    #     state = torch.load(ctrl_file, map_location={'cuda:0': 'cpu'})
-    #     cur_best = - state['reward']
-    #     controller.load_state_dict(state['state_dict'])
-    #     print("Previous best was {}...".format(-cur_best))
+    if load_path is not None:
+        state = torch.load(os.path.join(load_path, "best.pt"), map_location=device)
+        # Take minus of the reward because when saving we "convert" it back to the normal way of summing up the fitness
+        # For training we however take the negative amount as the CMA-ES implementation minimizes the fitness instead
+        # of maximizing it
+        current_best = -state["reward"]
+        controller.load_state_dict(state["state_dict"])
+
+        if not debug:
+            old_config = load_yaml_config(os.path.join(load_path, "config.yaml"))
+            old_config["original_location"] = load_path
+            save_yaml_config(os.path.join(log_dir, "loaded_from_this_config.yaml"), old_config)
+
+        logging.info(f"Loading previous training from {load_path}. Starting training with newly given configuration")
 
     parameters = controller.parameters()
     es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), sigma, {"popsize": population_size})
@@ -331,17 +332,20 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 summary_writer.add_scalar("mean", -np.mean(r_list), global_step=generation)
                 summary_writer.add_scalar("best", -best, global_step=generation)
 
-                if save_model_checkpoints and (current_best is None or best < current_best):
-                    current_best = best
-                    print("Saving new best with value {}+-{}...".format(-current_best, std_best))
-                    load_parameters(best_params, controller)
-
+                if save_model_checkpoints:
                     # noinspection PyUnboundLocalVariable
-                    torch.save(
-                        {"generation": generation,
-                         "reward": -current_best,
-                         "state_dict": controller.state_dict()},
-                        best_model_filename)
+                    if not os.path.exists(best_model_filename) or current_best is None or best < current_best:
+                        current_best = best
+                        print("Saving new best with value {}+-{}...".format(-current_best, std_best))
+                        load_parameters(best_params, controller)
+
+                        # noinspection PyUnboundLocalVariable
+                        torch.save(
+                            {"generation": generation,
+                             "reward": -current_best,
+                             "state_dict": controller.state_dict()},
+                            best_model_filename)
+
             if target_return is not None and -best > target_return:
                 print("Terminating controller training with value {}...".format(-best))
                 break
