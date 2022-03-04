@@ -246,7 +246,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         logging.info(f"Loading previous training from {load_path}. Starting training with newly given configuration")
 
     parameters = controller.parameters()
-    es = cma.CMAEvolutionStrategy(flatten_parameters(parameters), sigma, {"popsize": population_size})
+    es = cma.CMAEvolutionStrategy(
+        flatten_parameters(parameters),
+        sigma,
+        {"popsize": population_size, "seed": manual_seed}
+    )
 
     generation = 0
 
