@@ -6,7 +6,7 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from models import select_vae_model, select_rnn_model
+from models import select_vae_model, select_rnn_model, Controller
 from models.vae import BaseVAE
 from utils.setup_utils import load_yaml_config
 
@@ -134,6 +134,30 @@ def load_rnn_architecture(rnn_directory: str, device: torch.device, batch_size=N
         load_optimizer=load_optimizer,
         rnn_batch_size=batch_size
     )
+
+
+def construct_controller(rnn_dir: str, vae_dir: str):
+    rnn_config = load_yaml_config(os.path.join(rnn_dir, "config.yaml"))
+    vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
+    latent_size = vae_config["model_parameters"]["latent_size"]
+    hidden_size = rnn_config["model_parameters"]["hidden_size"]
+    action_size = rnn_config["model_parameters"]["action_size"]
+
+    controller = Controller(latent_size, hidden_size, action_size)
+
+    return controller
+
+
+def load_controller_parameters(controller, controller_directory: str, device: torch.device):
+    state = torch.load(os.path.join(controller_directory, "best.pt"), map_location=device)
+
+    # Take minus of the reward because when saving we "convert" it back to the normal way of summing up the fitness
+    # For training we however take the negative amount as the CMA-ES implementation minimizes the fitness instead
+    # of maximizing it
+    current_best = -state["reward"]
+    controller.load_state_dict(state["state_dict"])
+
+    return controller, current_best
 
 
 def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, device, load_best: bool = True):

@@ -10,7 +10,6 @@ import click
 from torch.multiprocessing import Process, Queue
 import torch
 import cma
-from models import Controller
 from tqdm import tqdm
 import numpy as np
 
@@ -21,6 +20,7 @@ from utils.rollout.dream_rollout import DreamRollout
 from utils.setup_utils import (
     load_yaml_config, initialize_logger, pretty_json, save_yaml_config, set_seeds, get_device, get_depending_model_path
 )
+from utils.training_utils.training_utils import load_controller_parameters, construct_controller
 
 
 ################################################################################
@@ -222,25 +222,14 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     ################################################################################
     #                           Launch CMA                                         #
     ################################################################################
-    rnn_config = load_yaml_config(os.path.join(rnn_dir, "config.yaml"))
-    vae_dir = rnn_config["vae_parameters"]["directory"]
-    vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
-    latent_size = vae_config["model_parameters"]["latent_size"]
-    hidden_size = rnn_config["model_parameters"]["hidden_size"]
-    action_size = rnn_config["model_parameters"]["action_size"]
 
-    controller = Controller(latent_size, hidden_size, action_size)  # dummy instance
+    controller = construct_controller(rnn_dir, vae_dir)  # Dummy instance
 
     # Define current best and load parameters
     current_best = None
 
     if load_path is not None:
-        state = torch.load(os.path.join(load_path, "best.pt"), map_location=device)
-        # Take minus of the reward because when saving we "convert" it back to the normal way of summing up the fitness
-        # For training we however take the negative amount as the CMA-ES implementation minimizes the fitness instead
-        # of maximizing it
-        current_best = -state["reward"]
-        controller.load_state_dict(state["state_dict"])
+        controller, current_best = load_controller_parameters(controller, load_path, device)
 
         if not debug:
             old_config = load_yaml_config(os.path.join(load_path, "config.yaml"))
