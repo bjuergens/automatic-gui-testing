@@ -108,6 +108,9 @@ class GUIEnvRollout:
 
         return total_reward
 
+    def __del__(self):
+        self.env.close()
+
 
 def main():
     os.chdir("/home/pdeubel/PycharmProjects/world-models-testing/")
