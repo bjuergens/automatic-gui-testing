@@ -13,9 +13,10 @@ INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
 
 class DreamRollout:
 
-    def __init__(self, rnn_dir: str, device, time_limit: int = 1000, load_best_rnn: bool = True,
+    def __init__(self, rnn_dir: str, vae_dir: str, device, time_limit: int = 1000, load_best_rnn: bool = True,
                  load_best_vae: bool = True, stop_when_total_reward_exceeded: bool = False):
         self.rnn_dir = rnn_dir
+        self.vae_dir = vae_dir
         self.device = device
         self.time_limit = time_limit
         self.stop_when_total_reward_exceeded = stop_when_total_reward_exceeded
@@ -24,12 +25,10 @@ class DreamRollout:
         # this has to be done before passing it to this constructor
         rnn_config = load_yaml_config(os.path.join(self.rnn_dir, "config.yaml"))
 
-        vae_dir = rnn_config["vae_parameters"]["directory"]
-
-        initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
+        initial_obs_path = os.path.join(self.vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
         if not os.path.exists(initial_obs_path):
             # VAE did not yet encode initial state of the GUI into a latent code, do it now
-            generate_initial_observation_latent_vector(initial_obs_path, vae_dir, self.device, load_best_vae)
+            generate_initial_observation_latent_vector(initial_obs_path, self.vae_dir, self.device, load_best_vae)
 
         # Stores mu and log_var not z; we want to sample a new z from these everytime we reset
         # Avoids getting fixated on a particular z
@@ -41,7 +40,7 @@ class DreamRollout:
                                             load_optimizer=False)
         self.rnn.eval()
 
-        vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
+        vae_config = load_yaml_config(os.path.join(self.vae_dir, "config.yaml"))
         if vae_config["model_parameters"]["apply_value_range_when_kld_disabled"]:
             raise RuntimeError(f"VAE used apply_value_range_when_kld_disabled but this is not properly implemented "
                                "in the dream rollout")

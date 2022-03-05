@@ -21,9 +21,10 @@ POSSIBLE_STOP_MODES = ["time", "iterations"]
 
 class GUIEnvRollout:
 
-    def __init__(self, rnn_dir: str, device, stop_mode: str, amount: int = 1000, load_best_rnn: bool = True,
-                 load_best_vae: bool = True):
+    def __init__(self, rnn_dir: str, vae_dir: str, device, stop_mode: str, amount: int = 1000,
+                 load_best_rnn: bool = True, load_best_vae: bool = True):
         self.rnn_dir = rnn_dir
+        self.vae_dir = vae_dir
         self.device = device
         self.stop_mode = stop_mode
         self.amount = amount
@@ -32,17 +33,15 @@ class GUIEnvRollout:
 
         rnn_config = load_yaml_config(os.path.join(self.rnn_dir, "config.yaml"))
 
-        # TODO fix path here, could be that vae was trained or stored on other machine
-        vae_dir = rnn_config["vae_parameters"]["directory"]
-
-        self.vae, _ = load_vae_architecture(vae_dir, device=self.device, load_best=load_best_vae, load_optimizer=False)
+        self.vae, _ = load_vae_architecture(self.vae_dir, device=self.device, load_best=load_best_vae,
+                                            load_optimizer=False)
         self.vae.eval()
 
         self.rnn, _ = load_rnn_architecture(self.rnn_dir, device=self.device, batch_size=1, load_best=load_best_rnn,
                                             load_optimizer=False)
         self.rnn.eval()
 
-        vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
+        vae_config = load_yaml_config(os.path.join(self.vae_dir, "config.yaml"))
 
         latent_size = vae_config["model_parameters"]["latent_size"]
         hidden_size = rnn_config["model_parameters"]["hidden_size"]
