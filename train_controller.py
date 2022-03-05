@@ -13,6 +13,7 @@ import cma
 from tqdm import tqdm
 import numpy as np
 
+from evaluation.controller.evaluate_controller import evaluate_controller
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.misc import load_parameters
 from utils.misc import flatten_parameters
@@ -146,6 +147,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     stop_when_total_reward_exceeded = config["experiment_parameters"]["stop_when_total_reward_exceeded"]
     time_limit = config["experiment_parameters"]["time_limit"]
     max_generations = config["experiment_parameters"]["max_generations"]
+
+    evaluate_final_on_actual_environment = config["evaluation_parameters"]["evaluate_final_on_actual_environment"]
+    evaluation_stop_mode = config["evaluation_parameters"]["evaluation_stop_mode"]
+    evaluation_amount = config["evaluation_parameters"]["evaluation_amount"]
 
     rnn_dir = config["rnn_parameters"]["rnn_dir"]
     # Use rnn_dir directly, we only want training on local models anyway
@@ -323,14 +328,29 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     e_queue.put("EOP")
 
     if not debug:
+        if evaluate_final_on_actual_environment:
+            evaluated_rewards = evaluate_controller(
+                controller_directory=log_dir,
+                gpu=gpu_id,
+                stop_mode=evaluation_stop_mode,
+                amount=evaluation_amount,
+                number_of_evaluations=5
+            )
+
+            summary_writer.add_scalar("eval_min", np.min(evaluated_rewards), global_step=0)
+            summary_writer.add_scalar("eval_max", np.max(evaluated_rewards), global_step=0)
+            summary_writer.add_scalar("eval_mean", np.mean(evaluated_rewards), global_step=0)
+            summary_writer.add_scalar("eval_std", np.std(evaluated_rewards), global_step=0)
+
         # Use prefix e for experiment_parameters to avoid possible reassignment of a hparam when combining with
         # other parameters
         exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
+        evaluation_params = {f"ev_{k}": v for k, v in config["evaluation_parameters"].items()}
         rnn_params = {f"rnn_{k}": v for k, v in config["rnn_parameters"].items()}
         trainer_params = {f"t_{k}": v for k, v in config["trainer_parameters"].items()}
         logging_params = {f"l_{k}": v for k, v in config["logging_parameters"].items()}
 
-        hparams = {**exp_params, **rnn_params, **trainer_params, **logging_params}
+        hparams = {**exp_params, **evaluation_params, **rnn_params, **trainer_params, **logging_params}
 
         if current_best is None:
             current_best = 0

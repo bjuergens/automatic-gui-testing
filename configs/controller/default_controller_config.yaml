@@ -9,6 +9,11 @@ experiment_parameters:
   max_generations: 5
   manual_seed: 1010
 
+evaluation_parameters:
+  evaluate_final_on_actual_environment: True
+  evaluation_stop_mode: "iterations"
+  evaluation_amount: 1000
+
 rnn_parameters:
   rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_rnn/version_0"
 
