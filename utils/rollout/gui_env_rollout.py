@@ -1,4 +1,5 @@
 import os
+import time
 
 import gym
 # noinspection PyUnresolvedReferences
@@ -15,14 +16,19 @@ from utils.training_utils.training_utils import (
     load_rnn_architecture, load_vae_architecture, vae_transformation_functions
 )
 
+POSSIBLE_STOP_MODES = ["time", "iterations"]
+
 
 class GUIEnvRollout:
 
-    def __init__(self, rnn_dir: str, device, time_limit: int = 1000, load_best_rnn: bool = True,
+    def __init__(self, rnn_dir: str, device, stop_mode: str, amount: int = 1000, load_best_rnn: bool = True,
                  load_best_vae: bool = True):
         self.rnn_dir = rnn_dir
         self.device = device
-        self.time_limit = time_limit
+        self.stop_mode = stop_mode
+        self.amount = amount
+
+        assert self.stop_mode in POSSIBLE_STOP_MODES
 
         rnn_config = load_yaml_config(os.path.join(self.rnn_dir, "config.yaml"))
 
@@ -64,7 +70,17 @@ class GUIEnvRollout:
 
         total_reward = 0
 
-        for t in range(self.time_limit):
+        t = 0
+        start_time = time.time()
+
+        while True:
+            if self.stop_mode == "time":
+                if time.time() >= start_time + self.amount:
+                    break
+            else:
+                if t >= self.amount:
+                    break
+
             ob = self.vae_transformation_functions(Image.fromarray(ob)).unsqueeze(0).to(self.device)
             with torch.no_grad():
                 mu, log_var = self.vae.encode(ob)
@@ -88,6 +104,8 @@ class GUIEnvRollout:
             # Then maximum code coverage is achieved
             if total_reward >= 1.0:
                 break
+
+            t += 1
 
         return total_reward
 
