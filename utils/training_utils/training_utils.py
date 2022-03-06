@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Tuple, Union
 
@@ -162,6 +163,7 @@ def load_controller_parameters(controller, controller_directory: str, device: to
 
 def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, device, load_best: bool = True):
     if os.path.exists(initial_obs_path):
+        logging.info("Initial observation in latent space already calculated, continuing")
         return
 
     vae, _ = load_vae_architecture(vae_dir, device, load_best=load_best, load_optimizer=False)
@@ -186,3 +188,7 @@ def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, d
     with h5py.File(initial_obs_path, "w") as f:
         f.create_dataset(f"mu", data=mu.cpu())
         f.create_dataset(f"log_var", data=log_var.cpu())
+
+    # Explicitly delete vae to free memory from gpu
+    del vae
+    logging.info("Calculated and stored the initial observation in latent space")
