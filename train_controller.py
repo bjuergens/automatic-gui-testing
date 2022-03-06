@@ -231,7 +231,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     if not debug:
         for p_index in range(number_of_workers):
             Process(target=worker_routine, args=(p_queue, r_queue, e_queue,
-                                                 tmp_dir, rnn_dir, vae_dir, time_limit, device,
+                                                 tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
                                                  stop_when_total_reward_exceeded)).start()
 
     ################################################################################
