@@ -6,15 +6,13 @@ import torch
 from models import Controller, BaseVAE
 from utils.misc import load_parameters
 from utils.setup_utils import load_yaml_config
-from utils.training_utils.training_utils import generate_initial_observation_latent_vector, load_rnn_architecture
-
-INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
+from utils.training_utils.training_utils import load_rnn_architecture
 
 
 class DreamRollout:
 
-    def __init__(self, rnn_dir: str, vae_dir: str, device, time_limit: int = 1000, load_best_rnn: bool = True,
-                 load_best_vae: bool = True, stop_when_total_reward_exceeded: bool = False):
+    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, device, time_limit: int = 1000,
+                 load_best_rnn: bool = True, stop_when_total_reward_exceeded: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
         self.device = device
@@ -24,11 +22,6 @@ class DreamRollout:
         # rnn_dir (and vae_dir inside the rnn config) must point to a valid location, if the path has to be adapted
         # this has to be done before passing it to this constructor
         rnn_config = load_yaml_config(os.path.join(self.rnn_dir, "config.yaml"))
-
-        initial_obs_path = os.path.join(self.vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
-        if not os.path.exists(initial_obs_path):
-            # VAE did not yet encode initial state of the GUI into a latent code, do it now
-            generate_initial_observation_latent_vector(initial_obs_path, self.vae_dir, self.device, load_best_vae)
 
         # Stores mu and log_var not z; we want to sample a new z from these everytime we reset
         # Avoids getting fixated on a particular z

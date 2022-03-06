@@ -21,21 +21,25 @@ from utils.rollout.dream_rollout import DreamRollout
 from utils.setup_utils import (
     load_yaml_config, initialize_logger, pretty_json, save_yaml_config, set_seeds, get_device, get_depending_model_path
 )
-from utils.training_utils.training_utils import load_controller_parameters, construct_controller
+from utils.training_utils.training_utils import (
+    load_controller_parameters, construct_controller, generate_initial_observation_latent_vector
+)
+
+INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
 
 
 ################################################################################
 #                           Thread routines                                    #
 ################################################################################
 def debug_worker_routine(p_queue, r_queue,
-                         rnn_dir, vae_dir, time_limit, device, stop_when_total_reward_exceeded):
+                         rnn_dir, vae_dir, initial_obs_path, time_limit, device, stop_when_total_reward_exceeded):
     """
     Same routine as worker_routine, but used for debugging
 
     Debugging is difficult with subprocesses running, therefore this function can be used without subprocesses.
     """
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
+        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, device, time_limit, load_best_rnn=True,
                              stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
         empty_counter = 0
         while True:
@@ -52,7 +56,7 @@ def debug_worker_routine(p_queue, r_queue,
 
 
 def worker_routine(p_queue, r_queue, e_queue,
-                   tmp_dir, rnn_dir, vae_dir, time_limit, device, stop_when_total_reward_exceeded):
+                   tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit, device, stop_when_total_reward_exceeded):
     """ Thread routine.
 
     Threads interact with p_queue, the parameters queue, r_queue, the result
@@ -80,7 +84,7 @@ def worker_routine(p_queue, r_queue, e_queue,
         sys.stderr = open(os.path.join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, device, time_limit, load_best_rnn=True, load_best_vae=True,
+        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, device, time_limit, load_best_rnn=True,
                              stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
 
         while e_queue.empty():
@@ -94,7 +98,7 @@ def worker_routine(p_queue, r_queue, e_queue,
 ################################################################################
 #                           Evaluation                                         #
 ################################################################################
-def evaluate(p_queue, r_queue, rnn_dir, vae_dir, time_limit,
+def evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit,
              solutions, results, rollouts, device, stop_when_total_reward_exceeded, debug=False):
     """ Give current controller evaluation.
 
@@ -114,7 +118,8 @@ def evaluate(p_queue, r_queue, rnn_dir, vae_dir, time_limit,
         p_queue.put((s_id, best_guess))
 
     if debug:
-        debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, time_limit, device, stop_when_total_reward_exceeded)
+        debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
+                             stop_when_total_reward_exceeded)
 
     logging.info("Evaluating...")
     for _ in tqdm(range(rollouts)):
@@ -211,6 +216,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         log_dir = None
         tmp_dir = None
 
+    # Set up initial observation
+    initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
+    # If file already exists this function will just return
+    generate_initial_observation_latent_vector(initial_obs_path, vae_dir, device, load_best=True)
+
     ################################################################################
     #                Define queues and start workers                               #
     ################################################################################
@@ -267,7 +277,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 p_queue.put((s_id, s))
 
         if debug:
-            debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, time_limit, device, stop_when_total_reward_exceeded)
+            debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
+                                 stop_when_total_reward_exceeded)
 
         if display_progress_bars:
             progress_bar = tqdm(total=population_size * number_of_samples, desc=f"Generation {generation} - Rewards")
@@ -290,8 +301,9 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         # evaluation and saving
         if generation % scalar_log_frequency == 0 or generation == max_generations - 1:
-            best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, vae_dir, time_limit, solutions, r_list,
-                                                   rollouts=number_of_evaluations, device=device,
+            best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path,
+                                                   time_limit, solutions, r_list, rollouts=number_of_evaluations,
+                                                   device=device,
                                                    stop_when_total_reward_exceeded=stop_when_total_reward_exceeded,
                                                    debug=debug)
             logging.info(f"Current evaluation: {-best}")

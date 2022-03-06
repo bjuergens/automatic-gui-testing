@@ -161,6 +161,9 @@ def load_controller_parameters(controller, controller_directory: str, device: to
 
 
 def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, device, load_best: bool = True):
+    if os.path.exists(initial_obs_path):
+        return
+
     vae, _ = load_vae_architecture(vae_dir, device, load_best=load_best, load_optimizer=False)
     vae.eval()
 
