@@ -191,4 +191,5 @@ def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, d
 
     # Explicitly delete vae to free memory from gpu
     del vae
+    torch.cuda.empty_cache()
     logging.info("Calculated and stored the initial observation in latent space")
