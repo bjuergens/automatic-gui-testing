@@ -7,7 +7,6 @@ from time import sleep
 # noinspection PyUnresolvedReferences
 import comet_ml  # Needs to be imported __before__ torch
 import click
-from torch.multiprocessing import Process, Queue
 import torch
 import cma
 from tqdm import tqdm
@@ -224,15 +223,26 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     ################################################################################
     #                Define queues and start workers                               #
     ################################################################################
-    p_queue = Queue()
-    r_queue = Queue()
-    e_queue = Queue()
+    # To share CUDA tensors between subprocesses we have to use "spawn" as the starting method for the subprocesses
+    # Compare also with https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+    # Also use the get_context method, as globally defining the start method messes with comet_ml and the stdout
+    # log is no longer shown for some reason
+    ctx = torch.multiprocessing.get_context("spawn")
+    p_queue = ctx.Queue()
+    r_queue = ctx.Queue()
+    e_queue = ctx.Queue()
 
     if not debug:
+        processes = []
         for p_index in range(number_of_workers):
-            Process(target=worker_routine, args=(p_queue, r_queue, e_queue,
-                                                 tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
-                                                 stop_when_total_reward_exceeded)).start()
+            p = ctx.Process(
+                target=worker_routine,
+                args=(p_queue, r_queue, e_queue, tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit,
+                      device, stop_when_total_reward_exceeded)
+            )
+
+            processes.append(p)
+            p.start()
 
     ################################################################################
     #                           Launch CMA                                         #
@@ -340,6 +350,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     e_queue.put("EOP")
 
     if not debug:
+        # noinspection PyUnboundLocalVariable
+        for p in processes:
+            p.join()
+            p.close()
+
         if evaluate_final_on_actual_environment:
             evaluated_rewards = evaluate_controller(
                 controller_directory=log_dir,
@@ -377,7 +392,4 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
 
 if __name__ == "__main__":
-    # To share CUDA tensors between subprocesses we have to use "spawn" as the starting method for the subprocesses
-    # Compare also with https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-    torch.multiprocessing.set_start_method("spawn")
     main()
