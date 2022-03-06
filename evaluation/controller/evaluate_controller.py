@@ -12,7 +12,7 @@ from utils.setup_utils import initialize_logger
 
 def evaluate_controller(controller_directory: str, gpu: int, stop_mode: str, amount: int, number_of_evaluations: int):
     python_commands = [
-        "python", "evaluation/controller/_evaluation_run.py",
+        "python", "-m", "evaluation.controller._evaluation_run",
         f"--dir={controller_directory}",
         f"--gpu={gpu}"
     ]
