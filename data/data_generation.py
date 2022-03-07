@@ -34,7 +34,7 @@ def _store_data(data: dict, iteration: int, action: Tuple[int, int], reward: flo
 
 def _rollout_one_iteration(env, current_iteration: int, observations_directory: str,
                            reward_sum: float, rewards: list, actions: list) -> Tuple[float, list, list]:
-    reward, observation, done, info = env.step(True)
+    observation, reward, done, info = env.step(True)
     _save_observation(observation, current_iteration, observations_directory)
 
     # Transform to [0, 1] range

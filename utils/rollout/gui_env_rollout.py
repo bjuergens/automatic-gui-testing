@@ -93,7 +93,7 @@ class GUIEnvRollout:
             actions = actions.squeeze()
             actions = self.denormalize_actions(actions).round().int()
 
-            rew, ob, done, info = self.env.step((actions[0], actions[1]))
+            ob, rew, done, info = self.env.step((actions[0], actions[1]))
 
             # Transform to [0, 1] range
             rew /= 100.0
