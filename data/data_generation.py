@@ -149,9 +149,12 @@ def main(root_dir: str, directory: str,
 
     logger, formatter = initialize_logger()
 
+    log_file_path = None
+
     if log:
+        log_file_path = os.path.join(chosen_directory, "monkey_tester.log")
         logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(os.path.join(chosen_directory, "monkey_tester.log"), "w")
+        fh = logging.FileHandler(log_file_path, "w")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
     else:
@@ -162,7 +165,8 @@ def main(root_dir: str, directory: str,
     if html_report:
         html_report_directory = os.path.join(chosen_directory, "html-report")
 
-    env_kwargs = {"generate_html_report": html_report, "html_report_directory": html_report_directory}
+    env_kwargs = {"generate_html_report": html_report, "html_report_directory": html_report_directory,
+                  "log": log, "log_file_path": log_file_path}
 
     if monkey_type == RANDOM_CLICK_MONKEY_TYPE:
         env_id = "PySideGUIRandomClick-v0"
