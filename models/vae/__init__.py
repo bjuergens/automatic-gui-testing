@@ -4,7 +4,8 @@ from models.vae.vae_full_input import VAEFullInputSize
 from models.vae.large_vae_small_kernel import LargeVAESmallKernels, EvenLargerVAESmallKernels
 
 from models.vae.no_max_pool import (
-    LargeFilterSizesVAE, SmallFilterSizesVAE, DecreasingFilterSizesVAE, SmallFilterSizesSmallBottleneckVAE,
+    LargeFilterSizesVAE, LargeFilterSizesVAE2, SmallFilterSizesVAE, DecreasingFilterSizesVAE,
+    SmallFilterSizesSmallBottleneckVAE,
     SmallFilterSizesSmallBottleneckVAE2, SmallFilterSizesSmallBottleneckVAE3,
     HalfInputSmallFilterSizesSmallBottleneckVAE, HalfInputSmallFilterSizesSmallBottleneckVAE2
 )
