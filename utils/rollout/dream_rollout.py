@@ -59,7 +59,7 @@ class DreamRollout:
 
             with torch.no_grad():
                 rnn_output = self.rnn(latent_observation, actions)
-                latent_observation, reward = self.rnn.predict(rnn_output)
+                latent_observation, reward = self.rnn.predict(rnn_output, latent_observation)
 
             total_reward += reward.squeeze()
 
