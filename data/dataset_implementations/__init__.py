@@ -96,8 +96,7 @@ def get_main_rnn_data_loader(dataset_name: str, dataset_path: str, split: str, s
         dataset=dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        drop_last=False,
-        **additional_dataloader_kwargs
+        drop_last=False
     )
 
     return data_loader

@@ -198,6 +198,7 @@ def main(config_path: str, disable_comet: bool):
     )
 
     main_val_dataset = get_main_rnn_data_loader(
+        dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="val",
         sequence_length=sequence_length,
