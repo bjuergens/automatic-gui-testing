@@ -109,6 +109,15 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
         return sequence_dataset[index % sequence_dataset.__len__()], sequence_dataset_index
 
 
+class GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders(GUIMultipleSequencesVaryingLengths):
+
+    def __len__(self):
+        return self.number_of_sequences
+
+    def __getitem__(self, index: int):
+        return self.sequence_datasets[index]
+
+
 class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
                  use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
@@ -169,3 +178,33 @@ class GUIEnvSequencesDatasetMixed3600k(GUIMultipleSequencesVaryingLengths):
             assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[14:16]])
 
             assert len(self.sequence_datasets) == 16
+
+
+###########################
+# Individual Data Loaders
+#
+# This means that the main dataset class stores sequences and individual dataloaders for each sequence are used.
+# Another approach (see above) is to have only one dataloader for all sequences but that can be a bit confusing on how
+# sequences are indexed and also may be prone to bugs because it is nested. Nevertheless one dataloader could lead to
+# faster training.
+###########################
+
+class GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k(GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
+                 use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data,
+                         actions_transformation_function, rewards_transformation_function)
+        if self.split == "train":
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:70]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[70:110]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[110:140]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[140:160]])
+
+            assert len(self.sequence_datasets) == 160
+        else:
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:2]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[2:4]])
+            assert all([seq.rewards.size(0) == 5000 for seq in self.sequence_datasets[4:6]])
+            assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
+
+            assert len(self.sequence_datasets) == 8
