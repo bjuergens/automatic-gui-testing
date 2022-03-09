@@ -29,8 +29,8 @@ class DreamRollout:
             self.initial_mu = torch.from_numpy(f["mu"][:]).to(self.device)
             self.initial_log_var = torch.from_numpy(f["log_var"][:]).to(self.device)
 
-        self.rnn, _ = load_rnn_architecture(self.rnn_dir, self.device, batch_size=1, load_best=load_best_rnn,
-                                            load_optimizer=False)
+        self.rnn, _ = load_rnn_architecture(self.rnn_dir, self.vae_dir, self.device, batch_size=1,
+                                            load_best=load_best_rnn, load_optimizer=False)
         self.rnn.eval()
 
         vae_config = load_yaml_config(os.path.join(self.vae_dir, "config.yaml"))

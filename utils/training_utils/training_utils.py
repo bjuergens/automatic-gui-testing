@@ -82,7 +82,7 @@ def save_checkpoint(state: dict, is_best: bool, checkpoint_filename: str, best_f
 
 
 def load_architecture(model_type: str, model_dir: str, device, load_best: bool = True, load_optimizer: bool = False,
-                      rnn_batch_size=None):
+                      rnn_batch_size=None, vae_directory=None):
     config = load_yaml_config(os.path.join(model_dir, "config.yaml"))
     model_name = config["model_parameters"]["name"]
 
@@ -93,7 +93,7 @@ def load_architecture(model_type: str, model_dir: str, device, load_best: bool =
         if rnn_batch_size is None:
             rnn_batch_size = config["experiment_parameters"]["batch_size"]
 
-        vae_config = load_yaml_config(os.path.join(config["vae_parameters"]["directory"], "config.yaml"))
+        vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
         latent_size = vae_config["model_parameters"]["latent_size"]
 
         model_class = select_rnn_model(model_name)
@@ -125,7 +125,8 @@ def load_vae_architecture(vae_directory: str, device: torch.device, load_best: b
     )
 
 
-def load_rnn_architecture(rnn_directory: str, device: torch.device, batch_size=None, load_best: bool = True,
+def load_rnn_architecture(rnn_directory: str, vae_directory: str, device: torch.device, batch_size=None,
+                          load_best: bool = True,
                           load_optimizer: bool = False) -> Union[Tuple[BaseVAE, str], Tuple[BaseVAE, str, dict]]:
     return load_architecture(
         "rnn",
@@ -133,7 +134,8 @@ def load_rnn_architecture(rnn_directory: str, device: torch.device, batch_size=N
         device=device,
         load_best=load_best,
         load_optimizer=load_optimizer,
-        rnn_batch_size=batch_size
+        rnn_batch_size=batch_size,
+        vae_directory=vae_directory
     )
 
 
