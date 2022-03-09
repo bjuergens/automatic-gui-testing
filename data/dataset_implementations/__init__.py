@@ -72,6 +72,55 @@ def get_vae_dataloader(dataset_name: str, dataset_path: str, split: str, transfo
     return dataloader
 
 
+def get_main_rnn_data_loader(dataset_name: str, dataset_path: str, split: str, sequence_length: int, batch_size: int,
+                             actions_transformation_function, reward_transformation_function,
+                             vae_preprocessed_data_path: str, use_shifted_data: bool,
+                             shuffle: bool = False, **additional_dataloader_kwargs):
+
+    assert dataset_name in ["gui_env_sequences_dataset_individual_data_loaders_random_widget_500k",
+                            "multiple_sequences_varying_length_individual_data_loaders_rnn"]
+
+    dataset_type = select_rnn_dataset(dataset_name)
+
+    dataset = dataset_type(
+        root_dir=dataset_path,
+        split=split,
+        sequence_length=sequence_length,
+        vae_preprocessed_data_path=vae_preprocessed_data_path,
+        use_shifted_data=use_shifted_data,
+        actions_transformation_function=actions_transformation_function,
+        rewards_transformation_function=reward_transformation_function
+    )
+
+    data_loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=False,
+        **additional_dataloader_kwargs
+    )
+
+    return data_loader
+
+
+def get_individual_rnn_data_loaders(rnn_sequence_dataloader: GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders,
+                                    batch_size: int, shuffle: bool, **additional_dataloader_kwargs):
+    data_loaders = []
+
+    for sequence_idx, sequence in enumerate(rnn_sequence_dataloader):
+        sequence_data_loader = DataLoader(
+            dataset=sequence,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            **additional_dataloader_kwargs,
+            drop_last=True
+        )
+
+        data_loaders.append(sequence_data_loader)
+
+    return data_loaders
+
+
 def get_rnn_dataloader(dataset_name: str, dataset_path: str, split: str, sequence_length: int, batch_size: int,
                        actions_transformation_function, reward_transformation_function,
                        vae_preprocessed_data_path: str, use_shifted_data: bool,
