@@ -12,6 +12,7 @@ from models.vae import BaseVAE
 from utils.setup_utils import load_yaml_config
 
 GUI_ENV_INITIAL_STATE_FILE_PATH = "res/gui_env_initial_state.png"
+INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
 
 
 def vae_transformation_functions(img_size: int, dataset: str, output_activation_function: str):
@@ -163,10 +164,12 @@ def load_controller_parameters(controller, controller_directory: str, device: to
     return controller, current_best
 
 
-def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, device, load_best: bool = True):
+def generate_initial_observation_latent_vector(vae_dir, device, load_best: bool = True):
+    initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
+
     if os.path.exists(initial_obs_path):
         logging.info("Initial observation in latent space already calculated, continuing")
-        return
+        return initial_obs_path
 
     vae, _ = load_vae_architecture(vae_dir, device, load_best=load_best, load_optimizer=False)
     vae.eval()
@@ -195,3 +198,5 @@ def generate_initial_observation_latent_vector(initial_obs_path: str, vae_dir, d
     del vae
     torch.cuda.empty_cache()
     logging.info("Calculated and stored the initial observation in latent space")
+
+    return initial_obs_path

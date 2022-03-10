@@ -24,8 +24,6 @@ from utils.training_utils.training_utils import (
     load_controller_parameters, construct_controller, generate_initial_observation_latent_vector
 )
 
-INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
-
 
 ################################################################################
 #                           Thread routines                                    #
@@ -216,9 +214,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         tmp_dir = None
 
     # Set up initial observation
-    initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
-    # If file already exists this function will just return
-    generate_initial_observation_latent_vector(initial_obs_path, vae_dir, device, load_best=True)
+    # If file already exists this function will just return the path
+    initial_obs_path = generate_initial_observation_latent_vector(vae_dir, device, load_best=True)
 
     ################################################################################
     #                Define queues and start workers                               #
