@@ -332,13 +332,18 @@ def main(config_path: str, disable_comet: bool):
         comparison_loss_function = torch.nn.L1Loss()
         all_rewards = []
 
+        all_comparison_losses = []
+
         extended_log_info_as_txt = ""
         for i, (sequence_length, achieved_sequence_rewards) in enumerate(compared_rewards.items()):
             all_rewards.extend(achieved_sequence_rewards)
 
             actual_rewards = dict_of_sequence_rewards[sequence_length]
 
-            comparison_loss = comparison_loss_function(torch.tensor(achieved_sequence_rewards), torch.tensor(actual_rewards))
+            comparison_loss = comparison_loss_function(
+                torch.tensor(achieved_sequence_rewards), torch.tensor(actual_rewards)
+            )
+            all_comparison_losses.append(comparison_loss)
 
             extended_log_info_as_txt += (f"seq_len {sequence_length} # {len(achieved_sequence_rewards)} "
                                          f"- Actual Rew {np.mean(actual_rewards):.6f} "
@@ -354,8 +359,9 @@ def main(config_path: str, disable_comet: bool):
         summary_writer.add_scalar("eval_m_model_rew_max", np.max(all_rewards), global_step=0)
         summary_writer.add_scalar("eval_m_model_rew_mean", np.mean(all_rewards), global_step=0)
         summary_writer.add_scalar("eval_m_model_rew_std", np.std(all_rewards), global_step=0)
+        summary_writer.add_scalar(f"eval_cmp_rew_all_mean", np.mean(all_comparison_losses), global_step=0)
+        summary_writer.add_scalar(f"eval_cmp_rew_all_std", np.std(all_comparison_losses), global_step=0)
         summary_writer.add_text("eval_cmp_rew_txt", extended_log_info_as_txt, global_step=0)
-
 
     if not debug:
         # Use prefix m for model_parameters to avoid possible reassignment of a hparam when combining with
