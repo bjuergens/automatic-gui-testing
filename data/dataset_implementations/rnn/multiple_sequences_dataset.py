@@ -110,7 +110,7 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
         sequence_dataset_index = bisect(self.cumulated_sizes, index) - 1
         sequence_dataset = self.sequence_datasets[sequence_dataset_index]
 
-        return sequence_dataset[index % sequence_dataset.__len__()], sequence_dataset_index
+        return sequence_dataset[index - self.cumulated_sizes[sequence_dataset_index]], sequence_dataset_index
 
 
 class GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders(GUIMultipleSequencesVaryingLengths):

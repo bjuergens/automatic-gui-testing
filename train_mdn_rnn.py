@@ -217,7 +217,7 @@ def main(config_path: str, disable_comet: bool):
         summary_writer = ImprovedSummaryWriter(
             log_dir=save_dir,
             comet_config={
-                "project_name": "world-models/rnn",
+                "project_name": "world-models-rnn-old",
                 "disabled": disable_comet
             }
         )
