@@ -99,6 +99,10 @@ class GUIMultipleSequencesVaryingLengths(Dataset):
     def get_sequence(self, sequence_index: int) -> GUISingleSequenceShiftedDataset:
         return self.sequence_datasets[sequence_index]
 
+    def get_validation_sequences_for_m_model_comparison(self):
+        return NotImplementedError("This method is only implemented for selected datasets used for actual training. "
+                                   "Disable the M Model comparison evaluation if you want to use this current dataset")
+
     def __len__(self):
         return self.number_of_sequences
 
@@ -116,6 +120,14 @@ class GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders(GUIMultipleSequ
 
     def __getitem__(self, index: int):
         return self.sequence_datasets[index]
+
+    def get_validation_sequences_for_m_model_comparison(self):
+        validation_sequences = {
+            10: self.sequence_datasets[:10],
+            20: self.sequence_datasets[10:15],
+            50: self.sequence_datasets[15:17],
+        }
+        return validation_sequences
 
 
 class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
@@ -137,6 +149,17 @@ class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths)
             assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
 
             assert len(self.sequence_datasets) == 8
+
+    def get_validation_sequences_for_m_model_comparison(self):
+        assert self.split == "val"
+
+        validation_sequences = {
+            1000: self.sequence_datasets[:2],
+            2000: self.sequence_datasets[2:4],
+            5000: self.sequence_datasets[4:6],
+            10000: self.sequence_datasets[6:8],
+        }
+        return validation_sequences
 
 
 class GUIEnvSequencesDatasetMixed3600k(GUIMultipleSequencesVaryingLengths):
@@ -179,6 +202,17 @@ class GUIEnvSequencesDatasetMixed3600k(GUIMultipleSequencesVaryingLengths):
 
             assert len(self.sequence_datasets) == 16
 
+    def get_validation_sequences_for_m_model_comparison(self):
+        assert self.split == "val"
+
+        validation_sequences = {
+            1000: self.sequence_datasets[:2] + self.sequence_datasets[8:10],
+            2000: self.sequence_datasets[2:4] + self.sequence_datasets[10:12],
+            5000: self.sequence_datasets[4:6] + self.sequence_datasets[12:14],
+            10000: self.sequence_datasets[6:8] + self.sequence_datasets[14:16],
+        }
+        return validation_sequences
+
 
 ###########################
 # Individual Data Loaders
@@ -208,3 +242,14 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k(GUIEnvMultiple
             assert all([seq.rewards.size(0) == 10000 for seq in self.sequence_datasets[6:8]])
 
             assert len(self.sequence_datasets) == 8
+
+    def get_validation_sequences_for_m_model_comparison(self):
+        assert self.split == "val"
+
+        validation_sequences = {
+            1000: self.sequence_datasets[:2],
+            2000: self.sequence_datasets[2:4],
+            5000: self.sequence_datasets[4:6],
+            10000: self.sequence_datasets[6:8],
+        }
+        return validation_sequences
