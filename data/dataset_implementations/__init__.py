@@ -99,7 +99,7 @@ def get_main_rnn_data_loader(dataset_name: str, dataset_path: str, split: str, s
         drop_last=False
     )
 
-    return data_loader
+    return dataset, data_loader
 
 
 def get_individual_rnn_data_loaders(rnn_sequence_dataloader: GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders,

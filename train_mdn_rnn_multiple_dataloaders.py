@@ -5,11 +5,13 @@ from typing import Optional, List
 import click
 # noinspection PyUnresolvedReferences
 import comet_ml  # Needs to be imported __before__ torch
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from data.dataset_implementations import get_main_rnn_data_loader, get_individual_rnn_data_loaders
+from evaluation.mdn_rnn.reward_comparison import compare_reward_of_m_model_to_sequence
 from models import select_rnn_model
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae, get_vae_preprocessed_data_path_name
@@ -17,7 +19,7 @@ from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config, pretty_json
 from utils.training_utils import load_vae_architecture, save_checkpoint
 from utils.training_utils.average_meter import AverageMeter
-from utils.training_utils.training_utils import rnn_transformation_functions
+from utils.training_utils.training_utils import rnn_transformation_functions, generate_initial_observation_latent_vector
 
 
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
@@ -118,6 +120,7 @@ def main(config_path: str, disable_comet: bool):
     dataset_name = config["experiment_parameters"]["dataset"]
     dataset_path = config["experiment_parameters"]["data_path"]
     use_shifted_data = config["experiment_parameters"]["use_shifted_data"]
+    compare_m_model_reward_to_val_sequences = config["experiment_parameters"]["compare_m_model_reward_to_val_sequences"]
 
     num_workers = config["trainer_parameters"]["num_workers"]
     gpu_id = config["trainer_parameters"]["gpu"]
@@ -183,7 +186,7 @@ def main(config_path: str, disable_comet: bool):
         reward_output_activation_function=reward_output_activation_function
     )
 
-    main_train_dataset = get_main_rnn_data_loader(
+    _, main_train_data_loader = get_main_rnn_data_loader(
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="train",
@@ -197,7 +200,7 @@ def main(config_path: str, disable_comet: bool):
         **additional_dataloader_kwargs
     )
 
-    main_val_dataset = get_main_rnn_data_loader(
+    main_val_dataset, main_val_data_loader = get_main_rnn_data_loader(
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="val",
@@ -211,15 +214,26 @@ def main(config_path: str, disable_comet: bool):
         **additional_dataloader_kwargs
     )
 
+    if compare_m_model_reward_to_val_sequences:
+        # Little bit hacky, but the dataset has to support this option (it has to return the validation sequences).
+        # This is not implemented for every dataset so if you want to use the option the correct dataset has to be used.
+        # Therefore simply try it early and not after the whole training.
+        try:
+            main_val_dataset.get_validation_sequences_for_m_model_comparison()
+        except NotImplementedError:
+            raise RuntimeError(f"The chosen dataset {dataset_name} does not support evaluating the trained M model "
+                               "against validation sequences to compare the reward. Try another dataset, for example "
+                               "the 'GUIEnvSequencesDatasetRandomWidget500k'.")
+
     train_data_loaders = get_individual_rnn_data_loaders(
-        rnn_sequence_dataloader=main_train_dataset,
+        rnn_sequence_dataloader=main_train_data_loader,
         batch_size=batch_size,
         shuffle=False,
         **additional_dataloader_kwargs
     )
 
     val_data_loaders = get_individual_rnn_data_loaders(
-        rnn_sequence_dataloader=main_val_dataset,
+        rnn_sequence_dataloader=main_val_data_loader,
         batch_size=batch_size,
         shuffle=False,
         **additional_dataloader_kwargs
@@ -290,6 +304,56 @@ def main(config_path: str, disable_comet: bool):
         # if earlystopping.stop:
         #     print("End of Training because of early stopping at epoch {}".format(e))
         #     break
+
+    if not debug and compare_m_model_reward_to_val_sequences:
+        logging.info("Starting comparison of rewards between validation sequences and newly trained M model")
+        validation_sequences = main_val_dataset.get_validation_sequences_for_m_model_comparison()
+
+        dict_of_sequence_actions = {}
+        dict_of_sequence_rewards = {}
+        for sequence_length, sequence_list in validation_sequences.items():
+            dict_of_sequence_actions[sequence_length] = [seq.actions for seq in sequence_list]
+            dict_of_sequence_rewards[sequence_length] = [seq.rewards.sum() for seq in sequence_list]
+
+        initial_obs_path = generate_initial_observation_latent_vector(vae_directory, device, load_best=True)
+
+        compared_rewards = compare_reward_of_m_model_to_sequence(
+            dict_of_sequence_actions=dict_of_sequence_actions,
+            rnn_dir=log_dir,
+            vae_dir=vae_directory,
+            device=device,
+            initial_obs_path=initial_obs_path,
+            load_best_rnn=True,
+            render=False
+        )
+
+        comparison_loss_function = torch.nn.L1Loss()
+        all_rewards = []
+
+        extended_log_info_as_txt = ""
+        for i, (sequence_length, achieved_sequence_rewards) in enumerate(compared_rewards.items()):
+            all_rewards.extend(achieved_sequence_rewards)
+
+            actual_rewards = dict_of_sequence_rewards[sequence_length]
+
+            comparison_loss = comparison_loss_function(torch.tensor(achieved_sequence_rewards), torch.tensor(actual_rewards))
+
+            extended_log_info_as_txt += (f"seq_len {sequence_length} # {len(achieved_sequence_rewards)} "
+                                         f"- Actual Rew {np.mean(actual_rewards):.6f} "
+                                         f"- Cmp {comparison_loss:.6f} "
+                                         f"- Max {np.max(achieved_sequence_rewards):.6f} "
+                                         f"- Mean {np.mean(achieved_sequence_rewards):.6f} "
+                                         f"- Std {np.std(achieved_sequence_rewards):.6f} "
+                                         f"- Min {np.min(achieved_sequence_rewards):.6f}  \n")
+
+            summary_writer.add_scalar(f"eval_cmp_rew_{sequence_length}", comparison_loss, global_step=0)
+
+        summary_writer.add_scalar("eval_m_model_rew_min", np.min(all_rewards), global_step=0)
+        summary_writer.add_scalar("eval_m_model_rew_max", np.max(all_rewards), global_step=0)
+        summary_writer.add_scalar("eval_m_model_rew_mean", np.mean(all_rewards), global_step=0)
+        summary_writer.add_scalar("eval_m_model_rew_std", np.std(all_rewards), global_step=0)
+        summary_writer.add_text("eval_cmp_rew_txt", extended_log_info_as_txt, global_step=0)
+
 
     if not debug:
         # Use prefix m for model_parameters to avoid possible reassignment of a hparam when combining with
