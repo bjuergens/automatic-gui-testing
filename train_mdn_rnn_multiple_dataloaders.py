@@ -225,6 +225,8 @@ def main(config_path: str, disable_comet: bool):
                                "against validation sequences to compare the reward. Try another dataset, for example "
                                "the 'GUIEnvSequencesDatasetRandomWidget500k'.")
 
+        assert save_model_checkpoints, "Evaluating reward against sequences requires storing model weights"
+
     train_data_loaders = get_individual_rnn_data_loaders(
         rnn_sequence_dataloader=main_train_data_loader,
         batch_size=batch_size,
