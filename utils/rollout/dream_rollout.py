@@ -49,15 +49,14 @@ class DreamRollout:
         latent_observation = BaseVAE.reparameterization_trick(self.initial_mu, self.initial_log_var).unsqueeze(0)
 
         self.rnn.initialize_hidden()
-
         load_parameters(controller_parameters, self.controller)
 
         total_reward = 0
 
         for t in range(self.time_limit):
-            actions = self.controller(latent_observation, self.rnn.hidden_state)
 
             with torch.no_grad():
+                actions = self.controller(latent_observation, self.rnn.hidden[0])
                 rnn_output = self.rnn(latent_observation, actions)
                 latent_observation, reward = self.rnn.predict(rnn_output, latent_observation)
 

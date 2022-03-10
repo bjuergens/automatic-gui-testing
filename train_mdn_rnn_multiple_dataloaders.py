@@ -53,7 +53,7 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
     # Each DataLoader in data_loaders resembles one sequence of interactions that was recorded on the actual env
     # The order of the sequences might be shuffled, but going through one sequence itself is done sequentially
     for sequence_idx, sequence_data_loader in enumerate(data_loaders):
-        hidden = model.initialize_hidden()
+        model.initialize_hidden()
         optimizer.zero_grad()
 
         for data_idx, data in enumerate(sequence_data_loader):
@@ -64,7 +64,7 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
             latent_next_obs = vae.reparameterize(next_mus, next_log_vars)
 
             if train:
-                model_output, hidden = model(latent_obs, actions, hidden)
+                model_output = model(latent_obs, actions)
                 loss, (latent_loss, reward_loss) = model.loss_function(
                     next_latent_vector=latent_next_obs,
                     reward=rewards,
@@ -76,13 +76,13 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
-                    hidden = (hidden[0].detach(), hidden[1].detach())
+                    model.hidden = (model.hidden[0].detach(), model.hidden[1].detach())
                 else:
                     loss.backward(retain_graph=True)
             else:
                 with torch.no_grad():
                     # Do not need to detach here, as we don't compute gradients anyway
-                    model_output, hidden = model(latent_obs, actions, hidden)
+                    model_output = model(latent_obs, actions)
                     loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs,
                                                                            reward=rewards, model_output=model_output)
 

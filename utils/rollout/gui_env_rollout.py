@@ -87,7 +87,9 @@ class GUIEnvRollout:
 
                 actions = self.controller(z, self.rnn.hidden_state)
 
-                # Updates hidden state
+                actions = self.controller(z, self.rnn.hidden[0])
+
+                # Updates hidden state internally
                 self.rnn(z, actions)
 
             actions = actions.squeeze()

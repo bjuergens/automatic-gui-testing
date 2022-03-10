@@ -41,25 +41,26 @@ class BaseRNN(abc.ABC, nn.Module):
 
         self.rnn = None
         self.fc = None
-        self.hidden_state, self.cell_state = None, None
-
+        self.hidden = None
         self.initialize_hidden()
 
     def initialize_hidden(self):
-        self.hidden_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
-                                        device=self.device, requires_grad=True)
-        self.cell_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
-                                      device=self.device, requires_grad=True)
+        hidden_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
+                                   device=self.device, requires_grad=True)
+        cell_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
+                                 device=self.device, requires_grad=True)
 
-        return (self.hidden_state, self.cell_state)
+        self.hidden = (hidden_state, cell_state)
+
+        return self.hidden
 
     def rnn_forward(
-            self, latents: torch.Tensor, actions: torch.Tensor,
-            hidden: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+            self, latents: torch.Tensor,
+            actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = torch.cat([latents, actions], dim=-1)
-        outputs, new_hidden = self.rnn(x, hidden)
+        outputs, self.hidden = self.rnn(x, self.hidden)
 
-        return outputs, new_hidden
+        return outputs, self.hidden
 
     def combine_latent_and_reward_loss(self, latent_loss, reward_loss):
         if self.loss_scale_option is None:
@@ -82,7 +83,7 @@ class BaseRNN(abc.ABC, nn.Module):
         pass
 
     @abc.abstractmethod
-    def forward(self, latent_vector: torch.Tensor, action: torch.Tensor, hidden: Tuple[torch.Tensor, torch.Tensor]):
+    def forward(self, latent_vector: torch.Tensor, action: torch.Tensor):
         pass
 
     @abc.abstractmethod
@@ -121,13 +122,10 @@ class BaseMDNRNN(BaseRNN):
         # Result: (BATCH_SIZE, SEQ_LEN, L_SIZE)
         return latent_prediction, self.denormalize_reward(rewards)
 
-    def forward(self,
-                latents: torch.Tensor,
-                actions: torch.Tensor,
-                hidden: Tuple[torch.Tensor, torch.Tensor]):
+    def forward(self, latents: torch.Tensor, actions: torch.Tensor):
         sequence_length = latents.size(1)
 
-        outputs, new_hidden = self.rnn_forward(latents, actions, hidden)
+        outputs, _ = self.rnn_forward(latents, actions)
         gmm_outputs = self.fc(outputs)
 
         stride = self.number_of_gaussians * self.latent_size
@@ -146,7 +144,7 @@ class BaseMDNRNN(BaseRNN):
         rewards = gmm_outputs[:, :, -1]
         rewards = self.reward_output_activation_function(rewards).unsqueeze(-1)
 
-        return (mus, sigmas, log_pi, rewards), new_hidden
+        return mus, sigmas, log_pi, rewards
 
     def _gmm_loss_using_log(self, batch, mus, sigmas, log_pi, reduce=True):
         log_prob = -torch.log(sigmas) - 0.5 * LOG2PI - 0.5 * torch.pow((batch - mus) / sigmas, 2)
@@ -200,15 +198,15 @@ class BaseSimpleRNN(BaseRNN):
         # But since we want to use the same interface, just return the prediction here
         return model_output[0], self.denormalize_reward(model_output[1])
 
-    def forward(self, latents: torch.Tensor, actions: torch.Tensor, hidden: Tuple[torch.Tensor, torch.Tensor]):
-        outputs, new_hidden = self.rnn_forward(latents, actions, hidden)
+    def forward(self, latents: torch.Tensor, actions: torch.Tensor):
+        outputs, _ = self.rnn_forward(latents, actions)
 
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
         predicted_reward = self.reward_output_activation_function(predictions[:, :, self.latent_size:])
 
-        return (predicted_latent_vector, predicted_reward), new_hidden
+        return predicted_latent_vector, predicted_reward
 
     def loss_function(self, next_latent_vector: torch.Tensor, reward: torch.Tensor, model_output: Tuple):
         predicted_latent, predicted_reward = model_output[0], model_output[1]
