@@ -30,8 +30,8 @@ from utils.training_utils.training_utils import rnn_transformation_functions, ge
 
 def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWriter], optimizer,
               data_loaders: List[DataLoader],
-              device: torch.device, current_epoch: int, global_log_step: int, scalar_log_frequency: int,
-              train: bool, debug: bool):
+              device: torch.device, tbptt_frequency: int, current_epoch: int, global_log_step: int,
+              scalar_log_frequency: int, train: bool, debug: bool):
     if train:
         model.train()
         loss_key = "loss"
@@ -53,7 +53,8 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
     # Each DataLoader in data_loaders resembles one sequence of interactions that was recorded on the actual env
     # The order of the sequences might be shuffled, but going through one sequence itself is done sequentially
     for sequence_idx, sequence_data_loader in enumerate(data_loaders):
-        model.initialize_hidden()
+        hidden = model.initialize_hidden()
+        optimizer.zero_grad()
 
         for data_idx, data in enumerate(sequence_data_loader):
             mus, next_mus, log_vars, next_log_vars, rewards, actions = [d.to(device) for d in data]
@@ -63,15 +64,25 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
             latent_next_obs = vae.reparameterize(next_mus, next_log_vars)
 
             if train:
-                optimizer.zero_grad()
-                model_output = model(latent_obs, actions)
-                loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs, reward=rewards,
-                                                                       model_output=model_output)
-                loss.backward()
-                optimizer.step()
+                model_output, hidden = model(latent_obs, actions, hidden)
+                loss, (latent_loss, reward_loss) = model.loss_function(
+                    next_latent_vector=latent_next_obs,
+                    reward=rewards,
+                    model_output=model_output
+                )
+
+                # Store gradients only for tbptt_frequency * sequence_length (rnn parameter) time steps
+                if (data_idx + 1) % tbptt_frequency == 0 or data_idx == (len(sequence_data_loader) - 1):
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    hidden = (hidden[0].detach(), hidden[1].detach())
+                else:
+                    loss.backward(retain_graph=True)
             else:
                 with torch.no_grad():
-                    model_output = model(latent_obs, actions)
+                    # Do not need to detach here, as we don't compute gradients anyway
+                    model_output, hidden = model(latent_obs, actions, hidden)
                     loss, (latent_loss, reward_loss) = model.loss_function(next_latent_vector=latent_next_obs,
                                                                            reward=rewards, model_output=model_output)
 
@@ -116,6 +127,10 @@ def main(config_path: str, disable_comet: bool):
     sequence_length = config["experiment_parameters"]["sequence_length"]
     learning_rate = config["experiment_parameters"]["learning_rate"]
     max_epochs = config["experiment_parameters"]["max_epochs"]
+    tbptt_frequency = config["experiment_parameters"]["tbptt_frequency"]
+
+    assert tbptt_frequency > 0, ("Truncated backpropagation through time frequency (tbptt_frequency) must be "
+                                 "higher than 0")
 
     dataset_name = config["experiment_parameters"]["dataset"]
     dataset_path = config["experiment_parameters"]["data_path"]
@@ -276,12 +291,12 @@ def main(config_path: str, disable_comet: bool):
     val_loss = None
     for current_epoch in range(max_epochs):
         _, global_train_log_steps = data_pass(model, vae, summary_writer, optimizer,
-                                              train_data_loaders, device,
+                                              train_data_loaders, device, tbptt_frequency,
                                               current_epoch, global_train_log_steps, scalar_log_frequency,
                                               train=True, debug=debug)
 
         val_loss, global_val_log_steps = data_pass(model, vae, summary_writer, optimizer,
-                                                   val_data_loaders, device,
+                                                   val_data_loaders, device, tbptt_frequency,
                                                    current_epoch, global_val_log_steps, scalar_log_frequency,
                                                    train=False, debug=debug)
 

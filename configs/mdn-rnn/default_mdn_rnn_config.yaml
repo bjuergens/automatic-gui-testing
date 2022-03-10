@@ -6,6 +6,7 @@ model_parameters:
   number_of_gaussians: 5
   loss_scale_option: None
   reward_output_activation_function: "tanh"
+  truncated_backpropagation: True
 
 experiment_parameters:
   dataset: "multiple_sequences_identical_length_rnn"

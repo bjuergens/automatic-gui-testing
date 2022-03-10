@@ -47,18 +47,19 @@ class BaseRNN(abc.ABC, nn.Module):
 
     def initialize_hidden(self):
         self.hidden_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
-                                        device=self.device)
+                                        device=self.device, requires_grad=True)
         self.cell_state = torch.zeros((self.number_of_hidden_layers, self.batch_size, self.hidden_size),
-                                      device=self.device)
+                                      device=self.device, requires_grad=True)
 
-    def rnn_forward(self,
-                    latents: torch.Tensor,
-                    actions: torch.Tensor) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        return (self.hidden_state, self.cell_state)
+
+    def rnn_forward(
+            self, latents: torch.Tensor, actions: torch.Tensor,
+            hidden: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         x = torch.cat([latents, actions], dim=-1)
-        outputs, (new_hidden_state, new_cell_state) = self.rnn(x, (self.hidden_state, self.cell_state))
-        self.hidden_state, self.cell_state = new_hidden_state.detach(), new_cell_state.detach()
+        outputs, new_hidden = self.rnn(x, hidden)
 
-        return outputs, (self.hidden_state, self.cell_state)
+        return outputs, new_hidden
 
     def combine_latent_and_reward_loss(self, latent_loss, reward_loss):
         if self.loss_scale_option is None:
@@ -81,7 +82,7 @@ class BaseRNN(abc.ABC, nn.Module):
         pass
 
     @abc.abstractmethod
-    def forward(self, latent_vector: torch.Tensor, action: torch.Tensor):
+    def forward(self, latent_vector: torch.Tensor, action: torch.Tensor, hidden: Tuple[torch.Tensor, torch.Tensor]):
         pass
 
     @abc.abstractmethod
@@ -120,10 +121,13 @@ class BaseMDNRNN(BaseRNN):
         # Result: (BATCH_SIZE, SEQ_LEN, L_SIZE)
         return latent_prediction, self.denormalize_reward(rewards)
 
-    def forward(self, latents: torch.Tensor, actions: torch.Tensor):
+    def forward(self,
+                latents: torch.Tensor,
+                actions: torch.Tensor,
+                hidden: Tuple[torch.Tensor, torch.Tensor]):
         sequence_length = latents.size(1)
 
-        outputs, _ = self.rnn_forward(latents, actions)
+        outputs, new_hidden = self.rnn_forward(latents, actions, hidden)
         gmm_outputs = self.fc(outputs)
 
         stride = self.number_of_gaussians * self.latent_size
@@ -142,7 +146,7 @@ class BaseMDNRNN(BaseRNN):
         rewards = gmm_outputs[:, :, -1]
         rewards = self.reward_output_activation_function(rewards).unsqueeze(-1)
 
-        return mus, sigmas, log_pi, rewards
+        return (mus, sigmas, log_pi, rewards), new_hidden
 
     def _gmm_loss_using_log(self, batch, mus, sigmas, log_pi, reduce=True):
         log_prob = -torch.log(sigmas) - 0.5 * LOG2PI - 0.5 * torch.pow((batch - mus) / sigmas, 2)
@@ -196,15 +200,15 @@ class BaseSimpleRNN(BaseRNN):
         # But since we want to use the same interface, just return the prediction here
         return model_output[0], self.denormalize_reward(model_output[1])
 
-    def forward(self, latents: torch.Tensor, actions: torch.Tensor):
-        outputs, _ = self.rnn_forward(latents, actions)
+    def forward(self, latents: torch.Tensor, actions: torch.Tensor, hidden: Tuple[torch.Tensor, torch.Tensor]):
+        outputs, new_hidden = self.rnn_forward(latents, actions, hidden)
 
         predictions = self.fc(outputs)
 
         predicted_latent_vector = predictions[:, :, :self.latent_size]
         predicted_reward = self.reward_output_activation_function(predictions[:, :, self.latent_size:])
 
-        return predicted_latent_vector, predicted_reward
+        return (predicted_latent_vector, predicted_reward), new_hidden
 
     def loss_function(self, next_latent_vector: torch.Tensor, reward: torch.Tensor, model_output: Tuple):
         predicted_latent, predicted_reward = model_output[0], model_output[1]
