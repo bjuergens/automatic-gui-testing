@@ -25,16 +25,16 @@ class BaseRNN(abc.ABC, nn.Module):
         self.latent_size = latent_size
         self.loss_scale_option = model_parameters["loss_scale_option"]  # Can also be none
 
-        reward_output_activation_function_type = model_parameters["reward_output_activation_function"]
+        self.reward_output_activation_function_type = model_parameters["reward_output_activation_function"]
 
-        if reward_output_activation_function_type == "sigmoid":
+        if self.reward_output_activation_function_type == "sigmoid":
             self.reward_output_activation_function = nn.Sigmoid()
             self.denormalize_reward = lambda x: x
-        elif reward_output_activation_function_type == "tanh":
+        elif self.reward_output_activation_function_type == "tanh":
             self.reward_output_activation_function = nn.Tanh()
             self.denormalize_reward = lambda x: (x + 1.0) / 2.0
         else:
-            raise RuntimeError(f"Output activation function {reward_output_activation_function_type} unknown")
+            raise RuntimeError(f"Output activation function {self.reward_output_activation_function_type} unknown")
 
         self.batch_size = batch_size
         self.device = device
