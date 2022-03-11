@@ -82,6 +82,8 @@ def get_main_rnn_data_loader(dataset_name: str, dataset_path: str, split: str, s
                              shuffle: bool = False, **additional_dataloader_kwargs):
 
     assert dataset_name in ["gui_env_sequences_dataset_individual_data_loaders_random_widget_500k",
+                            "gui_env_sequences_dataset_individual_data_loaders_random_clicks_500k",
+                            "gui_env_sequences_dataset_individual_data_loaders_mixed_3600k",
                             "multiple_sequences_varying_length_individual_data_loaders_rnn"]
 
     dataset_type = select_rnn_dataset(dataset_name)
