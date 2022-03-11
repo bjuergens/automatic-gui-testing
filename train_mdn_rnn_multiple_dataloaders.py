@@ -335,7 +335,14 @@ def main(config_path: str, disable_comet: bool):
         dict_of_sequence_rewards = {}
         for sequence_length, sequence_list in validation_sequences.items():
             dict_of_sequence_actions[sequence_length] = [seq.actions for seq in sequence_list]
-            dict_of_sequence_rewards[sequence_length] = [seq.rewards.sum() for seq in sequence_list]
+
+            if model_name == "lstm_bce":
+                # Compare also to 0 _or_ 1 rewards because the LSTMBCE model predicts only 0 or 1
+                dict_of_sequence_rewards[sequence_length] = [
+                    reward_transformation_function(seq.rewards).sum() for seq in sequence_list
+                ]
+            else:
+                dict_of_sequence_rewards[sequence_length] = [seq.rewards.sum() for seq in sequence_list]
 
         initial_obs_path = generate_initial_observation_latent_vector(vae_directory, device, load_best=True)
 
