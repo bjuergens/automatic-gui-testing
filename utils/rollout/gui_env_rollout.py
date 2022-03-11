@@ -85,8 +85,6 @@ class GUIEnvRollout:
                 mu, log_var = self.vae.encode(ob)
                 z = self.vae.reparameterize(mu, log_var).unsqueeze(0)
 
-                actions = self.controller(z, self.rnn.hidden_state)
-
                 actions = self.controller(z, self.rnn.hidden[0])
 
                 # Updates hidden state internally
