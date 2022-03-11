@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 from typing import Optional, List
 
 import click
@@ -37,6 +38,10 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
         loss_key = "loss"
         latent_loss_key = "latent_loss"
         reward_loss_key = "reward_loss"
+
+        # During training, we don't want to have the same order of sequences in each epoch, therefore shuffle the
+        # data_loaders list, which contains a DataLoader object per sequence
+        random.shuffle(data_loaders)
     else:
         model.eval()
         loss_key = "val_loss"
