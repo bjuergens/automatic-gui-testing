@@ -47,7 +47,10 @@ class SimulatedGUIEnv(gym.Env):
             rnn_output = self.rnn(self.latent_observation, actions)
             self.latent_observation, reward = self.rnn.predict(rnn_output, self.latent_observation)
 
-        return self.latent_observation, reward.item(), False, {}
+        if isinstance(reward, torch.Tensor):
+            reward = reward.item()
+
+        return self.latent_observation, reward, False, {}
 
     def reset(self):
         # TODO this should technically be fixed by using a vae model and then using tanh if
