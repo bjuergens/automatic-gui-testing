@@ -26,11 +26,17 @@ class LSTMWithBCE(LSTM):
                                                                                     "activation function has to be the "
                                                                                     "sigmoid function")
 
+        # Supports float and torch.Tensor objects. As we train with either 0 or 1 as a reward we also want to predict
+        # that.
+        self.denormalize_reward = lambda x: int(x > 0.5)
+
     def predict(self, model_output, latents=None):
         # Apply sigmoid here to reward instead of self.reward_output_activation_function, because we don't apply that
         # function in forward(), instead it is fused into the loss function for the reward. Still for the prediction
         # we want values in [0, 1] range for the reward
-        return model_output[0], torch.sigmoid(model_output[1])
+        # Also since we use BCE loss and train to predict either 0 or 1 reward we have to denormalize the reward
+        # This function basically rounds down to 0 if <= 0.5 or round up to 1 in the other case
+        return model_output[0], self.denormalize_reward(torch.sigmoid(model_output[1]))
 
     def forward(self, latents: torch.Tensor, actions: torch.Tensor):
         outputs, _ = self.rnn_forward(latents, actions)
