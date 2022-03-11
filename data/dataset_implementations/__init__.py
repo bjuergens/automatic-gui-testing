@@ -8,7 +8,9 @@ from data.dataset_implementations.rnn import (
     GUISingleSequenceDataset, GUIMultipleSequencesIdenticalLengthDataset, GUIMultipleSequencesVaryingLengths,
     GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders,
     GUIEnvSequencesDatasetRandomWidget500k, GUIEnvSequencesDatasetMixed3600k, GUISequenceBatchSampler,
-    GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k
+    GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k,
+    GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k,
+    GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k
 )
 
 vae_datasets = {
@@ -25,7 +27,9 @@ rnn_datasets = {
     "multiple_sequences_varying_length_individual_data_loaders_rnn": GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders,
     "gui_env_sequences_dataset_random_widget_500k": GUIEnvSequencesDatasetRandomWidget500k,
     "gui_env_sequences_dataset_mixed_3600k": GUIEnvSequencesDatasetMixed3600k,
-    "gui_env_sequences_dataset_individual_data_loaders_random_widget_500k": GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k
+    "gui_env_sequences_dataset_individual_data_loaders_random_widget_500k": GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k,
+    "gui_env_sequences_dataset_individual_data_loaders_random_clicks_500k": GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k,
+    "gui_env_sequences_dataset_individual_data_loaders_mixed_3600k": GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k
 }
 
 
