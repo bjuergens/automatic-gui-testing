@@ -287,7 +287,7 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k(GUIEnvMultiple
         return validation_sequences
 
 
-class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIMultipleSequencesVaryingLengths):
+class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
                  use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
         super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data,
