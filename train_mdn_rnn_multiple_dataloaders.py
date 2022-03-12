@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from data.dataset_implementations import get_main_rnn_data_loader, get_individual_rnn_data_loaders
 from evaluation.mdn_rnn.reward_comparison import compare_reward_of_m_model_to_sequence
-from models import select_rnn_model
+from models import select_rnn_model, BaseVAE
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae, get_vae_preprocessed_data_path_name
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
@@ -32,7 +32,8 @@ from utils.training_utils.training_utils import (
 # from utils.learning import ReduceLROnPlateau
 
 
-def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWriter], optimizer,
+def data_pass(model: BaseRNN, disable_kld: bool, apply_value_range_when_kld_disabled: bool,
+              summary_writer: Optional[ImprovedSummaryWriter], optimizer,
               data_loaders: List[DataLoader],
               device: torch.device, tbptt_frequency: int, current_epoch: int, global_log_step: int,
               scalar_log_frequency: int, train: bool, debug: bool):
@@ -68,9 +69,9 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
             mus, next_mus, log_vars, next_log_vars, rewards, actions = [d.to(device) for d in data]
 
             batch_size = mus.size(0)
-            latent_obs = vae.reparameterize(mus, log_vars, vae.disable_kld, vae.apply_value_range_when_kld_disabled)
-            latent_next_obs = vae.reparameterize(next_mus, next_log_vars, vae.disable_kld,
-                                                 vae.apply_value_range_when_kld_disabled)
+            latent_obs = BaseVAE.reparameterize(mus, log_vars, disable_kld, apply_value_range_when_kld_disabled)
+            latent_next_obs = BaseVAE.reparameterize(next_mus, next_log_vars, disable_kld,
+                                                     apply_value_range_when_kld_disabled)
 
             if train:
                 model_output = model(latent_obs, actions)
@@ -163,11 +164,12 @@ def main(config_path: str, disable_comet: bool):
     reward_output_activation_function = config["model_parameters"]["reward_output_activation_function"]
 
     vae_directory = config["vae_parameters"]["directory"]
-    vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
 
     vae_config = load_yaml_config(os.path.join(vae_directory, "config.yaml"))
     latent_size = vae_config["model_parameters"]["latent_size"]
     output_activation_function = vae_config["model_parameters"]["output_activation_function"]
+    disable_kld = vae_config["model_parameters"]["disable_kld"]
+    apply_value_range_when_kld_disabled = vae_config["model_parameters"]["apply_value_range_when_kld_disabled"]
     img_size = vae_config["experiment_parameters"]["img_size"]
     vae_dataset_name = vae_config["experiment_parameters"]["dataset"]
 
@@ -196,6 +198,8 @@ def main(config_path: str, disable_comet: bool):
     vae_preprocessed_data_path = get_vae_preprocessed_data_path_name(vae_directory, dataset_name)
 
     if not os.path.exists(vae_preprocessed_data_path):
+        vae, vae_name = load_vae_architecture(vae_directory, device, load_best=True)
+
         preprocess_observations_with_vae(
             rnn_dataset_path=dataset_path,
             vae=vae,
@@ -205,6 +209,10 @@ def main(config_path: str, disable_comet: bool):
             device=device,
             vae_preprocessed_data_path=vae_preprocessed_data_path
         )
+
+        # Explicitly delete vae to free memory from gpu
+        del vae
+        torch.cuda.empty_cache()
 
     additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 
@@ -309,13 +317,13 @@ def main(config_path: str, disable_comet: bool):
     current_best = None
     val_loss = None
     for current_epoch in range(max_epochs):
-        _, global_train_log_steps = data_pass(model, vae, summary_writer, optimizer,
-                                              train_data_loaders, device, tbptt_frequency,
+        _, global_train_log_steps = data_pass(model, disable_kld, apply_value_range_when_kld_disabled, summary_writer,
+                                              optimizer, train_data_loaders, device, tbptt_frequency,
                                               current_epoch, global_train_log_steps, scalar_log_frequency,
                                               train=True, debug=debug)
 
-        val_loss, global_val_log_steps = data_pass(model, vae, summary_writer, optimizer,
-                                                   val_data_loaders, device, tbptt_frequency,
+        val_loss, global_val_log_steps = data_pass(model, disable_kld, apply_value_range_when_kld_disabled,
+                                                   summary_writer, optimizer, val_data_loaders, device, tbptt_frequency,
                                                    current_epoch, global_val_log_steps, scalar_log_frequency,
                                                    train=False, debug=debug)
 
