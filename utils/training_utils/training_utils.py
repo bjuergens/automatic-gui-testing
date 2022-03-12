@@ -13,6 +13,7 @@ from utils.setup_utils import load_yaml_config
 
 GUI_ENV_INITIAL_STATE_FILE_PATH = "res/gui_env_initial_state.png"
 INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
+MAX_COORDINATE = 448  # This results from the GUIEnv which is 448x448
 
 
 def vae_transformation_functions(img_size: int, dataset: str, output_activation_function: str):
@@ -44,13 +45,38 @@ def vae_transformation_functions(img_size: int, dataset: str, output_activation_
     return transformation_functions
 
 
-def rnn_transformation_functions(reward_output_mode: str, reward_output_activation_function: str):
+def get_rnn_action_transformation_function(used_max_coordinate_size: int, reduce_action_coordinate_space_by: int,
+                                           action_transformation_function_type: str):
+
+    if reduce_action_coordinate_space_by > 0:
+        already_reduced_factor = MAX_COORDINATE // used_max_coordinate_size
+        assert isinstance(already_reduced_factor, int), ("For simplicity used_max_coordinate_size must be a multiple "
+                                                         f"of MAX_COORDINATE (which is {MAX_COORDINATE})")
+
+        use_reduce_factor = reduce_action_coordinate_space_by / already_reduced_factor
+        # -1.0 because coordinates start at 0
+        new_max_coordinate = (used_max_coordinate_size / use_reduce_factor) - 1.0
+
+        rnn_action_transformation_functions = [
+            transforms.Lambda(lambda x: torch.div(x, use_reduce_factor, rounding_mode="floor"))
+        ]
+    else:
+        rnn_action_transformation_functions = []
+        new_max_coordinate = used_max_coordinate_size - 1.0
+
+    if action_transformation_function_type == "tanh":
+        rnn_action_transformation_functions.append(
+            transforms.Lambda(lambda x: ((2.0 * x) / new_max_coordinate) - 1.0)
+        )
+
+    return transforms.Compose(rnn_action_transformation_functions)
+
+
+def get_rnn_reward_transformation_function(reward_output_mode: str, reward_output_activation_function: str):
     """
     Reward output mode mse: -> Use [0, 1] or [-1, 1] range depending on output activation function
     Reward output mode bce: -> Only use discrete 0 or 1 reward
     """
-
-    actions_transformation_function = transforms.Lambda(lambda x: ((2.0 * x) / 447.0) - 1.0)
 
     if reward_output_mode == "mse":
         if reward_output_activation_function == "sigmoid":
@@ -66,7 +92,7 @@ def rnn_transformation_functions(reward_output_mode: str, reward_output_activati
     else:
         raise RuntimeError(f"Reward output mode '{reward_output_mode}' unknown")
 
-    return actions_transformation_function, rewards_transformation_function
+    return rewards_transformation_function
 
 
 def get_dataset_mean_std(dataset: str):

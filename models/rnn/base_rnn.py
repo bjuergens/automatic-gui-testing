@@ -25,6 +25,15 @@ class BaseRNN(abc.ABC, nn.Module):
         self.latent_size = latent_size
         self.loss_scale_option = model_parameters["loss_scale_option"]  # Can also be none
 
+        # We generally assume that the data has generated clicks in the [0, 447] range for both x and y directions
+        # With this parameter we allow to reduce this range by an amount, essentially grouping multiple pixels together
+        # One click would then mean a click in all these pixels. This is of course false, but may help during training
+        # to also cover previously not covered action spaces
+        self.reduce_action_coordinate_space_by = model_parameters["reduce_action_coordinate_space_by"]
+        self.action_transformation_function_type = model_parameters["action_transformation_function"]
+
+        assert self.action_transformation_function_type in [None, "tanh"]
+
         self.reward_output_activation_function_type = model_parameters["reward_output_activation_function"]
 
         if self.reward_output_activation_function_type == "sigmoid":

@@ -5,15 +5,18 @@ import h5py
 import torch
 
 from models import BaseVAE
-from utils.training_utils.training_utils import load_rnn_architecture, rnn_transformation_functions
+from utils.training_utils.training_utils import (
+    load_rnn_architecture, load_vae_architecture, get_rnn_action_transformation_function
+)
 
 
 class SimulatedGUIEnv(gym.Env):
 
-    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, device, load_best_rnn: bool = True,
-                 render: bool = False):
+    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, used_max_coordinate_size: int,
+                 device: torch.device, load_best_rnn: bool = True, load_best_vae: bool = True, render: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
+        self.used_max_coordinate_size = used_max_coordinate_size
         self.device = device
         self.render = render
 
@@ -32,14 +35,19 @@ class SimulatedGUIEnv(gym.Env):
 
         self.latent_observation = None  # Populated when doing env.reset()
 
-        self.actions_transformation_function, _ = rnn_transformation_functions(
-            self.rnn.get_reward_output_mode(),
-            self.rnn.reward_output_activation_function_type
+        self.actions_transformation_function = get_rnn_action_transformation_function(
+            used_max_coordinate_size=self.used_max_coordinate_size,
+            reduce_action_coordinate_space_by=self.rnn.reduce_action_coordinate_space_by,
+            action_transformation_function_type=self.rnn.action_transformation_function_type
         )
 
     def step(self, actions: Tuple[Union[int, torch.Tensor], Union[int, torch.Tensor]]):
         """
         Expects a tuple of two integers as inputs. Integers can also be in 1D Tensor objects.
+
+        Will transform the input (for example [10, 220] into the appropriate input format for that particular RNN.
+        For example it can be that it uses reduced action space and tanh actions then it will be somewhere in the
+        range of [-1, 1]
         """
         actions = self.actions_transformation_function(torch.tensor(actions, device=self.device)).view(1, 1, -1)
 

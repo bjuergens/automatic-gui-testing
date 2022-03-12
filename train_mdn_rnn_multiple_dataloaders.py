@@ -20,7 +20,10 @@ from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, get_device, save_yaml_config, pretty_json
 from utils.training_utils import load_vae_architecture, save_checkpoint
 from utils.training_utils.average_meter import AverageMeter
-from utils.training_utils.training_utils import rnn_transformation_functions, generate_initial_observation_latent_vector
+from utils.training_utils.training_utils import (
+    generate_initial_observation_latent_vector, get_rnn_action_transformation_function,
+    get_rnn_reward_transformation_function
+)
 
 
 # from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
@@ -170,6 +173,9 @@ def main(config_path: str, disable_comet: bool):
     model_type = select_rnn_model(model_name)
     model = model_type(config["model_parameters"], latent_size, batch_size, device).to(device)
 
+    reduce_action_coordinate_space_by: int = config["model_parameters"]["reduce_action_coordinate_space_by"]
+    action_transformation_function_type = config["model_parameters"]["action_transformation_function"]
+
     # optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -201,9 +207,15 @@ def main(config_path: str, disable_comet: bool):
 
     additional_dataloader_kwargs = {"num_workers": num_workers, "pin_memory": True}
 
-    actions_transformation_function, reward_transformation_function = rnn_transformation_functions(
+    reward_transformation_function = get_rnn_reward_transformation_function(
         reward_output_mode=model.get_reward_output_mode(),
         reward_output_activation_function=reward_output_activation_function
+    )
+
+    actions_transformation_function = get_rnn_action_transformation_function(
+        used_max_coordinate_size=448,  # During training we have data that always uses coordinates in  [0, 447] range
+        reduce_action_coordinate_space_by=reduce_action_coordinate_space_by,
+        action_transformation_function_type=action_transformation_function_type
     )
 
     _, main_train_data_loader = get_main_rnn_data_loader(
