@@ -276,10 +276,9 @@ def main(config_path: str, disable_comet: bool):
 
         summary_writer.add_text(tag="Hyperparameter", text_string=pretty_json(config), global_step=0)
 
-        comet_exp_name = None
         if not disable_comet:
             # noinspection PyProtectedMember
-            comet_exp_name = summary_writer._get_comet_logger()._experiment.get_name()
+            summary_writer._get_comet_logger()._experiment.set_name(f"version_{summary_writer.version_number}")
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")
@@ -404,10 +403,6 @@ def main(config_path: str, disable_comet: bool):
         vae_params = {f"v_{k}": v for k, v in config["vae_parameters"].items()}
 
         hparams = {**model_params, **exp_params, **vae_params}
-
-        if comet_exp_name is not None:
-            hparams["comet_exp_name"] = comet_exp_name
-            hparams["log_dir"] = log_dir
 
         summary_writer.add_hparams(
             hparams,
