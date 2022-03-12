@@ -13,9 +13,7 @@ from envs.simulated_gui_env import SimulatedGUIEnv
 from utils.setup_utils import (
     initialize_logger, load_yaml_config, get_device, get_depending_model_path, resolve_model_path
 )
-from utils.training_utils.training_utils import (
-    INITIAL_OBS_LATENT_VECTOR_FILE_NAME, generate_initial_observation_latent_vector
-)
+from utils.training_utils.training_utils import generate_initial_observation_latent_vector
 
 
 class DecodedImageLabel(QLabel):
@@ -82,13 +80,11 @@ def main(rnn_dir: str, gpu: int, best_rnn: bool, best_vae: bool, vae_copied: boo
 
     device = get_device(gpu)
 
-    initial_obs_path = os.path.join(vae_dir, INITIAL_OBS_LATENT_VECTOR_FILE_NAME)
-    if not os.path.exists(initial_obs_path):
-        generate_initial_observation_latent_vector(
+    initial_obs_path = generate_initial_observation_latent_vector(
             vae_dir=vae_dir,
             device=device,
             load_best=True
-        )
+    )
 
     vae_config = load_yaml_config(os.path.join(vae_dir, "config.yaml"))
     img_size = vae_config["experiment_parameters"]["img_size"]
