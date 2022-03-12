@@ -1,7 +1,9 @@
 from typing import Tuple, Union
 
+import cv2
 import gym
 import h5py
+import numpy as np
 import torch
 
 from models import BaseVAE
@@ -18,10 +20,7 @@ class SimulatedGUIEnv(gym.Env):
         self.vae_dir = vae_dir
         self.used_max_coordinate_size = used_max_coordinate_size
         self.device = device
-        self.render = render
-
-        if self.render:
-            raise Warning("Render not yet implemented in SimulatedGUIEnv")
+        self.render_enabled = render
 
         # Stores mu and log_var not z; we want to sample a new z from these everytime we reset
         # Avoids getting fixated on a particular z
@@ -40,6 +39,11 @@ class SimulatedGUIEnv(gym.Env):
             reduce_action_coordinate_space_by=self.rnn.reduce_action_coordinate_space_by,
             action_transformation_function_type=self.rnn.action_transformation_function_type
         )
+
+        if self.render_enabled:
+            self.vae, _ = load_vae_architecture(self.vae_dir, device=self.device, load_best=load_best_vae,
+                                                load_optimizer=False)
+            self.vae.eval()
 
     def step(self, actions: Tuple[Union[int, torch.Tensor], Union[int, torch.Tensor]]):
         """
@@ -69,7 +73,12 @@ class SimulatedGUIEnv(gym.Env):
         return self.latent_observation
 
     def render(self, mode="human"):
-        raise NotImplementedError()
+        with torch.no_grad():
+            reconstruction = self.vae.denormalize(self.vae.decode(self.latent_observation))
+
+        recon = (reconstruction * 255).int().squeeze(0).permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+        cv2.imshow("SimulatedGUIEnv", recon)
+        cv2.waitKey(0)
 
 
 def main():
