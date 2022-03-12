@@ -68,8 +68,9 @@ def data_pass(model: BaseRNN, vae, summary_writer: Optional[ImprovedSummaryWrite
             mus, next_mus, log_vars, next_log_vars, rewards, actions = [d.to(device) for d in data]
 
             batch_size = mus.size(0)
-            latent_obs = vae.reparameterize(mus, log_vars)
-            latent_next_obs = vae.reparameterize(next_mus, next_log_vars)
+            latent_obs = vae.reparameterize(mus, log_vars, vae.disable_kld, vae.apply_value_range_when_kld_disabled)
+            latent_next_obs = vae.reparameterize(next_mus, next_log_vars, vae.disable_kld,
+                                                 vae.apply_value_range_when_kld_disabled)
 
             if train:
                 model_output = model(latent_obs, actions)

@@ -82,10 +82,12 @@ class BaseVAE(abc.ABC, nn.Module):
 
         return z
 
-    def reparameterize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
-        z = self.reparameterization_trick(mu, log_var)
+    @staticmethod
+    def reparameterize(mu: torch.Tensor, log_var: torch.Tensor, disable_kld: bool,
+                       apply_value_range_when_kld_disabled: bool):
+        z = BaseVAE.reparameterization_trick(mu, log_var)
 
-        if self.disable_kld and self.apply_value_range_when_kld_disabled:
+        if disable_kld and apply_value_range_when_kld_disabled:
             z = torch.tanh(z)
 
         return z
@@ -101,7 +103,7 @@ class BaseVAE(abc.ABC, nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mu, log_var = self.encode(x)
 
-        z = self.reparameterize(mu, log_var)
+        z = self.reparameterize(mu, log_var, self.disable_kld, self.apply_value_range_when_kld_disabled)
         reconstruction = self.decode(z)
 
         return reconstruction, mu, log_var

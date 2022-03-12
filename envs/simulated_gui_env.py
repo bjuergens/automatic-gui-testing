@@ -1,3 +1,4 @@
+import os
 from typing import Tuple, Union
 
 import cv2
@@ -7,6 +8,7 @@ import numpy as np
 import torch
 
 from models import BaseVAE
+from utils.setup_utils import load_yaml_config
 from utils.training_utils.training_utils import (
     load_rnn_architecture, load_vae_architecture, get_rnn_action_transformation_function
 )
@@ -40,6 +42,10 @@ class SimulatedGUIEnv(gym.Env):
             action_transformation_function_type=self.rnn.action_transformation_function_type
         )
 
+        vae_config = load_yaml_config(os.path.join(self.vae_dir, "config.yaml"))
+        self.disable_kld = vae_config["model_parameters"]["disable_kld"]
+        self.apply_value_range_when_kld_disabled = vae_config["model_parameters"]["apply_value_range_when_kld_disabled"]
+
         if self.render_enabled:
             self.vae, _ = load_vae_architecture(self.vae_dir, device=self.device, load_best=load_best_vae,
                                                 load_optimizer=False)
@@ -65,9 +71,9 @@ class SimulatedGUIEnv(gym.Env):
         return self.latent_observation, reward, False, {}
 
     def reset(self):
-        # TODO this should technically be fixed by using a vae model and then using tanh if
-        #  apply_value_range_when_kld_disabled is used
-        self.latent_observation = BaseVAE.reparameterization_trick(self.initial_mu, self.initial_log_var).unsqueeze(0)
+        self.latent_observation = BaseVAE.reparameterize(self.initial_mu, self.initial_log_var, self.disable_kld,
+                                                         self.apply_value_range_when_kld_disabled)
+
         self.rnn.initialize_hidden()
 
         return self.latent_observation
