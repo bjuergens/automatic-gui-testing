@@ -8,13 +8,15 @@ from envs.simulated_gui_env import SimulatedGUIEnv
 
 def compare_reward_of_m_model_to_sequence(
         dict_of_sequence_actions: Dict[int, List[List[Tuple[torch.Tensor, torch.Tensor]]]], rnn_dir: str,
-        vae_dir: str, device: torch.device, initial_obs_path: str, load_best_rnn: bool = True, render: bool = False
+        vae_dir: str, max_coordinate_size_for_task: int, device: torch.device, initial_obs_path: str,
+        load_best_rnn: bool = True, render: bool = False
 ) -> Dict[int, List[float]]:
 
     env = SimulatedGUIEnv(
         rnn_dir=rnn_dir,
         vae_dir=vae_dir,
         initial_obs_path=initial_obs_path,
+        max_coordinate_size_for_task=max_coordinate_size_for_task,
         device=device,
         load_best_rnn=load_best_rnn,
         render=render

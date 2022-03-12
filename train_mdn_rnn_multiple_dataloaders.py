@@ -363,6 +363,7 @@ def main(config_path: str, disable_comet: bool):
             dict_of_sequence_actions=dict_of_sequence_actions,
             rnn_dir=log_dir,
             vae_dir=vae_directory,
+            max_coordinate_size_for_task=448,
             device=device,
             initial_obs_path=initial_obs_path,
             load_best_rnn=True,
