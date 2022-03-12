@@ -212,8 +212,9 @@ def main(config_path: str, disable_comet: bool):
         reward_output_activation_function=reward_output_activation_function
     )
 
+    # During training we have data that always uses coordinates in  [0, 447] range therefore use 448 here
     actions_transformation_function = get_rnn_action_transformation_function(
-        used_max_coordinate_size=448,  # During training we have data that always uses coordinates in  [0, 447] range
+        max_coordinate_size_for_task=448,
         reduce_action_coordinate_space_by=reduce_action_coordinate_space_by,
         action_transformation_function_type=action_transformation_function_type
     )

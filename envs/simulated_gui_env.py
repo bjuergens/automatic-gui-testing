@@ -14,11 +14,11 @@ from utils.training_utils.training_utils import (
 
 class SimulatedGUIEnv(gym.Env):
 
-    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, used_max_coordinate_size: int,
+    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, max_coordinate_size_for_task: int,
                  device: torch.device, load_best_rnn: bool = True, load_best_vae: bool = True, render: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
-        self.used_max_coordinate_size = used_max_coordinate_size
+        self.max_coordinate_size_for_task = max_coordinate_size_for_task
         self.device = device
         self.render_enabled = render
 
@@ -35,7 +35,7 @@ class SimulatedGUIEnv(gym.Env):
         self.latent_observation = None  # Populated when doing env.reset()
 
         self.actions_transformation_function = get_rnn_action_transformation_function(
-            used_max_coordinate_size=self.used_max_coordinate_size,
+            max_coordinate_size_for_task=self.max_coordinate_size_for_task,
             reduce_action_coordinate_space_by=self.rnn.reduce_action_coordinate_space_by,
             action_transformation_function_type=self.rnn.action_transformation_function_type
         )
@@ -101,22 +101,22 @@ def main():
         rnn_dir=rnn_dir,
         vae_dir=vae_dir,
         initial_obs_path=initial_obs_path,
+        max_coordinate_size_for_task=448,
         device=device,
         load_best_rnn=True,
-        render=False
+        render=True
     )
 
     env.reset()
+    env.render()
 
     reward = 0
 
     test_actions = torch.randint(0, 447, (100, 2))
 
-    for action in test_actions:
-        print(f"Action {action}")
-
     for _ in range(10):
-        _, rew, _, _  = env.step((10, 11))
+        _, rew, _, _ = env.step((10, 11))
+        env.render()
 
         reward += rew
 

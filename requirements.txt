@@ -12,5 +12,6 @@ fiftyone
 torchinfo
 matplotlib
 tensorboardX
+opencv-python
 comet_ml
 git+https://github.com/neuroevolution-ai/GymGuiEnvironments.git#egg=gym_gui_environments

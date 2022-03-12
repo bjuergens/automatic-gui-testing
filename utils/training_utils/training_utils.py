@@ -45,24 +45,24 @@ def vae_transformation_functions(img_size: int, dataset: str, output_activation_
     return transformation_functions
 
 
-def get_rnn_action_transformation_function(used_max_coordinate_size: int, reduce_action_coordinate_space_by: int,
+def get_rnn_action_transformation_function(max_coordinate_size_for_task: int, reduce_action_coordinate_space_by: int,
                                            action_transformation_function_type: str):
 
     if reduce_action_coordinate_space_by > 0:
-        already_reduced_factor = MAX_COORDINATE // used_max_coordinate_size
+        already_reduced_factor = MAX_COORDINATE // max_coordinate_size_for_task
         assert isinstance(already_reduced_factor, int), ("For simplicity used_max_coordinate_size must be a multiple "
                                                          f"of MAX_COORDINATE (which is {MAX_COORDINATE})")
 
-        use_reduce_factor = reduce_action_coordinate_space_by / already_reduced_factor
+        reduce_factor = reduce_action_coordinate_space_by / already_reduced_factor
         # -1.0 because coordinates start at 0
-        new_max_coordinate = (used_max_coordinate_size / use_reduce_factor) - 1.0
+        new_max_coordinate = (max_coordinate_size_for_task / reduce_factor) - 1.0
 
         rnn_action_transformation_functions = [
-            transforms.Lambda(lambda x: torch.div(x, use_reduce_factor, rounding_mode="floor"))
+            transforms.Lambda(lambda x: torch.div(x, reduce_factor, rounding_mode="floor"))
         ]
     else:
         rnn_action_transformation_functions = []
-        new_max_coordinate = used_max_coordinate_size - 1.0
+        new_max_coordinate = max_coordinate_size_for_task - 1.0
 
     if action_transformation_function_type == "tanh":
         rnn_action_transformation_functions.append(
