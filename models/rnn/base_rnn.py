@@ -110,6 +110,7 @@ class BaseMDNRNN(BaseRNN):
         super().__init__(model_parameters, latent_size, batch_size, device)
 
         self.number_of_gaussians = model_parameters["number_of_gaussians"]
+        self.use_gaussian_per_latent_dim: bool = model_parameters["use_gaussian_per_latent_dim"]
 
     def predict(self, model_output, latents):
         mus = model_output[0]
@@ -117,18 +118,15 @@ class BaseMDNRNN(BaseRNN):
         log_pi = model_output[2]
         rewards = model_output[3]
 
-        # batch: (BATCH_SIZE, SEQ_LEN, 1, L_SIZE)
+        # latents: (BATCH_SIZE, SEQ_LEN, L_SIZE)
         # mus, sigmas: (BATCH_SIZE, SEQ_LEN, N_GAUSS, L_SIZE)
-        # log_pi: (BATCH_SIZE, SEQ_LEN, N_GAUSS)
-        latents = latents.unsqueeze(-2)
-        # prob: (BATCH_SIZE, SEQ_LEN, N_GAUSS, L_SIZE)
-        prob = ONE_OVER_SQRT_2PI * torch.exp(-0.5 * torch.pow((latents - mus) / sigmas, 2)) / sigmas
-        # log_pi: (BATCH_SIZE, SEQ_LEN, N_GAUSS, 1)
-        pi = log_pi.exp().unsqueeze(-1)
+        # log_pi: (BATCH_SIZE, SEQ_LEN, N_GAUSS, 1) or (BATCH_SIZE, SEQ_LEN, N_GAUSS, L_SIZE) depending on
+        #         self.use_gaussian_per_latent_dim
+        latents = latents.unsqueeze(2)
+        log_prob_sum = self._predict_in_log_space(latents, mus, sigmas, log_pi)
+        latent_prediction = log_prob_sum.exp()
 
-        latent_prediction = torch.sum(prob * pi, dim=2)
-
-        # Result: (BATCH_SIZE, SEQ_LEN, L_SIZE)
+        # latent_prediction: (BATCH_SIZE, SEQ_LEN, L_SIZE)
         return latent_prediction, self.denormalize_reward(rewards)
 
     def forward(self, latents: torch.Tensor, actions: torch.Tensor):
@@ -139,43 +137,55 @@ class BaseMDNRNN(BaseRNN):
 
         stride = self.number_of_gaussians * self.latent_size
 
-        mus = gmm_outputs[:, :, :stride]
+        if self.use_gaussian_per_latent_dim:
+            mus, sigmas, pi, rewards = torch.split(
+                gmm_outputs,
+                split_size_or_sections=(stride, stride, stride, 1),
+                dim=-1
+            )
+        else:
+            mus, sigmas, pi, rewards = torch.split(
+                gmm_outputs,
+                split_size_or_sections=(stride, stride, self.number_of_gaussians, 1),
+                dim=-1
+            )
+
         mus = mus.view(self.batch_size, sequence_length, self.number_of_gaussians, self.latent_size)
 
-        sigmas = gmm_outputs[:, :, stride:2 * stride]
         sigmas = sigmas.view(self.batch_size, sequence_length, self.number_of_gaussians, self.latent_size)
         sigmas = torch.exp(sigmas)
 
-        pi = gmm_outputs[:, :, 2 * stride: 2 * stride + self.number_of_gaussians]
-        pi = pi.view(self.batch_size, sequence_length, self.number_of_gaussians)
-        log_pi = f.log_softmax(pi, dim=-1)
+        if self.use_gaussian_per_latent_dim:
+            pi = pi.view(self.batch_size, sequence_length, self.number_of_gaussians, self.latent_size)
+        else:
+            pi = pi.view(self.batch_size, sequence_length, self.number_of_gaussians, 1)
 
-        rewards = gmm_outputs[:, :, -1]
-        rewards = self.reward_output_activation_function(rewards).unsqueeze(-1)
+        # The pi's shall sum to one, therefore take the softmax over dimension 2 (number_of_gaussians)
+        # Use log_softmax for numerical stability as we also compute NLLLoss directly in log-space
+        log_pi = f.log_softmax(pi, dim=2)
+
+        rewards = self.reward_output_activation_function(rewards)
 
         return mus, sigmas, log_pi, rewards
 
-    def _gmm_loss_using_log(self, batch, mus, sigmas, log_pi, reduce=True):
-        log_prob = -torch.log(sigmas) - 0.5 * LOG2PI - 0.5 * torch.pow((batch - mus) / sigmas, 2)
-        log_prob_sum = log_prob.sum(dim=-1)
-        log_prob_sum = torch.logsumexp(log_pi + log_prob_sum, dim=-1)
+    @staticmethod
+    def _predict_in_log_space(next_latent_vector, mus, sigmas, log_pi) -> torch.Tensor:
+        # Natural logarithm applied on a Gaussian distribution
+        log_prob = -torch.log(sigmas) - 0.5 * LOG2PI - 0.5 * torch.pow((next_latent_vector - mus) / sigmas, 2)
 
-        if reduce:
-            nll = -log_prob_sum.mean()
-        else:
-            nll = -log_prob_sum
+        # LogSumExp Trick for numerical stability, essentially this is the MDN formula
+        # Dim 2 is number_of_gaussians
+        log_prob_sum = torch.logsumexp(log_pi + log_prob, dim=2)
 
-        return nll
+        return log_prob_sum
 
     def gmm_loss(self, next_latent_vector, mus, sigmas, log_pi):
-        next_latent_vector = next_latent_vector.unsqueeze(-2)
-        prob = ONE_OVER_SQRT_2PI * torch.exp(-0.5 * torch.pow((next_latent_vector - mus) / sigmas, 2)) / sigmas
+        # next_latent_vector: (BATCH_SIZE, SEQ_LEN, L_SIZE)
+        next_latent_vector = next_latent_vector.unsqueeze(2)
 
-        eps = 1e-10
-        log_prob = torch.log(prob + eps).sum(dim=-1)
-        log_prob = torch.logsumexp(log_pi + log_prob, dim=-1)
+        log_prob_sum = self._predict_in_log_space(next_latent_vector, mus, sigmas, log_pi)
 
-        nll = -log_prob.mean()
+        nll = -log_prob_sum.mean()
 
         return nll
 
