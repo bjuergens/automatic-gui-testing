@@ -4,6 +4,7 @@ model_parameters:
   hidden_layers: 1
   action_size: 2
   number_of_gaussians: 5
+  use_gaussian_per_latent_dim: True
   loss_scale_option: null
   reward_output_activation_function: "tanh"
   reduce_action_coordinate_space_by: -1
