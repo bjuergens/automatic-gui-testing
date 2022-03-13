@@ -83,7 +83,9 @@ class GUIEnvRollout:
             ob = self.vae_transformation_functions(Image.fromarray(ob)).unsqueeze(0).to(self.device)
             with torch.no_grad():
                 mu, log_var = self.vae.encode(ob)
-                z = self.vae.reparameterize(mu, log_var).unsqueeze(0)
+                z = self.vae.reparameterize(
+                    mu, log_var, self.vae.disable_kld, self.vae.apply_value_range_when_kld_disabled
+                ).unsqueeze(0)
 
                 actions = self.controller(z, self.rnn.hidden[0])
 
