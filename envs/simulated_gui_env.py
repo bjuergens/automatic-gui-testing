@@ -71,8 +71,9 @@ class SimulatedGUIEnv(gym.Env):
         return self.latent_observation, reward, False, {}
 
     def reset(self):
-        self.latent_observation = BaseVAE.reparameterize(self.initial_mu, self.initial_log_var, self.disable_kld,
-                                                         self.apply_value_range_when_kld_disabled)
+        self.latent_observation = BaseVAE.reparameterize(
+            self.initial_mu, self.initial_log_var, self.disable_kld, self.apply_value_range_when_kld_disabled
+        ).unsqueeze(0)
 
         self.rnn.initialize_hidden()
 
