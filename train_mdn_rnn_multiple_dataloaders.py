@@ -228,7 +228,7 @@ def main(config_path: str, disable_comet: bool):
         action_transformation_function_type=action_transformation_function_type
     )
 
-    _, main_train_data_loader = get_main_rnn_data_loader(
+    main_train_dataset, main_train_data_loader = get_main_rnn_data_loader(
         dataset_name=dataset_name,
         dataset_path=dataset_path,
         split="train",
@@ -299,8 +299,11 @@ def main(config_path: str, disable_comet: bool):
         summary_writer.add_text(tag="Hyperparameter", text_string=pretty_json(config), global_step=0)
 
         if not disable_comet:
+            dataset_abbreviation = main_train_dataset.get_dataset_abbreviation()
             # noinspection PyProtectedMember
-            summary_writer._get_comet_logger()._experiment.set_name(f"version_{summary_writer.version_number}")
+            summary_writer._get_comet_logger()._experiment.set_name(
+                f"{dataset_abbreviation}_version_{summary_writer.version_number}"
+            )
 
         log_dir = summary_writer.get_logdir()
         best_model_filename = os.path.join(log_dir, "best.pt")

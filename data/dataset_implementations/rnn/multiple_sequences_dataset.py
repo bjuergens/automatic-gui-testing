@@ -129,6 +129,9 @@ class GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders(GUIMultipleSequ
         }
         return validation_sequences
 
+    def get_dataset_abbreviation(self) -> str:
+        return "vl"
+
 
 class GUIEnvSequencesDatasetRandomWidget500k(GUIMultipleSequencesVaryingLengths):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
@@ -254,6 +257,9 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k(GUIEnvMultiple
         }
         return validation_sequences
 
+    def get_dataset_abbreviation(self) -> str:
+        return "rw500"
+
 
 class GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k(GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders):
     def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
@@ -285,6 +291,9 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k(GUIEnvMultiple
             10000: self.sequence_datasets[6:8],
         }
         return validation_sequences
+
+    def get_dataset_abbreviation(self) -> str:
+        return "rc500"
 
 
 class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders):
@@ -337,3 +346,6 @@ class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIEnvMultipleSequen
             10000: self.sequence_datasets[6:8] + self.sequence_datasets[14:16],
         }
         return validation_sequences
+
+    def get_dataset_abbreviation(self) -> str:
+        return "m3600"
