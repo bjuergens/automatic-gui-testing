@@ -6,6 +6,8 @@ model_parameters:
   number_of_gaussians: 5
   loss_scale_option: None
   reward_output_activation_function: "tanh"
+  reduce_action_coordinate_space_by: -1
+  action_transformation_function: "tanh"
 
 experiment_parameters:
   dataset: "multiple_sequences_identical_length_rnn"
