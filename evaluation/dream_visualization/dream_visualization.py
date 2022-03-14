@@ -43,7 +43,7 @@ class DecodedImageLabel(QLabel):
         observation, rew, done, info = self.simulated_gui_env.step(action)
         self.reconstruct_and_set_image(observation)
 
-        logging.info(f"Reward: {self.simulated_gui_env.rnn.denormalize_reward(rew)}")
+        logging.info(f"Reward: {rew}")
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self.rollout(event.position().toTuple())
