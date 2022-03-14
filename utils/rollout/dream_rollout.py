@@ -11,10 +11,11 @@ from utils.training_utils.training_utils import load_rnn_architecture
 
 class DreamRollout:
 
-    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, device, time_limit: int = 1000,
-                 load_best_rnn: bool = True, stop_when_total_reward_exceeded: bool = False):
+    def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, temperature: float, device,
+                 time_limit: int = 1000, load_best_rnn: bool = True, stop_when_total_reward_exceeded: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
+        self.temperature = temperature
         self.device = device
         self.time_limit = time_limit
         self.stop_when_total_reward_exceeded = stop_when_total_reward_exceeded
@@ -58,7 +59,7 @@ class DreamRollout:
             with torch.no_grad():
                 actions = self.controller(latent_observation, self.rnn.hidden[0])
                 rnn_output = self.rnn(latent_observation, actions)
-                latent_observation, reward = self.rnn.predict(rnn_output, latent_observation)
+                latent_observation, reward = self.rnn.predict(rnn_output, latent_observation, self.temperature)
 
             total_reward += reward.squeeze()
 

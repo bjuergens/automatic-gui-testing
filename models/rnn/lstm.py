@@ -30,7 +30,7 @@ class LSTMWithBCE(LSTM):
         # that.
         self.denormalize_reward = lambda x: int(x > 0.5)
 
-    def predict(self, model_output, latents=None):
+    def predict(self, model_output, latents=None, temperature=None):
         # Apply sigmoid here to reward instead of self.reward_output_activation_function, because we don't apply that
         # function in forward(), instead it is fused into the loss function for the reward. Still for the prediction
         # we want values in [0, 1] range for the reward

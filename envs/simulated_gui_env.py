@@ -17,10 +17,14 @@ from utils.training_utils.training_utils import (
 class SimulatedGUIEnv(gym.Env):
 
     def __init__(self, rnn_dir: str, vae_dir: str, initial_obs_path: str, max_coordinate_size_for_task: int,
-                 device: torch.device, load_best_rnn: bool = True, load_best_vae: bool = True, render: bool = False):
+                 temperature: float, device: torch.device, load_best_rnn: bool = True, load_best_vae: bool = True,
+                 render: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
         self.max_coordinate_size_for_task = max_coordinate_size_for_task
+
+        # Note that temperature is only used in MDN RNN's (in M models where only a LSTM is used this has no usage)
+        self.temperature = temperature
         self.device = device
         self.render_enabled = render
 
@@ -63,7 +67,7 @@ class SimulatedGUIEnv(gym.Env):
 
         with torch.no_grad():
             rnn_output = self.rnn(self.latent_observation, actions)
-            self.latent_observation, reward = self.rnn.predict(rnn_output, self.latent_observation)
+            self.latent_observation, reward = self.rnn.predict(rnn_output, self.latent_observation, self.temperature)
 
         if isinstance(reward, torch.Tensor):
             reward = reward.item()

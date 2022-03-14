@@ -88,7 +88,7 @@ class BaseRNN(abc.ABC, nn.Module):
         return loss
 
     @abc.abstractmethod
-    def predict(self, model_output, latents) -> Tuple[torch.Tensor, torch.Tensor]:
+    def predict(self, model_output, latents, temperature) -> Tuple[torch.Tensor, torch.Tensor]:
         pass
 
     @abc.abstractmethod
@@ -112,19 +112,56 @@ class BaseMDNRNN(BaseRNN):
         self.number_of_gaussians = model_parameters["number_of_gaussians"]
         self.use_gaussian_per_latent_dim: bool = model_parameters["use_gaussian_per_latent_dim"]
 
-    def predict(self, model_output, latents):
+    def predict(self, model_output, latents, temperature):
+        # Temperature parameter is used at two points and only during sampling (not during training):
+        # log_pi is divided with the temperature and sigma is multiplied with the square root of the temperature.
+        # This is done in the reference implementation of the world model approach, specifically here:
+        # https://github.com/hardmaru/WorldModelsExperiments/blob/master/doomrnn/doomrnn.py#L625 and on line 639
+
+        # Shapes:
+        # latents: (1, 1, L_SIZE)
+        # mus, sigmas: (1, 1, N_GAUSS, L_SIZE)
+        # log_pi: (1, 1, N_GAUSS, 1) or (1, 1, N_GAUSS, L_SIZE) depending on
+        #         self.use_gaussian_per_latent_dim
         mus = model_output[0]
         sigmas = model_output[1]
         log_pi = model_output[2]
         rewards = model_output[3]
 
-        # latents: (BATCH_SIZE, SEQ_LEN, L_SIZE)
-        # mus, sigmas: (BATCH_SIZE, SEQ_LEN, N_GAUSS, L_SIZE)
-        # log_pi: (BATCH_SIZE, SEQ_LEN, N_GAUSS, 1) or (BATCH_SIZE, SEQ_LEN, N_GAUSS, L_SIZE) depending on
-        #         self.use_gaussian_per_latent_dim
-        latents = latents.unsqueeze(2)
-        log_prob_sum = self._predict_in_log_space(latents, mus, sigmas, log_pi)
-        latent_prediction = log_prob_sum.exp()
+        number_of_gaussians = mus.size(2)
+        latent_size = mus.size(3)
+
+        # Remove (1, 1) dimensions and transpose to get (N_GAUSS, L_SIZE) dimensions
+        mus = mus.view(number_of_gaussians, latent_size).t()
+        sigmas = sigmas.view(number_of_gaussians, latent_size).t()
+
+        if self.use_gaussian_per_latent_dim:
+            log_pi = log_pi.view(number_of_gaussians, latent_size).t()
+        else:
+            log_pi = log_pi.view(number_of_gaussians, 1).t()
+
+        # Exp-Normalization trick to calculate the softmax, useful to ensure numerical stability
+        log_pi_temperature_adjusted = (log_pi / temperature)
+        log_pi_temperature_adjusted -= log_pi_temperature_adjusted.max()
+        log_pi_temperature_adjusted = log_pi_temperature_adjusted.exp()
+        pi_temperature_adjusted = log_pi_temperature_adjusted / log_pi_temperature_adjusted.sum(dim=0)
+
+        # Randomly select a gaussian distribution either per dimension of the latent vector
+        # (self.use_gaussian_per_latent_dim == True) or in general
+        categorical_distribution = torch.distributions.Categorical(probs=pi_temperature_adjusted)
+        drawn_mixtures = categorical_distribution.sample()
+
+        # Shape after this for selected_mus and selected_sigmas: (1, 1, L_SIZE)
+        if self.use_gaussian_per_latent_dim:
+            selected_mus = torch.gather(mus, dim=1, index=drawn_mixtures.unsqueeze(-1)).view(latents.size())
+            selected_sigmas = torch.gather(sigmas, dim=1, index=drawn_mixtures.unsqueeze(-1)).view(latents.size())
+        else:
+            selected_mus = mus[:, drawn_mixtures].view(latents.size())
+            selected_sigmas = sigmas[:, drawn_mixtures].view(latents.size())
+
+        # Now use the randomly selected gaussian(s) to sample the next latent vector, i.e. the prediction
+        random_vector = torch.randn(size=latents.size())
+        latent_prediction = selected_mus + random_vector * selected_sigmas * torch.sqrt(temperature)
 
         # latent_prediction: (BATCH_SIZE, SEQ_LEN, L_SIZE)
         return latent_prediction, self.denormalize_reward(rewards)
@@ -211,7 +248,7 @@ class BaseSimpleRNN(BaseRNN):
     def __init__(self, model_parameters: dict, latent_size: int, batch_size: int, device: torch.device):
         super().__init__(model_parameters, latent_size, batch_size, device)
 
-    def predict(self, model_output, latents=None):
+    def predict(self, model_output, latents=None, temperature=None):
         # This function mostly exists for mixture density network as the actual calculation of the next latent state
         # is not required for training, just the calculation of the predicted probability distribution.
         # But since we want to use the same interface, just return the prediction here

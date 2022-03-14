@@ -379,7 +379,8 @@ def main(config_path: str, disable_comet: bool):
             device=device,
             initial_obs_path=initial_obs_path,
             load_best_rnn=True,
-            render=False
+            render=False,
+            temperature=1.0
         )
 
         comparison_loss_function = torch.nn.L1Loss()

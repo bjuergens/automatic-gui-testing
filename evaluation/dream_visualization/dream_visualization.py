@@ -67,11 +67,13 @@ class DreamVisualizationDialog(QDialog):
 @click.option("-d", "--dir", "rnn_dir", type=str, required=True,
               help="Path to a trained MDN RNN directory")
 @click.option("-g", "--gpu", type=int, default=-1, help="Use CPU (-1) or the corresponding GPU to load the models")
+@click.option("-t", "--temperature", type=float, default=1.0, help="Temperature parameter of MDNRNN")
 @click.option("--best-rnn/--no-best-rnn", type=bool, default=True, help="Load the best RNN or the last checkpoint")
 @click.option("--best-vae/--no-best-vae", type=bool, default=True, help="Load the best VAE or the last checkpoint")
 @click.option("--vae-copied/--no-vae-copied", type=bool, default=True, help="Was the VAE copied?")
 @click.option("--vae-location", type=str, default="local", help="Where was the vae trained (for example ai-machine)?")
-def main(rnn_dir: str, gpu: int, best_rnn: bool, best_vae: bool, vae_copied: bool, vae_location: str):
+def main(rnn_dir: str, gpu: int, temperature: float, best_rnn: bool, best_vae: bool, vae_copied: bool,
+         vae_location: str):
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
@@ -94,6 +96,7 @@ def main(rnn_dir: str, gpu: int, best_rnn: bool, best_vae: bool, vae_copied: boo
         vae_dir=vae_dir,
         initial_obs_path=initial_obs_path,
         max_coordinate_size_for_task=img_size,
+        temperature=temperature,
         device=device,
         load_best_rnn=best_rnn,
         load_best_vae=best_vae,
