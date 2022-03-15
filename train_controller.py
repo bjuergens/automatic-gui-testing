@@ -29,14 +29,15 @@ from utils.training_utils.training_utils import (
 #                           Thread routines                                    #
 ################################################################################
 def debug_worker_routine(p_queue, r_queue,
-                         rnn_dir, vae_dir, initial_obs_path, time_limit, device, stop_when_total_reward_exceeded):
+                         rnn_dir, vae_dir, initial_obs_path, temperature, time_limit, device,
+                         stop_when_total_reward_exceeded):
     """
     Same routine as worker_routine, but used for debugging
 
     Debugging is difficult with subprocesses running, therefore this function can be used without subprocesses.
     """
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, device, time_limit, load_best_rnn=True,
+        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, temperature, device, time_limit, load_best_rnn=True,
                              stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
         empty_counter = 0
         while True:
@@ -53,7 +54,8 @@ def debug_worker_routine(p_queue, r_queue,
 
 
 def worker_routine(p_queue, r_queue, e_queue,
-                   tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit, device, stop_when_total_reward_exceeded):
+                   tmp_dir, rnn_dir, vae_dir, initial_obs_path, temperature, time_limit, device,
+                   stop_when_total_reward_exceeded):
     """ Thread routine.
 
     Threads interact with p_queue, the parameters queue, r_queue, the result
@@ -81,7 +83,7 @@ def worker_routine(p_queue, r_queue, e_queue,
         sys.stderr = open(os.path.join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, device, time_limit, load_best_rnn=True,
+        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, temperature, device, time_limit, load_best_rnn=True,
                              stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
 
         while e_queue.empty():
@@ -95,7 +97,7 @@ def worker_routine(p_queue, r_queue, e_queue,
 ################################################################################
 #                           Evaluation                                         #
 ################################################################################
-def evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit,
+def evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, temperature, time_limit,
              solutions, results, rollouts, device, stop_when_total_reward_exceeded, debug=False):
     """ Give current controller evaluation.
 
@@ -115,7 +117,7 @@ def evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit,
         p_queue.put((s_id, best_guess))
 
     if debug:
-        debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
+        debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, temperature, time_limit, device,
                              stop_when_total_reward_exceeded)
 
     logging.info("Evaluating...")
@@ -155,6 +157,9 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     evaluation_amount = config["evaluation_parameters"]["evaluation_amount"]
 
     rnn_dir = config["rnn_parameters"]["rnn_dir"]
+
+    # Temperature only used with MDN RNN!
+    temperature = config["rnn_parameters"]["temperature"]
     # Use rnn_dir directly, we only want training on local models anyway
     vae_dir = get_depending_model_path(model_type="rnn", model_dir=rnn_dir)
 
@@ -234,7 +239,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         for p_index in range(number_of_workers):
             p = ctx.Process(
                 target=worker_routine,
-                args=(p_queue, r_queue, e_queue, tmp_dir, rnn_dir, vae_dir, initial_obs_path, time_limit,
+                args=(p_queue, r_queue, e_queue, tmp_dir, rnn_dir, vae_dir, initial_obs_path, temperature, time_limit,
                       device, stop_when_total_reward_exceeded)
             )
 
@@ -284,7 +289,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 p_queue.put((s_id, s))
 
         if debug:
-            debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, time_limit, device,
+            debug_worker_routine(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, temperature, time_limit, device,
                                  stop_when_total_reward_exceeded)
 
         if display_progress_bars:
@@ -308,7 +313,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         # evaluation and saving
         if generation % scalar_log_frequency == 0 or generation == max_generations - 1:
-            best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path,
+            best_params, best, std_best = evaluate(p_queue, r_queue, rnn_dir, vae_dir, initial_obs_path, temperature,
                                                    time_limit, solutions, r_list, rollouts=number_of_evaluations,
                                                    device=device,
                                                    stop_when_total_reward_exceeded=stop_when_total_reward_exceeded,

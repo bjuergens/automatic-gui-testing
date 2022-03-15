@@ -16,6 +16,7 @@ evaluation_parameters:
 
 rnn_parameters:
   rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_rnn/version_0"
+  temperature: 1.0
 
 trainer_parameters:
   gpu: -1
