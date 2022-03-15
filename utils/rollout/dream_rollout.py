@@ -15,7 +15,7 @@ class DreamRollout:
                  time_limit: int = 1000, load_best_rnn: bool = True, stop_when_total_reward_exceeded: bool = False):
         self.rnn_dir = rnn_dir
         self.vae_dir = vae_dir
-        self.temperature = temperature
+        self.temperature = torch.tensor(temperature, device=device)
         self.device = device
         self.time_limit = time_limit
         self.stop_when_total_reward_exceeded = stop_when_total_reward_exceeded

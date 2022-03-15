@@ -24,7 +24,7 @@ class SimulatedGUIEnv(gym.Env):
         self.max_coordinate_size_for_task = max_coordinate_size_for_task
 
         # Note that temperature is only used in MDN RNN's (in M models where only a LSTM is used this has no usage)
-        self.temperature = temperature
+        self.temperature = torch.tensor(temperature, device=device)
         self.device = device
         self.render_enabled = render
 
