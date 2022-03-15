@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from data.dataset_implementations import get_main_rnn_data_loader, get_individual_rnn_data_loaders
-from evaluation.mdn_rnn.reward_comparison import compare_reward_of_m_model_to_sequence
+from evaluation.mdn_rnn.reward_comparison import start_reward_comparison
 from models import select_rnn_model, BaseVAE
 from models.rnn import BaseRNN
 from utils.data_processing_utils import preprocess_observations_with_vae, get_vae_preprocessed_data_path_name
@@ -354,67 +354,28 @@ def main(config_path: str, disable_comet: bool):
 
     if not debug and compare_m_model_reward_to_val_sequences:
         logging.info("Starting comparison of rewards between validation sequences and newly trained M model")
-        validation_sequences = main_val_dataset.get_validation_sequences_for_m_model_comparison()
 
-        dict_of_sequence_actions = {}
-        dict_of_sequence_rewards = {}
-        for sequence_length, sequence_list in validation_sequences.items():
-            dict_of_sequence_actions[sequence_length] = [seq.actions for seq in sequence_list]
-
-            if model_name == "lstm_bce":
-                # Compare also to 0 _or_ 1 rewards because the LSTMBCE model predicts only 0 or 1
-                dict_of_sequence_rewards[sequence_length] = [
-                    reward_transformation_function(seq.rewards).sum() for seq in sequence_list
-                ]
-            else:
-                dict_of_sequence_rewards[sequence_length] = [seq.rewards.sum() for seq in sequence_list]
-
-        initial_obs_path = generate_initial_observation_latent_vector(vae_directory, device, load_best=True)
-
-        compared_rewards = compare_reward_of_m_model_to_sequence(
-            dict_of_sequence_actions=dict_of_sequence_actions,
+        all_comparison_losses, all_rewards, extended_log_info_as_txt = start_reward_comparison(
             rnn_dir=log_dir,
             vae_dir=vae_directory,
-            max_coordinate_size_for_task=448,
-            device=device,
-            initial_obs_path=initial_obs_path,
-            load_best_rnn=True,
-            render=False,
-            temperature=1.0
+            val_dataset=main_val_dataset,
+            model_name=model_name,
+            reward_transformation_function=reward_transformation_function,
+            device=device
         )
 
-        comparison_loss_function = torch.nn.L1Loss()
-        all_rewards = []
+        comparison_loss_values = []
 
-        all_comparison_losses = []
-
-        extended_log_info_as_txt = ""
-        for i, (sequence_length, achieved_sequence_rewards) in enumerate(compared_rewards.items()):
-            all_rewards.extend(achieved_sequence_rewards)
-
-            actual_rewards = dict_of_sequence_rewards[sequence_length]
-
-            comparison_loss = comparison_loss_function(
-                torch.tensor(achieved_sequence_rewards), torch.tensor(actual_rewards)
-            )
-            all_comparison_losses.append(comparison_loss)
-
-            extended_log_info_as_txt += (f"seq_len {sequence_length} # {len(achieved_sequence_rewards)} "
-                                         f"- Actual Rew {np.mean(actual_rewards):.6f} "
-                                         f"- Cmp {comparison_loss:.6f} "
-                                         f"- Max {np.max(achieved_sequence_rewards):.6f} "
-                                         f"- Mean {np.mean(achieved_sequence_rewards):.6f} "
-                                         f"- Std {np.std(achieved_sequence_rewards):.6f} "
-                                         f"- Min {np.min(achieved_sequence_rewards):.6f}  \n")
-
+        for sequence_length, comparison_loss in all_comparison_losses.items():
             summary_writer.add_scalar(f"eval_cmp_rew_{sequence_length}", comparison_loss, global_step=0)
+            comparison_loss_values.append(comparison_loss)
 
         summary_writer.add_scalar("eval_m_model_rew_min", np.min(all_rewards), global_step=0)
         summary_writer.add_scalar("eval_m_model_rew_max", np.max(all_rewards), global_step=0)
         summary_writer.add_scalar("eval_m_model_rew_mean", np.mean(all_rewards), global_step=0)
         summary_writer.add_scalar("eval_m_model_rew_std", np.std(all_rewards), global_step=0)
-        summary_writer.add_scalar(f"eval_cmp_rew_all_mean", np.mean(all_comparison_losses), global_step=0)
-        summary_writer.add_scalar(f"eval_cmp_rew_all_std", np.std(all_comparison_losses), global_step=0)
+        summary_writer.add_scalar(f"eval_cmp_rew_all_mean", np.mean(comparison_loss_values), global_step=0)
+        summary_writer.add_scalar(f"eval_cmp_rew_all_std", np.std(comparison_loss_values), global_step=0)
         summary_writer.add_text("eval_cmp_rew_txt", extended_log_info_as_txt, global_step=0)
 
     if not debug:

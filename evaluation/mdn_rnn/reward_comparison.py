@@ -1,9 +1,11 @@
 from typing import List, Dict, Tuple
 
+import numpy as np
 import torch
 from tqdm import tqdm
 
 from envs.simulated_gui_env import SimulatedGUIEnv
+from utils.training_utils.training_utils import generate_initial_observation_latent_vector
 
 
 def compare_reward_of_m_model_to_sequence(
@@ -50,3 +52,60 @@ def compare_reward_of_m_model_to_sequence(
     progress_bar.close()
 
     return sequence_rewards
+
+
+def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_transformation_function, device):
+    validation_sequences = val_dataset.get_validation_sequences_for_m_model_comparison()
+
+    dict_of_sequence_actions = {}
+    dict_of_sequence_rewards = {}
+    for sequence_length, sequence_list in validation_sequences.items():
+        dict_of_sequence_actions[sequence_length] = [seq.actions for seq in sequence_list]
+
+        if model_name == "lstm_bce":
+            # Compare also to 0 _or_ 1 rewards because the LSTMBCE model predicts only 0 or 1
+            dict_of_sequence_rewards[sequence_length] = [
+                reward_transformation_function(seq.rewards).sum() for seq in sequence_list
+            ]
+        else:
+            dict_of_sequence_rewards[sequence_length] = [seq.rewards.sum() for seq in sequence_list]
+
+    initial_obs_path = generate_initial_observation_latent_vector(vae_dir, device, load_best=True)
+
+    compared_rewards = compare_reward_of_m_model_to_sequence(
+        dict_of_sequence_actions=dict_of_sequence_actions,
+        rnn_dir=rnn_dir,
+        vae_dir=vae_dir,
+        max_coordinate_size_for_task=448,
+        device=device,
+        initial_obs_path=initial_obs_path,
+        load_best_rnn=True,
+        render=False,
+        temperature=1.0
+    )
+
+    comparison_loss_function = torch.nn.L1Loss()
+    all_rewards = []
+
+    all_comparison_losses = {}
+
+    extended_log_info_as_txt = ""
+    for i, (sequence_length, achieved_sequence_rewards) in enumerate(compared_rewards.items()):
+        all_rewards.extend(achieved_sequence_rewards)
+
+        actual_rewards = dict_of_sequence_rewards[sequence_length]
+
+        comparison_loss = comparison_loss_function(
+            torch.tensor(achieved_sequence_rewards), torch.tensor(actual_rewards)
+        )
+        all_comparison_losses[sequence_length] = comparison_loss
+
+        extended_log_info_as_txt += (f"seq_len {sequence_length} # {len(achieved_sequence_rewards)} "
+                                     f"- Actual Rew {np.mean(actual_rewards):.6f} "
+                                     f"- Cmp {comparison_loss:.6f} "
+                                     f"- Max {np.max(achieved_sequence_rewards):.6f} "
+                                     f"- Mean {np.mean(achieved_sequence_rewards):.6f} "
+                                     f"- Std {np.std(achieved_sequence_rewards):.6f} "
+                                     f"- Min {np.min(achieved_sequence_rewards):.6f}  \n")
+
+    return all_comparison_losses, all_rewards, extended_log_info_as_txt
