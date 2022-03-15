@@ -160,7 +160,7 @@ class BaseMDNRNN(BaseRNN):
             selected_sigmas = sigmas[:, drawn_mixtures].view(latents.size())
 
         # Now use the randomly selected gaussian(s) to sample the next latent vector, i.e. the prediction
-        random_vector = torch.randn(size=latents.size())
+        random_vector = torch.randn(size=latents.size(), device=self.device)
         latent_prediction = selected_mus + random_vector * selected_sigmas * torch.sqrt(temperature)
 
         # latent_prediction: (BATCH_SIZE, SEQ_LEN, L_SIZE)
