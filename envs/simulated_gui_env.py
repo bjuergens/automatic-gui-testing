@@ -57,13 +57,17 @@ class SimulatedGUIEnv(gym.Env):
 
     def step(self, actions: Tuple[Union[int, torch.Tensor], Union[int, torch.Tensor]]):
         """
-        Expects a tuple of two integers as inputs. Integers can also be in 1D Tensor objects.
+        Expects a tuple of two _integers_ as inputs. Integers can also be in 1D Tensor objects.
+        The actions must be in [0, self.max_coordinate_size_for_task].
 
-        Will transform the input (for example [10, 220] into the appropriate input format for that particular RNN.
+        Will transform the input (for example [10, 220]) into the appropriate input format for that particular RNN.
         For example it can be that it uses reduced action space and tanh actions then it will be somewhere in the
         range of [-1, 1]
         """
-        actions = self.actions_transformation_function(torch.tensor(actions, device=self.device)).view(1, 1, -1)
+        if not isinstance(actions, torch.Tensor):
+            actions = torch.tensor(actions, device=self.device)
+
+        actions = self.actions_transformation_function(actions).view(1, 1, -1)
 
         with torch.no_grad():
             rnn_output = self.rnn(self.latent_observation, actions)
