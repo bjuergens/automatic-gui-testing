@@ -4,16 +4,15 @@ import time
 import gym
 # noinspection PyUnresolvedReferences
 import gym_gui_environments
-import numpy as np
-import numpy.random
 import torch
 from PIL import Image
 
 from models import Controller
+from utils.constants import MAX_COORDINATE
 from utils.misc import load_parameters
 from utils.setup_utils import load_yaml_config
 from utils.training_utils.training_utils import (
-    load_rnn_architecture, load_vae_architecture, vae_transformation_functions
+    load_rnn_architecture, load_vae_architecture, vae_transformation_functions, get_rnn_action_transformation_function
 )
 
 POSSIBLE_STOP_MODES = ["time", "iterations"]
@@ -61,6 +60,12 @@ class GUIEnvRollout:
 
         self.denormalize_actions = lambda x: ((x + 1) * 447) / 2
 
+        self.actions_transformation_function_for_rnn_input = get_rnn_action_transformation_function(
+            max_coordinate_size_for_task=MAX_COORDINATE,  # Rollout on the actual environment -> use max possible coord
+            reduce_action_coordinate_space_by=self.rnn.reduce_action_coordinate_space_by,
+            action_transformation_function_type=self.rnn.action_transformation_function_type
+        )
+
     def rollout(self, controller_parameters):
         self.rnn.initialize_hidden()
         load_parameters(controller_parameters, self.controller)
@@ -87,13 +92,15 @@ class GUIEnvRollout:
                     mu, log_var, self.vae.disable_kld, self.vae.apply_value_range_when_kld_disabled
                 ).unsqueeze(0)
 
-                actions = self.controller(z, self.rnn.hidden[0])
+                # controller_output is in tanh range, controller.predict() will transfer into [0, 447] range
+                controller_output = self.controller(z, self.rnn.hidden[0])
+                actions = self.controller.predict(controller_output)
 
                 # Updates hidden state internally
-                self.rnn(z, actions)
+                # Transform integer actions into the format that the RNN was trained on
+                self.rnn(z, self.actions_transformation_function_for_rnn_input(actions))
 
             actions = actions.squeeze()
-            actions = self.denormalize_actions(actions).round().int()
 
             ob, rew, done, info = self.env.step((actions[0], actions[1]))
 

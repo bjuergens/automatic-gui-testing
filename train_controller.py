@@ -37,8 +37,20 @@ def debug_worker_routine(p_queue, r_queue,
     Debugging is difficult with subprocesses running, therefore this function can be used without subprocesses.
     """
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, temperature, device, time_limit, load_best_rnn=True,
-                             stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
+        r_gen = DreamRollout(
+            rnn_dir=rnn_dir,
+            vae_dir=vae_dir,
+            initial_obs_path=initial_obs_path,
+            max_coordinate_size_for_task=448,
+            temperature=temperature,
+            device=device,
+            time_limit=time_limit,
+            load_best_rnn=True,
+            load_best_vae=True,
+            stop_when_total_reward_exceeded=stop_when_total_reward_exceeded,
+            render=False
+        )
+
         empty_counter = 0
         while True:
             if p_queue.empty():
@@ -83,8 +95,19 @@ def worker_routine(p_queue, r_queue, e_queue,
         sys.stderr = open(os.path.join(tmp_dir, str(getpid()) + '.err'), 'a')
 
     with torch.no_grad():
-        r_gen = DreamRollout(rnn_dir, vae_dir, initial_obs_path, temperature, device, time_limit, load_best_rnn=True,
-                             stop_when_total_reward_exceeded=stop_when_total_reward_exceeded)
+        r_gen = DreamRollout(
+            rnn_dir=rnn_dir,
+            vae_dir=vae_dir,
+            initial_obs_path=initial_obs_path,
+            max_coordinate_size_for_task=448,
+            temperature=temperature,
+            device=device,
+            time_limit=time_limit,
+            load_best_rnn=True,
+            load_best_vae=True,
+            stop_when_total_reward_exceeded=stop_when_total_reward_exceeded,
+            render=False
+        )
 
         while e_queue.empty():
             if p_queue.empty():

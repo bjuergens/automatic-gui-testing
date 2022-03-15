@@ -10,10 +10,9 @@ from torchvision import transforms
 from models import select_vae_model, select_rnn_model, Controller
 from models.vae import BaseVAE
 from utils.setup_utils import load_yaml_config
-
-GUI_ENV_INITIAL_STATE_FILE_PATH = "res/gui_env_initial_state.png"
-INITIAL_OBS_LATENT_VECTOR_FILE_NAME = "initial_obs_latent.hdf5"
-MAX_COORDINATE = 448  # This results from the GUIEnv which is 448x448
+from utils.constants import (
+    GUI_ENV_INITIAL_STATE_FILE_PATH, INITIAL_OBS_LATENT_VECTOR_FILE_NAME, MAX_COORDINATE
+)
 
 
 def vae_transformation_functions(img_size: int, dataset: str, output_activation_function: str):
