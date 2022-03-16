@@ -15,6 +15,5 @@ tensorboardX
 opencv-python
 comet_ml
 torchvision
-yaml
 pyside6
 git+https://github.com/neuroevolution-ai/GymGuiEnvironments.git#egg=gym_gui_environments
