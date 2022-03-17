@@ -131,7 +131,7 @@ class BaseMDNRNN(BaseRNN):
         number_of_gaussians = mus.size(2)
         latent_size = mus.size(3)
 
-        # Remove (1, 1) dimensions and transpose to get (N_GAUSS, L_SIZE) dimensions
+        # Remove (1, 1) dimensions and transpose to get (L_SIZE, N_GAUSS) dimensions
         mus = mus.view(number_of_gaussians, latent_size).t()
         sigmas = sigmas.view(number_of_gaussians, latent_size).t()
 
@@ -144,12 +144,26 @@ class BaseMDNRNN(BaseRNN):
         log_pi_temperature_adjusted = (log_pi / temperature)
         log_pi_temperature_adjusted -= log_pi_temperature_adjusted.max()
         log_pi_temperature_adjusted = log_pi_temperature_adjusted.exp()
-        pi_temperature_adjusted = log_pi_temperature_adjusted / log_pi_temperature_adjusted.sum(dim=0)
+        pi_temperature_adjusted = log_pi_temperature_adjusted / log_pi_temperature_adjusted.sum(dim=1, keepdim=True)
 
         # Randomly select a gaussian distribution either per dimension of the latent vector
-        # (self.use_gaussian_per_latent_dim == True) or in general
-        categorical_distribution = torch.distributions.Categorical(probs=pi_temperature_adjusted)
-        drawn_mixtures = categorical_distribution.sample()
+        # (self.use_gaussian_per_latent_dim == True) or one gaussian distribution in general if
+        # (self.use_gaussian_per_latent_dim == False)
+        if self.use_gaussian_per_latent_dim:
+            pi_count = torch.count_nonzero(
+                pi_temperature_adjusted.cumsum(dim=1)
+                >= torch.rand((pi_temperature_adjusted.size(0), 1), device=self.device),
+                dim=1
+            )
+            drawn_mixtures = pi_temperature_adjusted.size(1) - pi_count
+        else:
+            # Take the cumulated sum of the pi's and then use a random number of the uniform distribution to do create
+            # a categorical distribution. The first pi in the cumulated sum that is larger than the random number is
+            # the sample drawn. To get the first number simply count all non zeros (i.e. larger pi's) and then subtract
+            # from the size of pi at dim 1 (i.e. number_of_gaussians). Hopefully this is faster than using
+            # torch.distributions.Categorical
+            pi_count = torch.count_nonzero(pi_temperature_adjusted.cumsum(dim=1) >= torch.rand(1, device=self.device))
+            drawn_mixtures = pi_temperature_adjusted.size(1) - pi_count
 
         # Shape after this for selected_mus and selected_sigmas: (1, 1, L_SIZE)
         if self.use_gaussian_per_latent_dim:
