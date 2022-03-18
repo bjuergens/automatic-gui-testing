@@ -1,11 +1,23 @@
+import logging
+import os
 from typing import List, Dict, Tuple
 
+import click
 import numpy as np
 import torch
 from tqdm import tqdm
 
+from data.dataset_implementations import get_main_rnn_data_loader
 from envs.simulated_gui_env import SimulatedGUIEnv
-from utils.training_utils.training_utils import generate_initial_observation_latent_vector
+from models import select_rnn_model
+from utils.data_processing_utils import get_vae_preprocessed_data_path_name
+from utils.setup_utils import (
+    initialize_logger, get_depending_model_path, resolve_model_path, get_device, load_yaml_config
+)
+from utils.training_utils.training_utils import (
+    generate_initial_observation_latent_vector, get_rnn_action_transformation_function,
+    get_rnn_reward_transformation_function
+)
 
 
 def compare_reward_of_m_model_to_sequence(
@@ -54,7 +66,8 @@ def compare_reward_of_m_model_to_sequence(
     return sequence_rewards
 
 
-def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_transformation_function, device):
+def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_transformation_function, device,
+                            temperature: float = 1.0, load_best_rnn: bool = True):
     validation_sequences = val_dataset.get_validation_sequences_for_m_model_comparison()
 
     dict_of_sequence_actions = {}
@@ -79,9 +92,9 @@ def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_tr
         max_coordinate_size_for_task=448,
         device=device,
         initial_obs_path=initial_obs_path,
-        load_best_rnn=True,
+        load_best_rnn=load_best_rnn,
         render=False,
-        temperature=1.0
+        temperature=temperature
     )
 
     comparison_loss_function = torch.nn.L1Loss()
@@ -109,3 +122,88 @@ def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_tr
                                      f"- Min {np.min(achieved_sequence_rewards):.6f}  \n")
 
     return all_comparison_losses, all_rewards, extended_log_info_as_txt
+
+
+@click.command()
+@click.option("-r", "--rnn-dir", type=str, required=True, help="Path to a trained MDN RNN directory")
+@click.option("-d", "--dataset", "dataset_name", type=str,
+              help="Dataset name, if not used then dataset of MDN RNN is used")
+@click.option("--dataset-path", type=str, help="Path of the dataset specified by '--dataset'")
+@click.option("-g", "--gpu", type=int, default=-1, help="Use CPU (-1) or the corresponding GPU to load the models")
+@click.option("-t", "--temperatures", type=float, default=[1.0], multiple=True,
+              help="Temperature parameter(s) of MDNRNN")
+@click.option("--best-rnn/--no-best-rnn", "load_best_rnn", type=bool, default=True,
+              help="Load the best RNN or the last checkpoint")
+@click.option("--vae-copied/--no-vae-copied", type=bool, default=True, help="Was the VAE copied?")
+@click.option("--vae-location", type=str, default="local", help="Where was the vae trained (for example ai-machine)?")
+def main(rnn_dir: str, dataset_name: str, dataset_path: str, gpu: int, temperatures: Tuple[float], load_best_rnn: bool,
+         vae_copied: bool, vae_location: str):
+    """
+    TODO
+        - Save result in numpy file
+        - CLI parameter to generate graph maybe
+    """
+    logger, _ = initialize_logger()
+    logger.setLevel(logging.INFO)
+
+    vae_dir = get_depending_model_path("rnn", rnn_dir)
+    vae_dir = resolve_model_path(vae_dir, model_copied=vae_copied, location=vae_location)
+
+    device = get_device(gpu)
+
+    rnn_config = load_yaml_config(os.path.join(rnn_dir, "config.yaml"))
+    model_name = rnn_config["model_parameters"]["name"]
+    model_type = select_rnn_model(model_name)
+
+    if dataset_name is None:
+        logging.info("Using dataset_name and dataset_path from RNN config. Might not work when the server running "
+                     "this script is different from the one the RNN was trained on!")
+        dataset_name = rnn_config["experiment_parameters"]["dataset"]
+        dataset_path = rnn_config["experiment_parameters"]["data_path"]
+    else:
+        assert dataset_path is not None, "If --dataset is provided, --dataset-path has to be provided too"
+
+    vae_preprocessed_data_path = get_vae_preprocessed_data_path_name(vae_dir, dataset_name)
+
+    reward_transformation_function = get_rnn_reward_transformation_function(
+        reward_output_mode=model_type.get_reward_output_mode(),
+        reward_output_activation_function=rnn_config["model_parameters"]["reward_output_activation_function"]
+    )
+
+    actions_transformation_function = get_rnn_action_transformation_function(
+        max_coordinate_size_for_task=448,
+        reduce_action_coordinate_space_by=rnn_config["model_parameters"]["reduce_action_coordinate_space_by"],
+        action_transformation_function_type=rnn_config["model_parameters"]["action_transformation_function"]
+    )
+
+    val_dataset, _ = get_main_rnn_data_loader(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
+        split="val",
+        sequence_length=1,
+        batch_size=None,
+        actions_transformation_function=actions_transformation_function,
+        reward_transformation_function=reward_transformation_function,
+        vae_preprocessed_data_path=vae_preprocessed_data_path,
+        use_shifted_data=rnn_config["experiment_parameters"]["use_shifted_data"],
+        shuffle=False
+    )
+
+    for temp in temperatures:
+        all_comparison_losses, all_rewards, extended_log_info_as_txt = start_reward_comparison(
+            rnn_dir=rnn_dir,
+            vae_dir=vae_dir,
+            val_dataset=val_dataset,
+            model_name=model_name,
+            reward_transformation_function=reward_transformation_function,
+            device=device,
+            temperature=temp,
+            load_best_rnn=load_best_rnn
+        )
+
+        logging.info(f"\nTemperature: {temp}")
+        logging.info(f"\n{extended_log_info_as_txt}")
+
+
+if __name__ == "__main__":
+    main()

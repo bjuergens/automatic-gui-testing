@@ -63,7 +63,8 @@ class LSTMWithBCE(LSTM):
 
         return loss, (latent_loss.item(), reward_loss.item())
 
-    def get_reward_output_mode(self) -> str:
+    @staticmethod
+    def get_reward_output_mode() -> str:
         return "bce"
 
 

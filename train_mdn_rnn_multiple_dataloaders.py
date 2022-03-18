@@ -361,7 +361,9 @@ def main(config_path: str, disable_comet: bool):
             val_dataset=main_val_dataset,
             model_name=model_name,
             reward_transformation_function=reward_transformation_function,
-            device=device
+            device=device,
+            temperature=1.0,
+            load_best_rnn=True
         )
 
         comparison_loss_values = []

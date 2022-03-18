@@ -99,8 +99,9 @@ class BaseRNN(abc.ABC, nn.Module):
     def loss_function(self, next_latent_vector: torch.Tensor, reward: torch.Tensor, model_output: Tuple):
         pass
 
+    @staticmethod
     @abc.abstractmethod
-    def get_reward_output_mode(self) -> str:
+    def get_reward_output_mode() -> str:
         pass
 
 
@@ -253,7 +254,8 @@ class BaseMDNRNN(BaseRNN):
 
         return loss, (gmm.item(), mse.item())
 
-    def get_reward_output_mode(self) -> str:
+    @staticmethod
+    def get_reward_output_mode() -> str:
         return "mse"
 
 
@@ -289,5 +291,6 @@ class BaseSimpleRNN(BaseRNN):
 
         return loss, (latent_loss.item(), reward_loss.item())
 
-    def get_reward_output_mode(self) -> str:
+    @staticmethod
+    def get_reward_output_mode() -> str:
         return "mse"
