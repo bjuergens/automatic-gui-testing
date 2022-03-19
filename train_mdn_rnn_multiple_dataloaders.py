@@ -397,6 +397,7 @@ def main(config_path: str, disable_comet: bool):
 
         exp_params = {f"e_{k}": v for k, v in config["experiment_parameters"].items()}
         vae_params = {f"v_{k}": v for k, v in config["vae_parameters"].items()}
+        vae_params["v_version"] = vae_directory.split("/")[-1]
 
         hparams = {**model_params, **exp_params, **vae_params}
 
