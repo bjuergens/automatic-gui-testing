@@ -349,3 +349,33 @@ class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIEnvMultipleSequen
 
     def get_dataset_abbreviation(self) -> str:
         return "m3600"
+
+
+class GUIEnvSequencesDatasetIndividualDataLoadersMixed1200k(GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders):
+    def __init__(self, root_dir, split: str, sequence_length: int, vae_preprocessed_data_path: str,
+                 use_shifted_data: bool, actions_transformation_function=None, rewards_transformation_function=None):
+        super().__init__(root_dir, split, sequence_length, vae_preprocessed_data_path, use_shifted_data,
+                         actions_transformation_function, rewards_transformation_function)
+
+        if self.split == "train":
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:600]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[600:900]])
+
+            assert len(self.sequence_datasets) == (3 * 200 + 3 * 100)
+        else:
+            assert all([seq.rewards.size(0) == 1000 for seq in self.sequence_datasets[:15]])
+            assert all([seq.rewards.size(0) == 2000 for seq in self.sequence_datasets[15:30]])
+
+            assert len(self.sequence_datasets) == (3 * 5 + 3 * 5)
+
+    def get_validation_sequences_for_m_model_comparison(self):
+        assert self.split == "val"
+
+        validation_sequences = {
+            1000: self.sequence_datasets[:15],
+            2000: self.sequence_datasets[15:30]
+        }
+        return validation_sequences
+
+    def get_dataset_abbreviation(self) -> str:
+        return "m1200"

@@ -7,6 +7,7 @@ from data.dataset_implementations.rnn.multiple_sequences_dataset import (
     GUIEnvSequencesDatasetRandomWidget500k, GUIEnvSequencesDatasetMixed3600k,
     GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k,
     GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k,
-    GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k
+    GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k,
+    GUIEnvSequencesDatasetIndividualDataLoadersMixed1200k
 )
 from data.dataset_implementations.rnn.sequence_batch_sampler import GUISequenceBatchSampler
