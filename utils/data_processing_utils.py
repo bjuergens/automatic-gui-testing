@@ -39,7 +39,7 @@ def generate_vae_output(dataset_root_dir: str, vae: BaseVAE, img_size: int, vae_
     transformation_functions = vae_transformation_functions(img_size, vae_dataset_name, output_activation_function)
     dataset = PreprocessVAEDataset(dataset_root_dir, transformation_functions)
 
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True, drop_last=False)
+    dataloader = DataLoader(dataset, batch_size=256, shuffle=False, num_workers=6, pin_memory=True, drop_last=False)
     vae.eval()
 
     calculated_mus = []
