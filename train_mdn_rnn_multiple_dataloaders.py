@@ -173,6 +173,12 @@ def main(config_path: str, disable_comet: bool):
     img_size = vae_config["experiment_parameters"]["img_size"]
     vae_dataset_name = vae_config["experiment_parameters"]["dataset"]
 
+    if tbptt_frequency > 1:
+        # TBPTT Frequency allows to retain gradients across batches. If not using shifted data we use overlapping data
+        # (sliding window approach) and then the gradient calculation is somewhat false
+        assert use_shifted_data, ("TBPTT Frequency must be used with shifted data, otherwise gradient calculation is "
+                                  "false")
+
     model_type = select_rnn_model(model_name)
     model = model_type(config["model_parameters"], latent_size, batch_size, device).to(device)
 
