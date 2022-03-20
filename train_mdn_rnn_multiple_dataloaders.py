@@ -365,7 +365,7 @@ def main(config_path: str, disable_comet: bool):
             rnn_dir=log_dir,
             vae_dir=vae_directory,
             val_dataset=main_val_dataset,
-            model_name=model_name,
+            reward_output_mode=model.get_reward_output_mode(),
             reward_transformation_function=reward_transformation_function,
             device=device,
             temperature=1.0,

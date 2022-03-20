@@ -13,7 +13,7 @@ from models.vae import (
     SmallFilterSizesSmallBottleneckMaxPoolVAE3, SmallFilterSizesSmallBottleneckMaxPoolVAE4,
     HalfInputSmallFilterSizesSmallBottleneckMaxPoolVAE, HalfInputSmallFilterSizesWithStrideMaxPoolVAE
 )
-from models.rnn import BaseRNN, StandardMDNRNN, LSTMWithBCE, LSTMWithMSE
+from models.rnn import BaseRNN, StandardMDNRNN, MDNRNNWithBCE, LSTMWithBCE, LSTMWithMSE
 
 vae_models = {
     "vae_half_input_size": VAEHalfInputSize,
@@ -42,6 +42,7 @@ vae_models = {
 
 rnn_models = {
     "standard_mdn": StandardMDNRNN,
+    "mdn_bce": MDNRNNWithBCE,
     "lstm": LSTMWithBCE,  # For backwards compatibility
     "lstm_bce": LSTMWithBCE,
     "lstm_mse": LSTMWithMSE

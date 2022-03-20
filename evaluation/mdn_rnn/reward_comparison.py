@@ -66,7 +66,7 @@ def compare_reward_of_m_model_to_sequence(
     return sequence_rewards
 
 
-def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_transformation_function, device,
+def start_reward_comparison(rnn_dir, vae_dir, val_dataset, reward_output_mode, reward_transformation_function, device,
                             temperature: float = 1.0, load_best_rnn: bool = True):
     validation_sequences = val_dataset.get_validation_sequences_for_m_model_comparison()
 
@@ -75,8 +75,8 @@ def start_reward_comparison(rnn_dir, vae_dir, val_dataset, model_name, reward_tr
     for sequence_length, sequence_list in validation_sequences.items():
         dict_of_sequence_actions[sequence_length] = [seq.actions for seq in sequence_list]
 
-        if model_name == "lstm_bce":
-            # Compare also to 0 _or_ 1 rewards because the LSTMBCE model predicts only 0 or 1
+        if reward_output_mode == "bce":
+            # Compare also to 0 _or_ 1 rewards because the BCE models predicts only 0 or 1
             dict_of_sequence_rewards[sequence_length] = [
                 reward_transformation_function(seq.rewards).sum() for seq in sequence_list
             ]
@@ -154,6 +154,7 @@ def main(rnn_dir: str, dataset_name: str, dataset_path: str, gpu: int, temperatu
     rnn_config = load_yaml_config(os.path.join(rnn_dir, "config.yaml"))
     model_name = rnn_config["model_parameters"]["name"]
     model_type = select_rnn_model(model_name)
+    reward_output_mode = model_type.get_reward_output_mode()
 
     if dataset_name is None:
         logging.info("Using dataset_name and dataset_path from RNN config. Might not work when the server running "
@@ -194,7 +195,7 @@ def main(rnn_dir: str, dataset_name: str, dataset_path: str, gpu: int, temperatu
             rnn_dir=rnn_dir,
             vae_dir=vae_dir,
             val_dataset=val_dataset,
-            model_name=model_name,
+            reward_output_mode=reward_output_mode,
             reward_transformation_function=reward_transformation_function,
             device=device,
             temperature=temp,
