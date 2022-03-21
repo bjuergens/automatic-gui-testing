@@ -1,3 +1,4 @@
+import abc
 import os
 from bisect import bisect
 
@@ -129,7 +130,9 @@ class GUIEnvMultipleSequencesVaryingLengthsIndividualDataLoaders(GUIMultipleSequ
         }
         return validation_sequences
 
-    def get_dataset_abbreviation(self) -> str:
+    @staticmethod
+    @abc.abstractmethod
+    def get_dataset_abbreviation() -> str:
         return "vl"
 
 
@@ -257,7 +260,8 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomWidget500k(GUIEnvMultiple
         }
         return validation_sequences
 
-    def get_dataset_abbreviation(self) -> str:
+    @staticmethod
+    def get_dataset_abbreviation() -> str:
         return "rw500"
 
 
@@ -292,7 +296,8 @@ class GUIEnvSequencesDatasetIndividualDataLoadersRandomClicks500k(GUIEnvMultiple
         }
         return validation_sequences
 
-    def get_dataset_abbreviation(self) -> str:
+    @staticmethod
+    def get_dataset_abbreviation() -> str:
         return "rc500"
 
 
@@ -347,7 +352,8 @@ class GUIEnvSequencesDatasetIndividualDataLoadersMixed3600k(GUIEnvMultipleSequen
         }
         return validation_sequences
 
-    def get_dataset_abbreviation(self) -> str:
+    @staticmethod
+    def get_dataset_abbreviation() -> str:
         return "m3600"
 
 
@@ -377,5 +383,6 @@ class GUIEnvSequencesDatasetIndividualDataLoadersMixed1200k(GUIEnvMultipleSequen
         }
         return validation_sequences
 
-    def get_dataset_abbreviation(self) -> str:
+    @staticmethod
+    def get_dataset_abbreviation() -> str:
         return "m1200"
