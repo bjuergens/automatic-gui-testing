@@ -66,6 +66,8 @@ class GUIEnvRollout:
             action_transformation_function_type=self.rnn.action_transformation_function_type
         )
 
+        self.cpu_device = torch.device("cpu")
+
     def rollout(self, controller_parameters):
         self.rnn.initialize_hidden()
         load_parameters(controller_parameters, self.controller)
@@ -100,7 +102,8 @@ class GUIEnvRollout:
                 # Transform integer actions into the format that the RNN was trained on
                 self.rnn(z, self.actions_transformation_function_for_rnn_input(actions))
 
-            actions = actions.squeeze()
+            # Move actions to CPU to avoid memory leak in the environment when using GPU to calculate the model outputs
+            actions = actions.squeeze().to(self.cpu_device)
 
             ob, rew, done, info = self.env.step((actions[0], actions[1]))
 
