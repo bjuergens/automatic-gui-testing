@@ -12,6 +12,7 @@ import cma
 from tqdm import tqdm
 import numpy as np
 
+from data.dataset_implementations import select_rnn_dataset
 from evaluation.controller.evaluate_controller import evaluate_controller
 from utils.logging.improved_summary_writer import ImprovedSummaryWriter
 from utils.misc import load_parameters
@@ -396,6 +397,13 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         rnn_params = {f"rnn_{k}": v for k, v in config["rnn_parameters"].items()}
         trainer_params = {f"t_{k}": v for k, v in config["trainer_parameters"].items()}
         logging_params = {f"l_{k}": v for k, v in config["logging_parameters"].items()}
+
+        rnn_config = load_yaml_config(os.path.join(rnn_dir, "config.yaml"))
+        dataset_type = select_rnn_dataset(rnn_config["experiment_parameters"]["dataset"])
+
+        rnn_params["rnn_version"] = f"{dataset_type.get_dataset_abbreviation()}_{rnn_dir.split('/')[-1]}"
+        rnn_params["rnn_model"] = rnn_config["model_parameters"]["name"]
+        rnn_params["rnn_vae_dir"] = vae_dir.split("/")[-1]
 
         hparams = {**exp_params, **evaluation_params, **rnn_params, **trainer_params, **logging_params}
 
