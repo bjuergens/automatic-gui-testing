@@ -376,6 +376,11 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     e_queue.put("EOP")
 
     if not debug:
+        # noinspection PyUnboundLocalVariable
+        for p in processes:
+            p.join()
+            p.close()
+
         if evaluate_final_on_actual_environment:
             evaluated_rewards = evaluate_controller(
                 controller_directory=log_dir,
@@ -416,12 +421,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
             name="hparams"
         )
         # Ensure everything is logged to the tensorboard
-        summary_writer.flush()
-
-        # noinspection PyUnboundLocalVariable
-        for p in processes:
-            p.join()
-            p.close()
+        summary_writer.close()
 
 
 if __name__ == "__main__":
