@@ -379,7 +379,6 @@ def main(config_path: str, load_path: str, disable_comet: bool):
         # noinspection PyUnboundLocalVariable
         for p in processes:
             p.join()
-            p.close()
 
         if evaluate_final_on_actual_environment:
             evaluated_rewards = evaluate_controller(
