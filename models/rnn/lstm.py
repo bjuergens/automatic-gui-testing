@@ -28,7 +28,7 @@ class LSTMWithBCE(LSTM):
 
         # Supports float and torch.Tensor objects. As we train with either 0 or 1 as a reward we also want to predict
         # that.
-        self.denormalize_reward = lambda x: int(x > 0.5)
+        self.denormalize_reward = lambda x: torch.round(x).int()
 
     def predict(self, model_output, latents=None, temperature=None):
         # Apply sigmoid here to reward instead of self.reward_output_activation_function, because we don't apply that

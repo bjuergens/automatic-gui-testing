@@ -54,6 +54,10 @@ def compare_reward_of_m_model_to_sequence(
                 summed_reward += rew
                 progress_bar.update(1)
 
+            # rew coming from the SimulatedGUIEnv is always a torch.Tensor
+            # noinspection PyUnresolvedReferences
+            summed_reward = summed_reward.cpu().item()
+
             try:
                 sequence_rewards[sequence_length]
             except KeyError:

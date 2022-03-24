@@ -73,10 +73,7 @@ class SimulatedGUIEnv(gym.Env):
             rnn_output = self.rnn(self.latent_observation, actions)
             self.latent_observation, reward = self.rnn.predict(rnn_output, self.latent_observation, self.temperature)
 
-        if isinstance(reward, torch.Tensor):
-            reward = reward.item()
-
-        return self.latent_observation, reward, False, {}
+        return self.latent_observation, reward.squeeze(), False, {}
 
     def reset(self):
         self.latent_observation = BaseVAE.reparameterize(

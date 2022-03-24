@@ -30,7 +30,7 @@ class MDNRNNWithBCE(StandardMDNRNN):
 
         # Supports float and torch.Tensor objects. As we train with either 0 or 1 as a reward we also want to predict
         # that.
-        self.denormalize_reward = lambda x: int(x > 0.5)
+        self.denormalize_reward = lambda x: torch.round(x).int()
 
     def predict(self, model_output, latents, temperature):
         # Temperature parameter is used at two points and only during sampling (not during training):

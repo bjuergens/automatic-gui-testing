@@ -68,4 +68,4 @@ class DreamRollout:
 
         # Return minus as the CMA-ES implementation minimizes the objective function
         # noinspection PyUnresolvedReferences
-        return -total_reward
+        return -total_reward.cpu().item()
