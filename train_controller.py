@@ -351,6 +351,7 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                 summary_writer.add_scalar("max", -np.min(r_list), global_step=generation)
                 summary_writer.add_scalar("mean", -np.mean(r_list), global_step=generation)
                 summary_writer.add_scalar("best", -best, global_step=generation)
+                summary_writer.add_scalar("best_std", std_best, global_step=generation)
 
                 if save_model_checkpoints:
                     # noinspection PyUnboundLocalVariable
