@@ -377,6 +377,18 @@ def main(config_path: str, load_path: str, disable_comet: bool):
     e_queue.put("EOP")
 
     if not debug:
+        # Queue cleanup
+        while not p_queue.empty():
+            p_queue.get()
+
+        while not r_queue.empty():
+            r_queue.get()
+
+        p_queue.close()
+        r_queue.close()
+        p_queue.join_thread()
+        r_queue.join_thread()
+
         # noinspection PyUnboundLocalVariable
         for p in processes:
             p.join()
