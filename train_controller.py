@@ -391,7 +391,10 @@ def main(config_path: str, load_path: str, disable_comet: bool):
 
         # noinspection PyUnboundLocalVariable
         for p in processes:
-            p.join()
+            # Give 1 second of time to gracefully shutdown, otherwise just kill the process as it is no longer in use
+            # anyway
+            p.join(timeout=1)
+            p.kill()
 
         if evaluate_final_on_actual_environment:
             evaluated_rewards = evaluate_controller(
