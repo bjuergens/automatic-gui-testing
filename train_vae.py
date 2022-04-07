@@ -427,6 +427,9 @@ def main(config_path: str, load_path: str, disable_comet: bool, test_data: bool,
     else:
         existing_summary_writer = ExistingImprovedSummaryWriter(experiment_key=comet_exp_id)
 
+        assert existing_summary_writer.exp.name == test_vae_dir.split("/")[-1], ("Name in Comet experiment and name "
+                                                                                 "from log directory do not match")
+
         test_config_path = os.path.join(test_vae_dir, "config.yaml")
         config = load_yaml_config(test_config_path)
 

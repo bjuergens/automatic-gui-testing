@@ -448,6 +448,12 @@ def main(config_path: str, disable_comet: bool, test_data: bool, test_rnn_dir: s
     else:
         existing_summary_writer = ExistingImprovedSummaryWriter(experiment_key=comet_exp_id)
 
+        assert existing_summary_writer.exp.name.split('_')[-1] == test_rnn_dir.split('_')[-1], ("Version number "
+                                                                                                "between Comet "
+                                                                                                "experiment name and "
+                                                                                                "trained RNN dir does "
+                                                                                                "not match")
+
         test_config_path = os.path.join(test_rnn_dir, "config.yaml")
         config = load_yaml_config(test_config_path)
 
