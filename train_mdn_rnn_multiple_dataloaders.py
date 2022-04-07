@@ -21,15 +21,8 @@ from utils.setup_utils import initialize_logger, load_yaml_config, set_seeds, ge
 from utils.training_utils import load_vae_architecture, save_checkpoint
 from utils.training_utils.average_meter import AverageMeter
 from utils.training_utils.training_utils import (
-    generate_initial_observation_latent_vector, get_rnn_action_transformation_function,
-    get_rnn_reward_transformation_function
+    get_rnn_action_transformation_function, get_rnn_reward_transformation_function
 )
-
-
-# from utils.misc import ASIZE, LSIZE, RSIZE, RED_SIZE, SIZE
-# from utils.learning import EarlyStopping
-## WARNING : THIS SHOULD BE REPLACED WITH PYTORCH 0.5
-# from utils.learning import ReduceLROnPlateau
 
 
 def data_pass(model: BaseRNN, disable_kld: bool, apply_value_range_when_kld_disabled: bool,
@@ -185,21 +178,7 @@ def main(config_path: str, disable_comet: bool):
     reduce_action_coordinate_space_by: int = config["model_parameters"]["reduce_action_coordinate_space_by"]
     action_transformation_function_type = config["model_parameters"]["action_transformation_function"]
 
-    # optimizer = torch.optim.RMSprop(mdn_rnn.parameters(), lr=learning_rate, alpha=.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    # scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=5)
-    # earlystopping = EarlyStopping('min', patience=30)
-
-    # if exists(rnn_file) and not args.noreload:
-    #     rnn_state = torch.load(rnn_file)
-    #     print("Loading MDRNN at epoch {} "
-    #           "with test error {}".format(
-    #         rnn_state["epoch"], rnn_state["precision"]))
-    #     mdrnn.load_state_dict(rnn_state["state_dict"])
-    #     optimizer.load_state_dict(rnn_state["optimizer"])
-    #     scheduler.load_state_dict(state['scheduler'])
-    #     earlystopping.load_state_dict(state['earlystopping'])
 
     vae_preprocessed_data_path = get_vae_preprocessed_data_path_name(vae_directory, dataset_name)
 
@@ -336,8 +315,6 @@ def main(config_path: str, disable_comet: bool):
                                                    current_epoch, global_val_log_steps, scalar_log_frequency,
                                                    train=False, debug=debug)
 
-        # scheduler.step(test_loss)
-        # earlystopping.step(test_loss)
         if not debug:
             is_best = not current_best or val_loss < current_best
 
@@ -349,14 +326,7 @@ def main(config_path: str, disable_comet: bool):
                     "epoch": current_epoch,
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
-                    # 'scheduler': scheduler.state_dict(),
-                    # 'earlystopping': earlystopping.state_dict(),
-                    # "precision": test_loss,
                 }, is_best=is_best, checkpoint_filename=checkpoint_filename, best_filename=best_model_filename)
-
-        # if earlystopping.stop:
-        #     print("End of Training because of early stopping at epoch {}".format(e))
-        #     break
 
     if not debug and compare_m_model_reward_to_val_sequences:
         logging.info("Starting comparison of rewards between validation sequences and newly trained M model")
