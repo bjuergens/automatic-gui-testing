@@ -1,6 +1,8 @@
 import os
 from typing import Optional
 
+import comet_ml
+from comet_ml import ExistingExperiment
 from tensorboardX import SummaryWriter
 
 
@@ -28,3 +30,17 @@ class ImprovedSummaryWriter(SummaryWriter):
 
     def get_logdir(self):
         return self.logdir
+
+
+class ExistingImprovedSummaryWriter:
+
+    def __init__(self, experiment_key):
+        comet_ml.init()
+        self.exp = ExistingExperiment(experiment_key=experiment_key)
+
+    def add_scalar(self, tag, value, global_step):
+        self.exp.log_metric(tag, value, step=global_step)
+
+    def close(self):
+        self.exp.end()
+
