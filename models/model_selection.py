@@ -41,8 +41,9 @@ vae_models = {
 }
 
 rnn_models = {
-    "standard_mdn": StandardMDNRNN,
+    "standard_mdn": StandardMDNRNN,  # For backwards compatibility
     "mdn_bce": MDNRNNWithBCE,
+    "mdn_mse": StandardMDNRNN,
     "lstm": LSTMWithBCE,  # For backwards compatibility
     "lstm_bce": LSTMWithBCE,
     "lstm_mse": LSTMWithMSE
