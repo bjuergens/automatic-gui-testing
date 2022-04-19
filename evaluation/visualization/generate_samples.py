@@ -3,15 +3,14 @@ from typing import List
 
 import click
 import torch
-from torchvision.transforms import transforms
+from torchvision.utils import save_image
 
 from utils.setup_utils import get_device, load_yaml_config
 from utils.training_utils import load_vae_architecture
 
 
 def _save_sample(sample: torch.Tensor, vae_name: str):
-    sample_image = transforms.ToPILImage()(sample[0])
-    sample_image.save(f"sample_{vae_name}.png")
+    save_image(sample[0], f"sample_{vae_name}.png")
 
 
 @click.command()
@@ -39,7 +38,8 @@ def main(vae_dirs: List[str], gpu: int, best_vae: bool, seed: int):
         vae_version = specific_vae_dir.split("version_")[-1]
         vae_version = "v_" + vae_version
 
-        sample = vae.decode(random_latent_vector)
+        with torch.no_grad():
+            sample = vae.decode(random_latent_vector)
 
         _save_sample(sample, vae_version)
 
