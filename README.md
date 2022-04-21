@@ -74,11 +74,21 @@ all gpus specified by `CUDA_VISIBLE_DEVICES`.
 
 ## Authors
 
+Original Authors:
+
 * **Corentin Tallec** - [ctallec](https://github.com/ctallec)
 * **Léonard Blier** - [leonardblier](https://github.com/leonardblier)
 * **Diviyan Kalainathan** - [diviyan-kalainathan](https://github.com/diviyan-kalainathan)
 
+Author of this Implementation:
+
+* **Patrick Deubel** - [pdeubel](https://github.com/pdeubel)
+
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+I based my implementation on [world-models](https://github.com/ctallec/world-models), which is licensed
+under MIT. I also chose this license for this implementation, see [LICENSE](LICENSE).
+
+For the VAE I used the [PyTorch VAE](https://github.com/AntixK/PyTorch-VAE) as inspiration/reference,
+copyright A.K Subramanian 2020, licensed under the Apache 2.0 license, see also [LICENSE](LICENSE).
