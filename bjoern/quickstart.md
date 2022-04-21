@@ -9,6 +9,10 @@ sudo apt-get install xvfb
 pip install -U -r requirements.txt
 pip install -U torchvision tensorboard
 export PYTHONPATH=$PWD;$PYTHONPATH
+
+# optional prepare for cpu
+# add following line to main-method in train_vae.py: 
+torch.set_num_threads(8)
 ```
 
 

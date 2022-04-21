@@ -1,0 +1,35 @@
+model_parameters:
+  name: "lstm_mse"
+  hidden_size: 256
+  hidden_layers: 1
+  action_size: 2
+  loss_scale_option: None
+  reward_output_activation_function: "tanh"
+  truncated_backpropagation: True
+  reduce_action_coordinate_space_by: -1
+  action_transformation_function: "tanh"
+
+experiment_parameters:
+  dataset: "gui_env_sequences_dataset_individual_data_loaders_mixed_1200k"
+  data_path: "datasets/obs-splits/"
+  use_shifted_data: False
+  batch_size: 64
+  sequence_length: 64
+  learning_rate: 0.001
+  max_epochs: 5
+  manual_seed: 100
+  compare_m_model_reward_to_val_sequences: False
+  tbptt_frequency: 1
+
+vae_parameters:
+  directory: "logs/vae/gui_env_image_dataset/version_31"
+
+trainer_parameters:
+  gpu: -1
+  num_workers: 0
+
+logging_parameters:
+  debug: False
+  save_model_checkpoints: True
+  scalar_log_frequency: 50
+  base_save_dir: "logs/mdn-rnn/"
