@@ -1,76 +1,127 @@
-# Pytorch implementation of the "WorldModels"
+# Automatic GUI Testing using the World Model Approach
 
-Paper: Ha and Schmidhuber, "World Models", 2018. https://doi.org/10.5281/zenodo.1207631. For a quick summary of the paper and some additional experiments, visit the [github page](https://ctallec.github.io/world-models/).
+In this repository the [World Model](https://arxiv.org/abs/1803.10122) approach is adapted for the GUI testing
+of desktop software, where only mouse clicks are used. Specifically, a custom implemented desktop software,
+called [SUT](https://github.com/neuroevolution-ai/GymGuiEnvironments), which follows the OpenAI Gym environment.
+
+The implementation is based on [world-models](https://github.com/ctallec/world-models) by Tallec, Blier,
+and Kalainathan.
 
 
 ## Prerequisites
 
-The implementation is based on Python3 and PyTorch, check their website [here](https://pytorch.org) for installation instructions. The rest of the requirements is included in the [requirements file](requirements.txt), to install them:
-```bash
-pip3 install -r requirements.txt
+This implementation was used solely on Linux (Ubuntu and Manjaro), therefore it might not work on Windows, or macOS.
+Further required is `xvfb`, to construct a virtual display server. It can be installed on Ubuntu using
+`sudo apt install xvfb`.
+
+
+## Installation
+
+Use Python 3, preferably Python 3.7+, then construct a virtual environment or install directly the packages,
+using `pip install -r requirements.txt`. This should also directly install the SUT.
+
+
+## Using the Approach
+
+Applying the approach requires training the V, M, and C models sequentially. For the V, and M models data is required,
+while the C model is trained by interacting with the simulated environment constructed by the M model.
+
+### Data Generation
+
+Use the `data/parallel_data_generation.py` script to generate data in parallel. Call the script with `--help` to
+get a list of possible CLI arguments. The script uses random testers in parallel, to generate interaction
+sequences between the tester and the SUT. For example to create 10 sequences of 1000 interactions in parallel use
+`PYTHONPATH=$(pwd) python data/parallel_data_generation.py -s 10 -p 10 -i --amount 1000 -m random-widgets`
+
+This uses the random widget monkey tester, another option is `-m random-clicks`, which is a normal monkey tester
+that uses random coordinates to click through the software.
+
+
+### Construct Data Sets
+
+#### V Model
+
+Use `data/data_processing/copy_images.py` to copy only the images from the generated sequences, to a folder that is
+provided as a CLI argument. Then use `data/data_processing/remove_duplicate_images.py` to deduplicate the images
+in that folder. Finally use `data/data_processing/create_dataset_splits.py` to create dataset splits, note that
+this last script unfortunately doest not have a CLI interface for the probabilities, so you have to modify its source
+(which should be self explanatory).
+
+
+#### M Model
+
+For the M model dataset, the folders containing the generated sequences can be directly used. Simply construct
+a main folder for the dataset, which has three subfolders: `train`, `val`, and `test`. In each of these folders,
+create one folder that has the number of interactions of the sequences as its name (the exact name does not matter,
+but each subset dir has to have another subfolder). Then copy the sequence folders into this folder. For example:
+
+```
+dataset_root_dir
+    - train
+        - 1000
+            - seq_1
+            - seq_2
+            - seq_3
+        - 2000
+            - seq_4
+    - val 
+        - 1000
+            - val_seq_1   
+    - test
+        - 2000
+            - test_seq_1
 ```
 
-## Running the worldmodels
+### Train V Model
 
-The model is composed of three parts:
+Call `train_vae.py -c PATH_TO_CONFIG`, with a path to a valid VAE config file. An example can be found
+in `configs/vae/default_vae_config.yaml`. Copy it and rename it using the prefix `local_`, then Git ignores the file.
+There a GPU can be selected by providing the index (this is 0 if there is one GPU, and -1 if there is no CPU). 
+Further provide the path to the dataset, as well as other desired hyperparameters. Consider decreasing the batch
+size if your GPU has not enough memory. Also you can use different VAE models. The possible choices are defined
+in `models/model_selection.py`.
 
-  1. A Variational Auto-Encoder (VAE), whose task is to compress the input images into a compact latent representation.
-  2. A Mixture-Density Recurrent Network (MDN-RNN), trained to predict the latent encoding of the next frame given past latent encodings and actions.
-  3. A linear Controller (C), which takes both the latent encoding of the current frame, and the hidden state of the MDN-RNN given past latents and actions as input and outputs an action. It is trained to maximize the cumulated reward using the Covariance-Matrix Adaptation Evolution-Strategy ([CMA-ES](http://www.cmap.polytechnique.fr/~nikolaus.hansen/cmaartic.pdf)) from the `cma` python package.
+#### Logging using Comet
 
-In the given code, all three sections are trained separately, using the scripts `trainvae.py`, `trainmdrnn.py` and `traincontroller.py`.
-
-Training scripts take as argument:
-* **--logdir** : The directory in which the models will be stored. If the logdir specified already exists, it loads the old model and continues the training.
-* **--noreload** : If you want to override a model in *logdir* instead of reloading it, add this option.
-
-### 1. Data generation
-Before launching the VAE and MDN-RNN training scripts, you need to generate a dataset of random rollouts and place it in the `datasets/carracing` folder.
-
-Data generation is handled through the `data/generation_script.py` script, e.g.
-```bash
-python data/generation_script.py --rollouts 1000 --rootdir datasets/carracing --threads 8
+If you add a file in your home directory called `.comet.config`, which has the following content
 ```
-
-Rollouts are generated using a *brownian* random policy, instead of the *white noise* random `action_space.sample()` policy from gym, providing more consistent rollouts.
-
-### 2. Training the VAE
-The VAE is trained using the `trainvae.py` file, e.g.
-```bash
-python trainvae.py --logdir exp_dir
+[comet]
+api_key=API_KEY
 ```
+where `API_KEY` is a valid [Comet](https://www.comet.ml/) API key, then the metrics are also
+logged to your Comet account. This is also used for the M Model, and C Model training
 
-### 3. Training the MDN-RNN
-The MDN-RNN is trained using the `trainmdrnn.py` file, e.g.
-```bash
-python trainmdrnn.py --logdir exp_dir
-```
-A VAE must have been trained in the same `exp_dir` for this script to work.
-### 4. Training and testing the Controller
-Finally, the controller is trained using CMA-ES, e.g.
-```bash
-python traincontroller.py --logdir exp_dir --n-samples 4 --pop-size 4 --target-return 950 --display
-```
-You can test the obtained policy with `test_controller.py` e.g.
-```bash
-python test_controller.py --logdir exp_dir
-```
 
-### Notes
-When running on a headless server, you will need to use `xvfb-run` to launch the controller training script. For instance,
-```bash
-xvfb-run -s "-screen 0 1400x900x24" python traincontroller.py --logdir exp_dir --n-samples 4 --pop-size 4 --target-return 950 --display
-```
-If you do not have a display available and you launch `traincontroller` without
-`xvfb-run`, the script will fail silently (but logs are available in
-`logdir/tmp`).
+### Train M Model
 
-Be aware that `traincontroller` requires heavy gpu memory usage when launched
-on gpus. To reduce the memory load, you can directly modify the maximum number
-of workers by specifying the `--max-workers` argument.
+Use `train_mdn_rnn.py -c PATH_TO_CONFIG` to train the M Model. Also use the default config
+`configs/mdn-rnn/default_mdn_rnn_config.yaml` as a starting point. Again, define the path to the data set,
+and also the path to the trained V model there, as well as different hyperparameters.
 
-If you have several GPUs available, `traincontroller` will take advantage of
-all gpus specified by `CUDA_VISIBLE_DEVICES`.
+
+### Train C Model
+
+Finally use `train_controller.py -c PATH_TO_CONFIG` to train the C Model. A default config is available at
+`configs/controller/default_controller_config.yaml`. There, define the M model which shall be used for the C model
+training. If `evaluate_final_on_actual_environment` is set to `True`, the C model is evaluated on
+the SUT after the training, and the log output then shows the achieved code coverage.
+
+
+## Visualization
+
+The V model logs images during training, which can be seein either in Comet, or if not used by calling
+`tensorboard --logdir .` in the log folder.
+
+
+Further, use `evaluation/dream_visualization/dream_visualization.py` to visualize an M model. There, you can click
+through the simulated environment, because the V model is used to visualize the predicted states of the M model.
+
+
+## Issues and Questions
+
+If you found any bugs or have questions, do not hesitate to create an issue on GitHub. It would be greatly
+appreciated!
+
 
 ## Authors
 

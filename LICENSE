@@ -236,3 +236,9 @@ Source Code for the World Model Framework was compared to:
 For the MDRNN temperature parameter, I validated my implementation with the following code lines:
     - https://github.com/dylandjian/retro-contest-sonic/blob/8e8465134f4c0bd8dcf6282af1214e68974058c1/models/lstm.py#L36-L40
         - retro-contest-sonic (https://github.com/dylandjian/retro-contest-sonic)
+
+For the MDRNN itself I used two blog articles as supporting information:
+    - Mixture Density Networks by Mike Dusenberry
+        - https://mikedusenberry.com/mixture-density-networks
+    - Mixture Density Networks: Probabilistic Regression for Uncertainty Estimation by Manu Joseph
+        - https://deep-and-shallow.com/author/manujosephv/
