@@ -41,7 +41,7 @@ def main(vae_dirs: List[str], gpu: int, best_vae: bool, seed: int):
         with torch.no_grad():
             sample = vae.decode(random_latent_vector)
 
-        _save_sample(sample, vae_version)
+        _save_sample(vae.denormalize(sample), vae_version)
 
 
 if __name__ == "__main__":
