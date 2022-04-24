@@ -20,7 +20,7 @@ rnn_parameters:
 
 trainer_parameters:
   gpu: -1
-  num_workers: 0
+  num_workers: 4
 
 logging_parameters:
   debug: False

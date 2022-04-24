@@ -96,15 +96,21 @@ logged to your Comet account. This is also used for the M Model, and C Model tra
 
 Use `train_mdn_rnn.py -c PATH_TO_CONFIG` to train the M Model. Also use the default config
 `configs/mdn-rnn/default_mdn_rnn_config.yaml` as a starting point. Again, define the path to the data set,
-and also the path to the trained V model there, as well as different hyperparameters.
+and also the path to the trained V model there, as well as different hyperparameters. This will automatically use
+the V Model to pre-process the necessary data. Subsequent trainings with the same V model and dataset will reuse
+the pre-processed data.
 
 
 ### Train C Model
 
-Finally use `train_controller.py -c PATH_TO_CONFIG` to train the C Model. A default config is available at
+Finally, use `train_controller.py -c PATH_TO_CONFIG` to train the C Model. A default config is available at
 `configs/controller/default_controller_config.yaml`. There, define the M model which shall be used for the C model
 training. If `evaluate_final_on_actual_environment` is set to `True`, the C model is evaluated on
 the SUT after the training, and the log output then shows the achieved code coverage.
+
+
+Depending on the data set the default hyperparameters might not work. Try varying the batch size and sequence
+length to lower values.
 
 
 ## Visualization

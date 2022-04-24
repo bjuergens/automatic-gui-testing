@@ -11,6 +11,7 @@ model_parameters:
   kld_warmup: True
   kld_warmup_batch_count: 2000
   kld_warmup_skip_batches: 0
+  apply_value_range_when_kld_disabled: False
 
 experiment_parameters:
   dataset: "gui_env_image_dataset"
