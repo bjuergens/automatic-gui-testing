@@ -123,6 +123,11 @@ Further, use `evaluation/dream_visualization/dream_visualization.py` to visualiz
 through the simulated environment, because the V model is used to visualize the predicted states of the M model.
 
 
+## Pre-Trained Models
+
+If you want pre-trained models, contact me through GitHub.
+
+
 ## Issues and Questions
 
 If you found any bugs or have questions, do not hesitate to create an issue on GitHub. It would be greatly
