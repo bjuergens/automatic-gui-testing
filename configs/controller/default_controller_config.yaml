@@ -1,12 +1,12 @@
 experiment_parameters:
-  population_size: 10
+  population_size: 100
   sigma: 0.1
-  number_of_samples: 5
-  number_of_evaluations: 100
+  number_of_samples: 3
+  number_of_evaluations: 25
   target_return:
   stop_when_total_reward_exceeded: False
   time_limit: 1000
-  max_generations: 5
+  max_generations: 30
   manual_seed: 1010
 
 evaluation_parameters:
@@ -15,16 +15,17 @@ evaluation_parameters:
   evaluation_amount: 1000
 
 rnn_parameters:
-  rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_rnn/version_0"
-  temperature: 1.0
+  rnn_dir: "path-to-trained-m-model"
+  temperature: 0.7
 
 trainer_parameters:
   gpu: -1
-  num_workers: 0
+  num_workers: 4
 
 logging_parameters:
   debug: False
   display_progress_bars: True
   save_model_checkpoints: True
+  evaluate_final_on_actual_environment: True
   scalar_log_frequency: 1
   save_dir: "logs/controller/"

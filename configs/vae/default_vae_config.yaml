@@ -1,24 +1,25 @@
 model_parameters:
-  name: "vae_full_input_size"
-  activation_function: "leaky_relu"
+  name: "small_filter_sizes_small_bottleneck_3"
+  activation_function: "relu"
   output_activation_function: "tanh"
-  hidden_dimensions: [8, 16, 32, 64, 128]
-  latent_size: 256
+  hidden_dimensions: [32, 64, 128, 256, 512, 512, 1024, 2048]
+  latent_size: 50
   input_channels: 3
-  batch_norm: True
+  batch_norm: False
   disable_kld: False
-  kld_weight: 1.0
+  kld_weight: 0.00001
   kld_warmup: True
-  kld_warmup_batch_count: 4000
-  kld_warmup_skip_batches: 2000
+  kld_warmup_batch_count: 2000
+  kld_warmup_skip_batches: 0
+  apply_value_range_when_kld_disabled: False
 
 experiment_parameters:
   dataset: "gui_env_image_dataset"
-  dataset_path: "path-to-split-dataset"
+  dataset_path: "path-to-dataset"
   img_size: 448
-  batch_size: 10
-  learning_rate: 0.005
-  max_epochs: 5
+  batch_size: 32
+  learning_rate: 0.0001
+  max_epochs: 20
   manual_seed: 1010
   optimizer: "adam"
 
@@ -26,7 +27,7 @@ lr_scheduler:
   use_lr_scheduler: True
   mode: "min"
   patience: 5
-  factor: 0.25
+  factor: 0.1
   threshold: 0.001
   threshold_mode: "abs"
 

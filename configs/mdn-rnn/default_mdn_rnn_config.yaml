@@ -1,29 +1,29 @@
 model_parameters:
-  name: "standard_mdn"
+  name: "mdn_bce"
   hidden_size: 32
   hidden_layers: 1
   action_size: 2
   number_of_gaussians: 5
   use_gaussian_per_latent_dim: True
   loss_scale_option: null
-  reward_output_activation_function: "tanh"
+  reward_output_activation_function: "sigmoid"
   reduce_action_coordinate_space_by: -1
   action_transformation_function: "tanh"
 
 experiment_parameters:
-  dataset: "multiple_sequences_identical_length_rnn"
-  data_path: "datasets/gui_env/random-widgets/2021-12-27_22-10-07/0"
+  dataset: "multiple_sequences_varying_length_individual_data_loaders_rnn"
+  data_path: "path-to-dataset"
   use_shifted_data: False
-  batch_size: 10
-  sequence_length: 16
-  learning_rate: 0.0001
-  max_epochs: 5
-  manual_seed: 100
+  batch_size: 32
+  sequence_length: 128
+  learning_rate: 0.001
+  max_epochs: 10
+  manual_seed: 1010
   compare_m_model_reward_to_val_sequences: True
   tbptt_frequency: 1
 
 vae_parameters:
-  directory: "logs/vae/gui-dataset/VAE/version_2"
+  directory: "path-to-trained-v-model"
 
 trainer_parameters:
   gpu: -1
@@ -31,6 +31,6 @@ trainer_parameters:
 
 logging_parameters:
   debug: False
-  save_model_checkpoints: False
+  save_model_checkpoints: True
   scalar_log_frequency: 50
   base_save_dir: "logs/mdn-rnn/"

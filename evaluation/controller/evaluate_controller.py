@@ -10,7 +10,8 @@ import numpy as np
 from utils.setup_utils import initialize_logger
 
 
-def evaluate_controller(controller_directory: str, gpu: int, stop_mode: str, amount: int, number_of_evaluations: int):
+def evaluate_controller(controller_directory: str, gpu: int, stop_mode: str, amount: int, number_of_evaluations: int,
+                        save_evaluations_file: str = None):
     python_commands = [
         "python", "-m", "evaluation.controller._evaluation_run",
         f"--dir={controller_directory}",
@@ -28,7 +29,7 @@ def evaluate_controller(controller_directory: str, gpu: int, stop_mode: str, amo
 
     xvfb_command = ["xvfb-run", "-a", "-s", "-screen 0 448x448x24"]
 
-    temporary_files = [tempfile.NamedTemporaryFile(suffix=".npy") for _ in range(number_of_evaluations)]
+    temporary_files = [tempfile.NamedTemporaryFile(suffix=".npz") for _ in range(number_of_evaluations)]
     processes = []
 
     for i in range(number_of_evaluations):
@@ -50,17 +51,23 @@ def evaluate_controller(controller_directory: str, gpu: int, stop_mode: str, amo
 
     logging.info("Finished all processes, gathering evaluation")
 
-    rewards = []
+    reward_sums = []
+    list_of_all_rewards = []
 
     for tmp_file in temporary_files:
-        rewards.append(np.load(tmp_file.name).item())
+        data = np.load(tmp_file.name)
+        reward_sums.append(data["reward_sum"].item())
+        list_of_all_rewards.append(data["all_rewards"])
 
     logging.info(f"Controller Evaluation")
-    logging.info(f"Max {np.max(rewards):.6f} - Mean {np.mean(rewards):.6f} - Std {np.std(rewards):.6f} - "
-                 f"Min {np.min(rewards):.6f}")
+    logging.info(f"Max {np.max(reward_sums):.6f} - Mean {np.mean(reward_sums):.6f} - Std {np.std(reward_sums):.6f} - "
+                 f"Min {np.min(reward_sums):.6f}")
     logging.info("Finished")
 
-    return rewards
+    if save_evaluations_file is not None:
+        np.savez(save_evaluations_file, reward_sums=reward_sums, all_rewards=list_of_all_rewards)
+
+    return reward_sums
 
 
 def evaluation_options(function):
@@ -91,12 +98,15 @@ def main(controller_directory: str, gpu: int, stop_mode: str, amount: int, numbe
     logger, _ = initialize_logger()
     logger.setLevel(logging.INFO)
 
+    save_evaluations_file = f"controller_v_{controller_directory.split('version_')[-1]}_eval.npz"
+
     evaluate_controller(
         controller_directory=controller_directory,
         gpu=gpu,
         stop_mode=stop_mode,
         amount=amount,
-        number_of_evaluations=number_of_evaluations
+        number_of_evaluations=number_of_evaluations,
+        save_evaluations_file=save_evaluations_file
     )
 
 

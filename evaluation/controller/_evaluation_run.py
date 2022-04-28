@@ -32,9 +32,11 @@ def main(controller_directory: str, gpu: int, stop_mode: str, amount: int, tmp_f
     controller = construct_controller(rnn_dir, vae_dir)
     controller, _ = load_controller_parameters(controller, controller_directory, device)
 
-    reward = rollout_helper.rollout(flatten_parameters(controller.parameters()))
+    reward_sum, all_rewards = rollout_helper.rollout(
+        flatten_parameters(controller.parameters()), return_reward_list=True
+    )
 
-    np.save(tmp_file, reward)
+    np.savez(tmp_file, reward_sum=reward_sum, all_rewards=all_rewards)
 
 
 if __name__ == "__main__":

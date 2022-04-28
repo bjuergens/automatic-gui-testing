@@ -68,13 +68,16 @@ class GUIEnvRollout:
 
         self.cpu_device = torch.device("cpu")
 
-    def rollout(self, controller_parameters):
+    def rollout(self, controller_parameters, return_reward_list: bool = False):
         self.rnn.initialize_hidden()
         load_parameters(controller_parameters, self.controller)
 
         ob = self.env.reset()
 
         total_reward = 0
+
+        if return_reward_list:
+            all_rewards = []
 
         t = 0
         start_time = time.time()
@@ -112,11 +115,17 @@ class GUIEnvRollout:
 
             total_reward += rew
 
+            if return_reward_list:
+                all_rewards.append(rew)
+
             # Then maximum code coverage is achieved
             if total_reward >= 1.0:
                 break
 
             t += 1
+
+        if return_reward_list:
+            return total_reward, all_rewards
 
         return total_reward
 
