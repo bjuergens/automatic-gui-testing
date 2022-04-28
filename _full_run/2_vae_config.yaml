@@ -1,13 +1,13 @@
 model_parameters:
-  name: "small_filter_sizes_small_bottleneck_3"
-  activation_function: "relu"
+  name: "vae_full_input_size"
+  activation_function: "leaky_relu"
   output_activation_function: "tanh"
   # hidden_dimensions: [ 8, 8, 8, 8, 16, 16, 32, 32 ] # ein ganz kleines netz, was in meine 2GB GPU-RAM passt
   # hidden_dimensions: [64, 64, 128, 128, 256, 256, 512, 512]
-  hidden_dimensions: [32, 32, 64, 64, 128, 128, 256, 256]
+  hidden_dimensions: [32, 64, 128, 256]
   latent_size: 50
   input_channels: 3
-  batch_norm: True
+  batch_norm: False
   disable_kld: False
   kld_weight: 0.000001
   kld_warmup: True
@@ -19,7 +19,7 @@ experiment_parameters:
   dataset: "gui_env_image_dataset"
   dataset_path: "_full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed-deduplicated-images-splits"
   img_size: 448
-  batch_size: 32
+  batch_size: 30
   learning_rate: 0.001
   max_epochs: 30
   manual_seed: 1011
