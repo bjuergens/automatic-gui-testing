@@ -7,7 +7,7 @@ installation & vorbereitung
 sudo apt-get install xvfb
 # ab hier alles in venv
 pip install -U -r requirements.txt
-pip install -U torchvision tensorboard
+# pip install -U torch==1.10.2 numpy==1.21.6 # bei mir hat torch1.11 probleme gemacht mit dem patcher von comet_ml
 export PYTHONPATH=$PWD;$PYTHONPATH
 
 # optional prepare for cpu
@@ -20,20 +20,31 @@ einfacher lauf zum debuggen
 
 ```bash
 # ground truth generieren, ~10min
-python data/data_generation.py -t --amount=100 --monkey-type=random-widgets --no-log --directory=datasets/gui_env/blah
+python data/parallel_data_generation.py -s 10 -p 8 -t --amount=600 --monkey-type=random-clicks --no-log --root-dir=_full_run/01_ground_truth
 
-# AssertionError am Ende kann ignoriert werden, wenn die splits-ordner da sind
-# ~10s
-python data/data_processing/create_dataset_splits.py -d datasets/gui_env/blah/observations
-ls datasets/gui_env/blah/observations-splits/*
-ls datasets/gui_env/random-widgets/allobs-splits
+python data/data_processing/copy_images.py -d _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06
+
+# count lines --> 13930
+ls -l _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed | wc -l
+
+# dedup
+python data/data_processing/remove_duplicate_images.py -d _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed
+
+# count lines --> 238
+ls -l _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed-deduplicated-images | wc -l
+
+# make splits
+python data/data_processing/create_dataset_splits.py -d _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed-deduplicated-images 
+ls ls _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed-deduplicated-images-splits
+
 
 # tensorboard starten um dem training zuzuschauen (optional)
 python -m tensorboard.main --logdir logs --port 8080
 
 # training starten
 # ~1h
-python train_vae.py -c configs/myconf.yaml --disable-comet
+# python train_vae.py -c configs/myconf.yaml --disable-comet
+python train_vae.py -c _full_run/2_vae_config.yaml --disable-comet
 
 # ~2h
 python train_mdn_rnn.py -c configs/my_mdn_rnn_conf.yaml --disable-comet
