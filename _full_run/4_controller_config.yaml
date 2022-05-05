@@ -1,0 +1,31 @@
+experiment_parameters:
+  population_size: 100
+  sigma: 0.1
+  number_of_samples: 3
+  number_of_evaluations: 25
+  target_return:
+  stop_when_total_reward_exceeded: False
+  time_limit: 1000
+  max_generations: 30
+  manual_seed: 1010
+
+evaluation_parameters:
+  evaluate_final_on_actual_environment: True
+  evaluation_stop_mode: "iterations"
+  evaluation_amount: 1000
+
+rnn_parameters:
+  rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_individual_data_loaders_rnn/version_0/"
+  temperature: 0.7
+
+trainer_parameters:
+  gpu: -1
+  num_workers: 4
+
+logging_parameters:
+  debug: False
+  display_progress_bars: True
+  save_model_checkpoints: True
+  evaluate_final_on_actual_environment: False
+  scalar_log_frequency: 1
+  save_dir: "logs/controller/"
