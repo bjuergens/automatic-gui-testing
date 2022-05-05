@@ -10,9 +10,6 @@ pip install -U -r requirements.txt
 # pip install -U torch==1.10.2 numpy==1.21.6 # bei mir hat torch1.11 probleme gemacht mit dem patcher von comet_ml
 export PYTHONPATH=$PWD;$PYTHONPATH
 
-# optional prepare for cpu
-# add following line to main-method in train_vae.py: 
-torch.set_num_threads(8)
 ```
 
 
@@ -76,7 +73,7 @@ python train_controller.py -c _full_run/4_controller_config.yaml --disable-comet
 ```
 
 
-paraleller lauf mit power
+paraleller lauf mit power (WIP)
 
 ```bash
 python data/parallel_data_generation.py --number-of-sequences 10 --number-of-processes 8 --amount 20
@@ -200,7 +197,7 @@ python train_vae.py --help
 python train_mdn_rnn.py --help
 python train_controller.py --help
 
-# diese script existieren
+# diese script existieren, muss ich aber noch ausprobieren
 python data/data_processing/calculate_mean_and_std_of_dataset.py --help
 python data/data_processing/copy_images.py --help
 python data/data_processing/remove_duplicate_images.py --help
