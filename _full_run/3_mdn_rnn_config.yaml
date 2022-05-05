@@ -12,7 +12,7 @@ model_parameters:
 
 experiment_parameters:
   dataset: "multiple_sequences_varying_length_individual_data_loaders_rnn"
-  data_path: "_full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06"
+  data_path: "_full_run/03_sequences_m_model"
   use_shifted_data: False
   batch_size: 32
   sequence_length: 128
@@ -23,7 +23,7 @@ experiment_parameters:
   tbptt_frequency: 1
 
 vae_parameters:
-  directory: "path-to-trained-v-model"
+  directory: "logs/vae/gui_env_image_dataset/version_1/"
 
 trainer_parameters:
   gpu: -1

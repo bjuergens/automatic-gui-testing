@@ -46,8 +46,18 @@ python -m tensorboard.main --logdir logs --port 8080
 # python train_vae.py -c configs/myconf.yaml --disable-comet
 python train_vae.py -c _full_run/2_vae_config.yaml --disable-comet
 
+
+# daten für m training vorbereiten. 
+# auf die observation wird unter folgendem pfad zugegriffen: 
+_full_run/03_sequences_m_model/[train,val,test]/$seq_length/$ignored/observations
+
+# bei dem obigen experiment mit 600 schritten pro sequenz, sieht ein pfad z.B. so aus 
+echo _full_run/03_sequences_m_model/{train,val,test}/600/*/observations|xargs -n1 echo
+# --> _full_run/03_sequences_m_model/train/600/0/observations _full_run/03_sequences_m_model/train/600/1/observations _full_run/03_sequences_m_model/train/600/2/observations _full_run/03_sequences_m_model/train/600/3/observations _full_run/03_sequences_m_model/train/600/4/observations _full_run/03_sequences_m_model/train/600/5/observations _full_run/03_sequences_m_model/train/600/6/observations _full_run/03_sequences_m_model/train/600/7/observations _full_run/03_sequences_m_model/val/600/4/observations _full_run/03_sequences_m_model/val/600/5/observations _full_run/03_sequences_m_model/test/600/6/observations _full_run/03_sequences_m_model/test/600/7/observations
+
+
 # ~2h
-python train_mdn_rnn.py -c configs/my_mdn_rnn_conf.yaml --disable-comet
+python train_mdn_rnn.py -c _full_run/3_mdn_rnn_config.yaml --disable-comet
 
 
 # todo: 
@@ -69,6 +79,107 @@ python train_vae.py -c configs/myconf.yaml --disable-comet
 
 
 # troubleshooting
+
+## verzeichnisstruktur für mdnrnn training
+
+hier ist eine verzeichnisstruktur, die funktioniert. ich vermute auf `html-report` und `observations-splits` könnte man noch verzichten
+
+```
+$ tree _full_run/03_sequences_m_model -d
+_full_run/03_sequences_m_model
+├── test
+│ └── 600
+│     ├── 6
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     └── 7
+│         ├── html-report
+│         ├── observations
+│         └── observations-splits
+│             ├── test
+│             ├── train
+│             └── val
+├── train
+│ └── 600
+│     ├── 0
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 1
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 2
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 3
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 4
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 5
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     ├── 6
+│     │ ├── html-report
+│     │ ├── observations
+│     │ └── observations-splits
+│     │     ├── test
+│     │     ├── train
+│     │     └── val
+│     └── 7
+│         ├── html-report
+│         ├── observations
+│         └── observations-splits
+│             ├── test
+│             ├── train
+│             └── val
+└── val
+    └── 600
+        ├── 4
+        │ ├── html-report
+        │ ├── observations
+        │ └── observations-splits
+        │     ├── test
+        │     ├── train
+        │     └── val
+        └── 5
+            ├── html-report
+            ├── observations
+            └── observations-splits
+                ├── test
+                ├── train
+                └── val
+
+
+```
 
 ## allgemein: hilfe ausgeben
 
