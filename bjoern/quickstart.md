@@ -51,18 +51,27 @@ python train_vae.py -c _full_run/2_vae_config.yaml --disable-comet
 # auf die observation wird unter folgendem pfad zugegriffen: 
 _full_run/03_sequences_m_model/[train,val,test]/$seq_length/$ignored/observations
 
-# bei dem obigen experiment mit 600 schritten pro sequenz, sieht ein pfad z.B. so aus 
+# d.h man legt folgende ordner an:
+mkdir -p _full_run/03_sequences_m_model/{train,val,test}/600
+
+# und dann kopiert man da die rohdaten vom anfang rein, also z.B. so:
+cp -r _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06/ _full_run/03_sequences_m_model/train/600
+cp -r _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06/1 _full_run/03_sequences_m_model/test/600/1
+cp -r _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06/2 _full_run/03_sequences_m_model/test/600/2
+cp -r _full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06/3 _full_run/03_sequences_m_model/val/600/3
+
+# bei dem obigen experiment mit 600 schritten pro sequenz, sieht ein pfad kann man alle obs-dirs so auflisten
 echo _full_run/03_sequences_m_model/{train,val,test}/600/*/observations|xargs -n1 echo
-# --> _full_run/03_sequences_m_model/train/600/0/observations _full_run/03_sequences_m_model/train/600/1/observations _full_run/03_sequences_m_model/train/600/2/observations _full_run/03_sequences_m_model/train/600/3/observations _full_run/03_sequences_m_model/train/600/4/observations _full_run/03_sequences_m_model/train/600/5/observations _full_run/03_sequences_m_model/train/600/6/observations _full_run/03_sequences_m_model/train/600/7/observations _full_run/03_sequences_m_model/val/600/4/observations _full_run/03_sequences_m_model/val/600/5/observations _full_run/03_sequences_m_model/test/600/6/observations _full_run/03_sequences_m_model/test/600/7/observations
 
 
 # ~2h
 python train_mdn_rnn.py -c _full_run/3_mdn_rnn_config.yaml --disable-comet
 
+# start dream and klick around until you get a reward, which is a important pre-condition for controller training
+python evaluation/dream_visualization/dream_visualization.py -d logs/mdn-rnn/multiple_sequences_varying_length_individual_data_loaders_rnn/version_4
 
 # todo: 
-python train_mdn_rnn.py --help
-python train_controller.py --help
+python train_controller.py -c _full_run/4_controller_config.yaml --disable-comet
 
 ```
 

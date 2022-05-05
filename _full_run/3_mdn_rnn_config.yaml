@@ -1,6 +1,6 @@
 model_parameters:
   name: "mdn_bce"
-  hidden_size: 32
+  hidden_size: 128
   hidden_layers: 1
   action_size: 2
   number_of_gaussians: 5
@@ -15,9 +15,9 @@ experiment_parameters:
   data_path: "_full_run/03_sequences_m_model"
   use_shifted_data: False
   batch_size: 32
-  sequence_length: 128
+  sequence_length: 80
   learning_rate: 0.001
-  max_epochs: 10
+  max_epochs: 100
   manual_seed: 1010
   compare_m_model_reward_to_val_sequences: True
   tbptt_frequency: 1
