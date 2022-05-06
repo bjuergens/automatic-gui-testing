@@ -15,10 +15,12 @@ from data.data_generation import data_generation_options
               help="Number of parallel processes that shall generate the data")
 @click.option("--root-dir", type=str, default="datasets/gui_env",
               help="In this directory, subfolders are automatically created based on time to store the generated data")
+@click.option("--timeout", type=int, default=60,
+              help="kill worker process after this time ins seconds")
 @data_generation_options
 def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
-         stop_mode: str, amount: int, monkey_type: str, random_click_prob: float, log: bool, html_report: bool):
-
+         stop_mode: str, amount: int, monkey_type: str, random_click_prob: float, log: bool, html_report: bool,
+         timeout: int):
     python_commands = ["python", "data/data_generation.py"]
 
     if stop_mode == "time":
@@ -35,7 +37,7 @@ def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
     if not html_report:
         python_commands.append(f"--no-html-report")
 
-    xvfb_command = ["xvfb-run", "-a", "-s", "-screen 0 448x448x24"]
+    xvfb_command = ["timeout", str(timeout), "xvfb-run", "-a", "-s", "-screen 0 448x448x24"]
 
     base_dir = os.path.join(root_dir, monkey_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
@@ -63,6 +65,7 @@ def main(number_of_sequences: int, number_of_processes: int, root_dir: str,
         processes.append(p)
         print(f"Started {p_id}")
 
+    print(f"waiting for leftover processes...")
     for i, p in enumerate(processes):
         p.wait()
         print(f"Finished process {i}")
