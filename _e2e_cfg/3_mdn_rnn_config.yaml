@@ -15,11 +15,11 @@ experiment_parameters:
   data_path: "_full_run/03_sequences_m_model"
   use_shifted_data: False
   batch_size: 32
-  sequence_length: 80
+  sequence_length: 25
   learning_rate: 0.001
-  max_epochs: 100
+  max_epochs: 50
   manual_seed: 1010
-  compare_m_model_reward_to_val_sequences: True
+  compare_m_model_reward_to_val_sequences: False
   tbptt_frequency: 1
 
 vae_parameters:

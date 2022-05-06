@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import shutil
@@ -15,9 +16,9 @@ logger.setLevel(logging.INFO)
 
 
 @click.command()
-@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=5,
+@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=80,
               help="generate ground_truth with actions sequences of this length")
-@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=16,
+@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=32,
               help="generate ground_truth with total number of actions sequences")
 @click.option("--gen-work-no", "generator_worker_number", type=int, default=16,
               help="generate ground_truth with this number of paralell worker process. Recommended: Twice the CPU cores")
@@ -48,20 +49,29 @@ def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool
     work_dir_vae = Path(base_dir).joinpath("02_vae")
     work_dir_rnn = Path(base_dir).joinpath("03_rnn")
 
-    Path(work_dir_generator).mkdir(parents=True, exist_ok=True)
     Path(work_dir_vae).mkdir(parents=True, exist_ok=True)
     Path(work_dir_rnn).mkdir(parents=True, exist_ok=True)
 
-    generate(work_dir_generator, work_env, generator_sequence_number, generator_worker_number,
-             generator_sequence_length)
+    generate(work_dir=work_dir_generator,
+             work_env=work_env,
+             generator_sequence_number=generator_sequence_number,
+             generator_worker_number=generator_worker_number,
+             generator_sequence_length=generator_sequence_length)
 
     vae_data_path = os.path.join(work_dir_vae, "data")
     rnn_data_path = os.path.join(work_dir_rnn, "data")
-    log_dir = os.path.join(base_dir, "log")
-    # prepare_vae_data(work_dir_generator, work_env, vae_data_path)
-    # train_vae(work_dir_vae, work_env, orig_config_v, vae_data_path, log_dir)
+
+    log_dir_vae = Path(base_dir) / "log" / "vae"
+    log_dir_rnn = Path(base_dir) / "log" / "rnn"
+    log_dir_vae.mkdir(parents=True, exist_ok=True)
+    log_dir_rnn.mkdir(parents=True, exist_ok=True)
+    prepare_vae_data(work_dir_generator, work_env, vae_data_path)
+    train_vae(work_dir_vae, work_env, orig_config_v, vae_data_path, log_dir_vae)
     prepare_rnn_data(work_dir_generator, vae_data_path, work_env, rnn_data_path, generator_sequence_length)
-    train_rnn(work_dir_rnn, work_env, orig_config_m, rnn_data_path, log_dir)
+    train_rnn(work_dir_rnn, work_env, orig_config_m, rnn_data_path, log_dir_vae, log_dir_rnn,
+              generator_sequence_length // 2)
+
+    # train_controller(work_dir_rnn, work_env, orig_config_m, rnn_data_path, log_dir_vae, log_dir_rnn)
 
 
 def prepare_rnn_data(work_dir_generator, vae_data_path, work_env, target_path, sequence_length, skip_of_exists=False):
@@ -96,15 +106,32 @@ def prepare_rnn_data(work_dir_generator, vae_data_path, work_env, target_path, s
             shutil.copytree(exp_path / "1", target_test / "1")
 
 
-def train_rnn(work_dir, work_env, orig_config, rnn_data_path, log_dir):
+def train_rnn(work_dir, work_env, orig_config, rnn_data_path, log_dir_vae, log_dir_rnn, rnn_sequence_length):
     work_config = os.path.join(work_dir, "config_m.yaml")
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(work_config)
     shutil.copyfile(orig_config, work_config)
+
+    # use most recent vae
+    data_set_path = Path(log_dir_vae) / "gui_env_image_dataset"
+    versions = os.listdir(data_set_path)
+    versions.sort(reverse=True)
+    most_recent = str(versions[0])
+    most_recent_path = data_set_path / most_recent
+    print(most_recent_path)
+
     replace_in_yaml(work_config, work_config,
-                    key_path=['experiment_parameters', 'dataset_path'],
-                    value=rnn_data_path)
+                    key_path=['vae_parameters', 'directory'],
+                    value=str(most_recent_path))
+    replace_in_yaml(work_config, work_config,
+                    key_path=['experiment_parameters', 'sequence_length'],
+                    value=rnn_sequence_length)
+    replace_in_yaml(work_config, work_config,
+                    key_path=['experiment_parameters', 'data_path'],
+                    value=str(rnn_data_path))
     replace_in_yaml(work_config, work_config,
                     key_path=['logging_parameters', 'save_dir'],
-                    value=log_dir)
+                    value=str(log_dir_rnn))
     args_v_train = ["python", "train_mdn_rnn.py",
                     "-c", work_config,
                     "--disable-comet"]
@@ -143,7 +170,7 @@ def prepare_vae_data(work_dir_generator, work_env, target_path, skip_of_exists=T
             logging.info(f"total files in dedup: {dedup_file_count}")
             args_dedup = ["python", "data/data_processing/create_dataset_splits.py",
                           "-d", dedup_path]
-            run_script(args_dedup, work_env)
+            run_script(args_dedup, work_env, raise_exceptions=False)
             logging.info(f"total files in split: {len(os.listdir(split_path))}")
 
             shutil.move(split_path, target_path)
@@ -154,15 +181,15 @@ def prepare_vae_data(work_dir_generator, work_env, target_path, skip_of_exists=T
             shutil.rmtree(dedup_path)
 
 
-def train_vae(work_dir, work_env, orig_config_v, vae_data_path, log_dir):
+def train_vae(work_dir, work_env, orig_config_v, vae_data_path: Path, log_dir: Path):
     work_config_v = os.path.join(work_dir, "config_v.yaml")
     shutil.copyfile(orig_config_v, work_config_v)
     replace_in_yaml(work_config_v, work_config_v,
                     key_path=['experiment_parameters', 'dataset_path'],
-                    value=vae_data_path)
+                    value=str(vae_data_path))
     replace_in_yaml(work_config_v, work_config_v,
                     key_path=['logging_parameters', 'save_dir'],
-                    value=log_dir)
+                    value=str(log_dir))
     args_v_train = ["python", "train_vae.py",
                     "-c", work_config_v,
                     "--disable-comet"]
@@ -180,9 +207,11 @@ def generate(work_dir, work_env, generator_sequence_number, generator_worker_num
         "python", "data/parallel_data_generation.py",
         "-s", str(generator_sequence_number),
         "-p", str(generator_worker_number),
+        "-i",
         "--amount", str(generator_sequence_length),
         '--monkey-type=random-clicks',
         "--no-log",
+        "--no-html-report",
         "--root-dir", str(work_dir)]
     run_script(args, work_env)
 
@@ -217,21 +246,29 @@ def replace_in_yaml(input_yaml: str, output_yaml: str, key_path: List[str], valu
         yaml.dump(yaml_content, f)
 
 
-def run_script(args: List[str], work_env: dict):
+def run_script(args: List[str], work_env: dict, raise_exceptions=True):
     logging.info('running script: ' + ' '.join(args))
     proc = subprocess.Popen(args,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
                             universal_newlines=True,
                             env=work_env)
+    assume_error = False
     for line in proc.stdout:
         # filter annoying warnings and clutter
         if 'qt.pysideplugin' in line \
                 or 'Qt WebEngine seems to be initialized from a plugin' in line:
             # warnings for data-generator
             continue
+        if 'Traceback' in line:
+            assume_error = True
         print(line, end="")
-    logging.info('script done')
+    logging.info('script done. returncode: ' + str(proc.returncode))
+    if assume_error:
+        if raise_exceptions:
+            raise RuntimeError("subprocess probably had an error")
+        else:
+            logging.warning("subprocess probably had an error")
 
 
 #
