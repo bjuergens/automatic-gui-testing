@@ -1,0 +1,45 @@
+model_parameters:
+  name: "vae_full_input_size"
+  activation_function: "leaky_relu"
+  output_activation_function: "tanh"
+  # hidden_dimensions: [ 8, 8, 8, 8, 16, 16, 32, 32 ] # ein ganz kleines netz, was in meine 2GB GPU-RAM passt
+  # hidden_dimensions: [64, 64, 128, 128, 256, 256, 512, 512]
+  hidden_dimensions: [32, 64, 128, 256]
+  latent_size: 50
+  input_channels: 3
+  batch_norm: False
+  disable_kld: False
+  kld_weight: 0.00001
+  kld_warmup: True
+  kld_warmup_batch_count: 10
+  kld_warmup_skip_batches: 0
+  apply_value_range_when_kld_disabled: False
+
+experiment_parameters:
+  dataset: "gui_env_image_dataset"
+  dataset_path: "_full_run/01_ground_truth/random-clicks/2022-04-21_13-40-06-mixed-deduplicated-images-splits"
+  img_size: 448
+  batch_size: 30
+  learning_rate: 0.001
+  max_epochs: 30
+  manual_seed: 1011
+  optimizer: "adam"
+
+lr_scheduler:
+  use_lr_scheduler: True
+  mode: "min"
+  patience: 5
+  factor: 0.1
+  threshold: 0.001
+  threshold_mode: "abs"
+
+trainer_parameters:
+  gpu: -1
+  num_workers: 8
+
+logging_parameters:
+  debug: False
+  save_model_checkpoints: True
+  scalar_log_frequency: 10
+  image_epoch_log_frequency: 5
+  save_dir: "logs/vae/"
