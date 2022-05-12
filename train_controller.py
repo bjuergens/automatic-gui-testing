@@ -317,7 +317,8 @@ def main(config_path: str, load_path: str, disable_comet: bool):
                                  stop_when_total_reward_exceeded)
 
         if display_progress_bars:
-            progress_bar = tqdm(total=population_size * number_of_samples, desc=f"Generation {generation} - Rewards")
+            progress_bar = tqdm(total=population_size * number_of_samples,
+                                desc=f"Generation {generation} - Rewards", mininterval=5.0)
 
         # Take results from result queue
         for _ in range(population_size * number_of_samples):

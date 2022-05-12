@@ -49,7 +49,8 @@ def data_pass(model: BaseRNN, disable_kld: bool, apply_value_range_when_kld_disa
     latent_loss_meter = AverageMeter(latent_loss_key, ":.4f")
     reward_loss_meter = AverageMeter(reward_loss_key, ":.4f")
 
-    progress_bar = tqdm(total=sum([len(x) for x in data_loaders]), unit="batch", desc=f"Epoch {current_epoch}")
+    progress_bar = tqdm(total=sum([len(x) for x in data_loaders]), unit="batch",
+                        desc=f"Epoch {current_epoch}", mininterval=5.0)
     log_step = 0
 
     # Each DataLoader in data_loaders resembles one sequence of interactions that was recorded on the actual env

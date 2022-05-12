@@ -30,7 +30,7 @@ def train(model, summary_writer: ImprovedSummaryWriter, train_loader, optimizer,
     kld_loss_meter = AverageMeter("KLDLoss", ":.4f")
 
     progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), unit="batch",
-                        desc=f"Epoch {current_epoch} - Train")
+                        desc=f"Epoch {current_epoch} - Train", mininterval=5.0)
 
     for batch_idx, data in progress_bar:
         data = data.to(device)
@@ -79,7 +79,7 @@ def compute_test_performance(model, existing_summary_writer, test_loader, device
     test_kld_loss_meter = AverageMeter("Test_KLDLoss", ":.4e")
 
     progress_bar = tqdm(enumerate(test_loader), total=len(test_loader), unit="batch",
-                        desc=f"Test Data")
+                        desc=f"Test Data", mininterval=5.0)
 
     for batch_idx, data in progress_bar:
         data = data.to(device)
@@ -123,7 +123,7 @@ def validate(model, summary_writer: ImprovedSummaryWriter, val_loader, device, c
     logged_one_batch = False
 
     progress_bar = tqdm(enumerate(val_loader), total=len(val_loader), unit="batch",
-                        desc=f"Epoch {current_epoch} - Validation")
+                        desc=f"Epoch {current_epoch} - Validation", mininterval=5.0)
 
     for batch_idx, data in progress_bar:
         data = data.to(device)

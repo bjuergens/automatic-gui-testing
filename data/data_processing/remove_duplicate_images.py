@@ -16,7 +16,7 @@ PROCESSED_FOLDER_NAME = "deduplicated-images"
 
 def deduplicate_images(dataset):
     print("Calculating image hashes")
-    for sample in tqdm(dataset):
+    for sample in tqdm(dataset, mininterval=5.0):
         sample["file_hash"] = fou.compute_filehash(sample.filepath)
         sample.save()
     print("Finished calculating image hashes")
