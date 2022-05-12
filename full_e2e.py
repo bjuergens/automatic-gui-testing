@@ -15,12 +15,13 @@ logger, _ = initialize_logger()
 logger.setLevel(logging.INFO)
 
 
+
 @click.command()
-@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=80,
+@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=64,
               help="generate ground_truth with actions sequences of this length")
-@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=32,
+@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=128,
               help="generate ground_truth with total number of actions sequences")
-@click.option("--gen-work-no", "generator_worker_number", type=int, default=16,
+@click.option("--gen-work-no", "generator_worker_number", type=int, default=32,
               help="generate ground_truth with this number of paralell worker process. Recommended: Twice the CPU cores")
 @click.option("--gen-monkey-type", "generator_monkey_type", type=str, default="random-clicks",
               help="generate ground_truth with this type of monkey-tester")
@@ -38,6 +39,7 @@ logger.setLevel(logging.INFO)
 def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool, test_gpu: int,
          generator_sequence_length: int, generator_sequence_number: int, generator_worker_number: int,
          generator_monkey_type: str, base_dir: str):
+    full_run = True  # helper var for debugging
     main_args = locals()
     for key in main_args:
         logging.info(f"{key}: {main_args[key]}")
@@ -48,30 +50,75 @@ def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool
     work_dir_generator = Path(base_dir).joinpath("01_generator")
     work_dir_vae = Path(base_dir).joinpath("02_vae")
     work_dir_rnn = Path(base_dir).joinpath("03_rnn")
+    work_dir_ctl = Path(base_dir).joinpath("04_ctl")
 
     Path(work_dir_vae).mkdir(parents=True, exist_ok=True)
     Path(work_dir_rnn).mkdir(parents=True, exist_ok=True)
+    Path(work_dir_ctl).mkdir(parents=True, exist_ok=True)
 
-    generate(work_dir=work_dir_generator,
-             work_env=work_env,
-             generator_sequence_number=generator_sequence_number,
-             generator_worker_number=generator_worker_number,
-             generator_sequence_length=generator_sequence_length)
+    if full_run:
+        generate(work_dir=work_dir_generator,
+                 work_env=work_env,
+                 generator_sequence_number=generator_sequence_number,
+                 generator_worker_number=generator_worker_number,
+                 generator_sequence_length=generator_sequence_length)
 
     vae_data_path = os.path.join(work_dir_vae, "data")
     rnn_data_path = os.path.join(work_dir_rnn, "data")
 
     log_dir_vae = Path(base_dir) / "log" / "vae"
     log_dir_rnn = Path(base_dir) / "log" / "rnn"
+    log_dir_ctl = Path(base_dir) / "log" / "ctl"
     log_dir_vae.mkdir(parents=True, exist_ok=True)
     log_dir_rnn.mkdir(parents=True, exist_ok=True)
-    prepare_vae_data(work_dir_generator, work_env, vae_data_path)
-    train_vae(work_dir_vae, work_env, orig_config_v, vae_data_path, log_dir_vae)
-    prepare_rnn_data(work_dir_generator, vae_data_path, work_env, rnn_data_path, generator_sequence_length)
-    train_rnn(work_dir_rnn, work_env, orig_config_m, rnn_data_path, log_dir_vae, log_dir_rnn,
-              generator_sequence_length // 2)
+    log_dir_ctl.mkdir(parents=True, exist_ok=True)
 
-    # train_controller(work_dir_rnn, work_env, orig_config_m, rnn_data_path, log_dir_vae, log_dir_rnn)
+    if full_run:
+        prepare_vae_data(work_dir_generator, work_env, vae_data_path)
+        train_vae(work_dir_vae, work_env, orig_config_v, vae_data_path, log_dir_vae)
+
+        prepare_rnn_data(work_dir_generator, vae_data_path, work_env, rnn_data_path, generator_sequence_length)
+        train_rnn(work_dir_rnn,
+                  work_env=work_env,
+                  orig_config=orig_config_m,
+                  rnn_data_path=rnn_data_path,
+                  log_dir_vae=log_dir_vae,
+                  log_dir_rnn=log_dir_rnn,
+                  rnn_sequence_length=generator_sequence_length // 2)
+
+    train_controller(work_dir_ctl, work_env, orig_config_c, rnn_data_path, log_dir_vae, log_dir_ctl, log_dir_rnn)
+
+
+def _get_most_recent_log(data_set_path_log_path):
+    versions = os.listdir(data_set_path_log_path)
+    versions.sort(reverse=True)
+    most_recent = str(versions[0])
+    most_recent_path = Path(data_set_path_log_path) / most_recent
+    return most_recent_path
+
+
+def train_controller(work_dir, work_env, orig_config, rnn_data_path, log_dir_vae, log_dir, log_dir_rnn):
+
+    work_config = os.path.join(work_dir, "config_c.yaml")
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(work_config)
+    shutil.copyfile(orig_config, work_config)
+
+    most_recent_path = _get_most_recent_log(Path(log_dir_rnn)
+                                            / "multiple_sequences_varying_length_individual_data_loaders_rnn")
+
+    replace_in_yaml(work_config, work_config,
+                    key_path=['rnn_parameters', 'rnn_dir'],
+                    value=str(most_recent_path))
+
+    replace_in_yaml(work_config, work_config,
+                    key_path=['logging_parameters', 'save_dir'],
+                    value=str(log_dir))
+
+    args_c_train = ["python", "train_controller.py",
+                    "-c", work_config,
+                    "--disable-comet"]
+    run_script(args_c_train, work_env)
 
 
 def prepare_rnn_data(work_dir_generator, vae_data_path, work_env, target_path, sequence_length, skip_of_exists=False):
@@ -112,13 +159,7 @@ def train_rnn(work_dir, work_env, orig_config, rnn_data_path, log_dir_vae, log_d
         os.remove(work_config)
     shutil.copyfile(orig_config, work_config)
 
-    # use most recent vae
-    data_set_path = Path(log_dir_vae) / "gui_env_image_dataset"
-    versions = os.listdir(data_set_path)
-    versions.sort(reverse=True)
-    most_recent = str(versions[0])
-    most_recent_path = data_set_path / most_recent
-    print(most_recent_path)
+    most_recent_path = _get_most_recent_log(Path(log_dir_vae) / "gui_env_image_dataset")
 
     replace_in_yaml(work_config, work_config,
                     key_path=['vae_parameters', 'directory'],
@@ -130,7 +171,7 @@ def train_rnn(work_dir, work_env, orig_config, rnn_data_path, log_dir_vae, log_d
                     key_path=['experiment_parameters', 'data_path'],
                     value=str(rnn_data_path))
     replace_in_yaml(work_config, work_config,
-                    key_path=['logging_parameters', 'save_dir'],
+                    key_path=['logging_parameters', 'base_save_dir'],
                     value=str(log_dir_rnn))
     args_v_train = ["python", "train_mdn_rnn.py",
                     "-c", work_config,
