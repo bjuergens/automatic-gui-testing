@@ -5,14 +5,14 @@ experiment_parameters:
   number_of_evaluations: 25
   target_return:
   stop_when_total_reward_exceeded: False
-  time_limit: 1000
+  time_limit: 100
   max_generations: 30
   manual_seed: 1010
 
 evaluation_parameters:
   evaluate_final_on_actual_environment: True
   evaluation_stop_mode: "iterations"
-  evaluation_amount: 100
+  evaluation_amount: 50
 
 rnn_parameters:
   rnn_dir: "logs/mdn-rnn/multiple_sequences_varying_length_individual_data_loaders_rnn/version_0/"

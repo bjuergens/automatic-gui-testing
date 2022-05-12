@@ -17,9 +17,9 @@ logger.setLevel(logging.INFO)
 
 
 @click.command()
-@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=64,
+@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=32,
               help="generate ground_truth with actions sequences of this length")
-@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=128,
+@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=32,
               help="generate ground_truth with total number of actions sequences")
 @click.option("--gen-work-no", "generator_worker_number", type=int, default=32,
               help="generate ground_truth with this number of paralell worker process. Recommended: Twice the CPU cores")
@@ -39,7 +39,7 @@ logger.setLevel(logging.INFO)
 def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool, test_gpu: int,
          generator_sequence_length: int, generator_sequence_number: int, generator_worker_number: int,
          generator_monkey_type: str, base_dir: str):
-    full_run = True  # helper var for debugging
+    full_run = False  # helper var for debugging
     main_args = locals()
     for key in main_args:
         logging.info(f"{key}: {main_args[key]}")
