@@ -128,7 +128,8 @@ def compute_test_performance(model, test_data_loaders, device, disable_kld, appl
     latent_loss_meter = AverageMeter(latent_loss_key, ":.4f")
     reward_loss_meter = AverageMeter(reward_loss_key, ":.4f")
 
-    progress_bar = tqdm(total=sum([len(x) for x in test_data_loaders]), unit="batch", desc=f"Test Data")
+    progress_bar = tqdm(total=sum([len(x) for x in test_data_loaders]), unit="batch",
+                        desc=f"Test Data", mininterval=5.0)
     log_step = 0
 
     # Each DataLoader in data_loaders resembles one sequence of interactions that was recorded on the actual env

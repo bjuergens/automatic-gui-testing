@@ -15,14 +15,13 @@ logger, _ = initialize_logger()
 logger.setLevel(logging.INFO)
 
 
-
 @click.command()
-@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=32,
+@click.option("--gen-seq-len", "generator_sequence_length", type=int, default=50,
               help="generate ground_truth with actions sequences of this length")
-@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=32,
+@click.option("--gen-seq-no", "generator_sequence_number", type=int, default=128,
               help="generate ground_truth with total number of actions sequences")
 @click.option("--gen-work-no", "generator_worker_number", type=int, default=32,
-              help="generate ground_truth with this number of paralell worker process. Recommended: Twice the CPU cores")
+              help="generate ground_truth with this number of parallel worker process. Recommended: Twice the CPU cores")
 @click.option("--gen-monkey-type", "generator_monkey_type", type=str, default="random-clicks",
               help="generate ground_truth with this type of monkey-tester")
 @click.option("--dir", "base_dir", type=str, default="_e2e",
@@ -39,7 +38,7 @@ logger.setLevel(logging.INFO)
 def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool, test_gpu: int,
          generator_sequence_length: int, generator_sequence_number: int, generator_worker_number: int,
          generator_monkey_type: str, base_dir: str):
-    full_run = False  # helper var for debugging
+    full_run = True  # helper var for debugging
     main_args = locals()
     for key in main_args:
         logging.info(f"{key}: {main_args[key]}")
@@ -52,6 +51,15 @@ def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool
     work_dir_rnn = Path(base_dir).joinpath("03_rnn")
     work_dir_ctl = Path(base_dir).joinpath("04_ctl")
 
+    vae_data_path = os.path.join(work_dir_vae, "data")
+    rnn_data_path = os.path.join(work_dir_rnn, "data")
+
+    log_dir_vae = Path(base_dir) / "log" / "vae"
+    log_dir_rnn = Path(base_dir) / "log" / "rnn"
+    log_dir_ctl = Path(base_dir) / "log" / "ctl"
+    log_dir_vae.mkdir(parents=True, exist_ok=True)
+    log_dir_rnn.mkdir(parents=True, exist_ok=True)
+    log_dir_ctl.mkdir(parents=True, exist_ok=True)
     Path(work_dir_vae).mkdir(parents=True, exist_ok=True)
     Path(work_dir_rnn).mkdir(parents=True, exist_ok=True)
     Path(work_dir_ctl).mkdir(parents=True, exist_ok=True)
@@ -62,16 +70,6 @@ def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool
                  generator_sequence_number=generator_sequence_number,
                  generator_worker_number=generator_worker_number,
                  generator_sequence_length=generator_sequence_length)
-
-    vae_data_path = os.path.join(work_dir_vae, "data")
-    rnn_data_path = os.path.join(work_dir_rnn, "data")
-
-    log_dir_vae = Path(base_dir) / "log" / "vae"
-    log_dir_rnn = Path(base_dir) / "log" / "rnn"
-    log_dir_ctl = Path(base_dir) / "log" / "ctl"
-    log_dir_vae.mkdir(parents=True, exist_ok=True)
-    log_dir_rnn.mkdir(parents=True, exist_ok=True)
-    log_dir_ctl.mkdir(parents=True, exist_ok=True)
 
     if full_run:
         prepare_vae_data(work_dir_generator, work_env, vae_data_path)

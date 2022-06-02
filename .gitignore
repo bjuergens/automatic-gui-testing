@@ -19,3 +19,5 @@ dock_config.json
 coverage-reports/
 
 TODO.md
+
+_e2e/

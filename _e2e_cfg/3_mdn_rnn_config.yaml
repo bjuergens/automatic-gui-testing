@@ -15,7 +15,7 @@ experiment_parameters:
   data_path: "_full_run/03_sequences_m_model"
   use_shifted_data: False
   batch_size: 32
-  sequence_length: 25
+  sequence_length: 40
   learning_rate: 0.001
   max_epochs: 50
   manual_seed: 1010
