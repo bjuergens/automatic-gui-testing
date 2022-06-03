@@ -21,7 +21,8 @@ experiment_parameters:
   img_size: 448
   batch_size: 10
   learning_rate: 0.001
-  max_epochs: 60
+  max_epochs: 30
+  # max_epochs: 5
   manual_seed: 1011
   optimizer: "adam"
 

@@ -71,18 +71,17 @@ def main(orig_config_v: str, orig_config_m: str, orig_config_c: str, comet: bool
                  generator_worker_number=generator_worker_number,
                  generator_sequence_length=generator_sequence_length)
 
-    if full_run:
         prepare_vae_data(work_dir_generator, work_env, vae_data_path)
         train_vae(work_dir_vae, work_env, orig_config_v, vae_data_path, log_dir_vae)
 
-        prepare_rnn_data(work_dir_generator, vae_data_path, work_env, rnn_data_path, generator_sequence_length)
-        train_rnn(work_dir_rnn,
-                  work_env=work_env,
-                  orig_config=orig_config_m,
-                  rnn_data_path=rnn_data_path,
-                  log_dir_vae=log_dir_vae,
-                  log_dir_rnn=log_dir_rnn,
-                  rnn_sequence_length=generator_sequence_length // 2)
+    prepare_rnn_data(work_dir_generator, vae_data_path, work_env, rnn_data_path, generator_sequence_length)
+    train_rnn(work_dir_rnn,
+              work_env=work_env,
+              orig_config=orig_config_m,
+              rnn_data_path=rnn_data_path,
+              log_dir_vae=log_dir_vae,
+              log_dir_rnn=log_dir_rnn,
+              rnn_sequence_length=generator_sequence_length // 2)
 
     train_controller(work_dir_ctl, work_env, orig_config_c, rnn_data_path, log_dir_vae, log_dir_ctl, log_dir_rnn)
 
