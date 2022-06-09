@@ -26,11 +26,11 @@ logger.setLevel(logging.INFO)
               help="generate ground_truth with this type of monkey-tester")
 @click.option("--dir", "base_dir", type=str, default="_e2e",
               help="root-dir for experiments")
-@click.option("--config-v", "orig_config_v", type=str, default="_e2e_cfg/2_vae_config.yaml",
+@click.option("--config-v", "orig_config_v", type=str, default="configs/e2e_cfg/2_vae_config.yaml",
               help="Path to a YAML configuration containing training options for V-Model")
-@click.option("--config-m", "orig_config_m", type=str, default="_e2e_cfg/3_mdn_rnn_config.yaml",
+@click.option("--config-m", "orig_config_m", type=str, default="e2e_cfg/e2e_cfg/3_mdn_rnn_config.yaml",
               help="Path to a YAML configuration containing training options for M-Model")
-@click.option("--config-c", "orig_config_c", type=str, default="_e2e_cfg/4_controller_config.yaml",
+@click.option("--config-c", "orig_config_c", type=str, default="e2e_cfg/e2e_cfg/4_controller_config.yaml",
               help="Path to a YAML configuration containing training options for C-Model")
 @click.option("--comet/--no-comet", type=bool, default=False,
               help="Disable logging to Comet (automatically disabled when API key is not provided in home folder)")
