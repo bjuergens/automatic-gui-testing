@@ -34,17 +34,68 @@ The script `full_e2e.py` does the following
   3. train RNN
   4. train Controller
 
-# analyse results
+# analyse data
 
 there are a couple of scripts that help to makes sense of the results
 
 
+## show video of input data
+
+You can create a video that shows how the system inteprets the input data. 
+
 ```bash
-python data/data_processing/calculate_mean_and_std_of_dataset.py --help
-python evaluation/visualize_mdn_rnn.py --help
-python evaluation/controller/_evaluation_run.py --help
-python evaluation/controller/evaluate_controller.py --help
-python evaluation/data/visualize_data_sequence.py --help
+python evaluation/data/visualize_data_sequence.py -d _e2e/01_generator/data_from_operator/2022-06-03_14-30-15/0 -s
+vlc _e2e/01_generator/data_from_operator/2022-06-03_14-30-15/0/sequence_visualized.mp4
+```
+
+This is especially usefull if you don't use the built-in generator and instead use a different data-source and
+want to know if the system understands it correctly
+
+
+## statistics of VAE-Input
+
+```bash
+python data/data_processing/calculate_mean_and_std_of_dataset.py -d _e2e/02_vae/data
+
+  0%|                                                       | 0/3 [00:00<?, ?batch/s]
+Current sum_per_channel: tensor([45000540., 45128940., 45215480.], dtype=torch.float64)
+100%|███████████████████████████████████████████████| 3/3 [00:05<00:00,  1.81s/batch]
+------------------
+Dataset Mean: tensor([0.4461, 0.4475, 0.4484], dtype=torch.float64)
+Dataset Stddev: tensor([0.3026, 0.3028, 0.3033], dtype=torch.float64)
+Done
+```
+
+## example of VAE-output
+
+generate a VAE-output from a random latent vector
+
+```bash
+python evaluation/visualization/generate_samples.py -d _e2e/log/vae/gui_env_image_dataset/version_1
+open sample_v_1.png
+```
+
+## compare RNN-reward to real reward
+
+```bash
+python evaluation/mdn_rnn/reward_comparison.py --help
+```
+
+## interacte with RNN-dream
+
+open a window that behaves how the RNN thinks the original groundtruth behaves
+
+```bash
+python evaluation/dream_visualization/dream_visualization.py -d _e2e/log/rnn/multiple_sequences_varying_length_individual_data_loaders_rnn/version_1
+```
+
+## evaluate controller against dummy app
+
+this script creates a gym-env `PySideGUI-v0` and loads trained V, M and C-Models to solve the environment.  
+
+```bash
+mkdir controller_v_0
+python evaluation/controller/evaluate_controller.py -c _e2e/log/ctl/version_0/ --amount 10 -i
 ```
 
 
@@ -74,9 +125,6 @@ example
 
 ```bash
 python data/parallel_data_generation.py --help
-python train_vae.py --help
-python train_mdn_rnn.py --help
-python train_controller.py --help
 ```
 
 
